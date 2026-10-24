@@ -11,14 +11,14 @@
   import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp, onSnapshot, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyAbE1avpXXb7tNSTnOEPYepcjA04Nrrg0Q",
-    authDomain: "madrasa-syllabus.firebaseapp.com",
-    projectId: "madrasa-syllabus",
-    storageBucket: "madrasa-syllabus.firebasestorage.app",
-    messagingSenderId: "835893307104",
-    appId: "1:835893307104:web:457c20ec2182027d561285"
-  };
+const firebaseConfig = {
+    apiKey: "AIzaSyCGZM2C4J5L7g1soLweHFvAH9erGVDodY",
+    authDomain: "al-jamiah.firebaseapp.com",
+    projectId: "al-jamiah",
+    storageBucket: "al-jamiah.firebasestorage.app",
+    messagingSenderId: "453999340546",
+    appId: "1:453999340546:web:0201175936e85c33bd4b1b"
+};
 
   const fbApp = initializeApp(firebaseConfig);
   const fbAuth = getAuth(fbApp);
@@ -35266,7 +35266,7 @@ window.fullBackup = async function() {
             version: 1,
             exportedAt: new Date().toISOString(),
             exportedBy: currentUser.email,
-            projectId: 'madrasa-syllabus',
+            projectId: 'al-jamiah',
             data: {
                 config: configBackup,
                 records: recordsBackup,
@@ -35673,12 +35673,12 @@ async function tpSaveNewUser() {
         const { getAuth, createUserWithEmailAndPassword, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
         
         const firebaseConfig = {
-            apiKey: "AIzaSyAbE1avpXXb7tNSTnOEPYepcjA04Nrrg0Q",
-            authDomain: "madrasa-syllabus.firebaseapp.com",
-            projectId: "madrasa-syllabus",
-            storageBucket: "madrasa-syllabus.firebasestorage.app",
-            messagingSenderId: "835893307104",
-            appId: "1:835893307104:web:457c20ec2182027d561285"
+            apiKey: "AIzaSyCGZM2C4J5L7g1soLweHFvAH9erGVDodY",
+            authDomain: "al-jamiah.firebaseapp.com",
+            projectId: "al-jamiah",
+            storageBucket: "al-jamiah.firebasestorage.app",
+            messagingSenderId: "453999340546",
+            appId: "1:453999340546:web:0201175936e85c33bd4b1b"
         };
         
         const secApp = initializeApp(firebaseConfig, 'sec-' + Date.now());
