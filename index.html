@@ -31810,6 +31810,9 @@ async function handleUserLogin(user) {
     console.log('🔍 handleUserLogin শুরু — UID:', user.uid);
     currentUser = user;
 
+    // ★★★ আপনার এডমিন ইমেইলটি এখানে বসান ★★★
+    const ADMIN_EMAIL = "n.mim6094@gmail.com"; 
+
     // users কালেকশনে UID আছে কিনা
     let userData = null;
     try {
@@ -31825,55 +31828,51 @@ async function handleUserLogin(user) {
         console.error('❌ userDoc error:', err);
     }
 
-    // Case 1: user doc নেই 
+    // ★ Case 1: ইউজার নতুন (ডকুমেন্ট নেই) → সরাসরি রোল অ্যাসাইন করে ঢুকতে দিই ★
     if (!userData) {
-        // ★ আপনার ইমেইলটা এখানে বসান
-        const ADMIN_EMAIL = "আপনার-ইমেইল@gmail.com"; 
-        
-        if (user.email === ADMIN_EMAIL) {
-            // এডমিন হলে সরাসরি এডমিন হিসেবে সেভ করি
+        console.log('→ নতুন ইউজার, অটো রোল অ্যাসাইন হচ্ছে...');
+        try {
             const { doc, setDoc, serverTimestamp } = window.fbFuncs;
-            await setDoc(doc(window.fbDB, 'users', user.uid), {
-                name: "এডমিন",
-                email: user.email,
-                role: 'admin',
-                createdAt: serverTimestamp()
-            });
-            // রিলোড দিলে এডমিন হিসেবে ঢুকে যাবে
-            location.reload(); 
-            return;
-        } else {
-            // ★ শিক্ষক হলে সরাসরি টিচার হিসেবে ঢুকে যাক (কার্ড ছাড়াই)
-            const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+            const isAdmin = (user.email === ADMIN_EMAIL);
+            
+            // ডাটাবেসে নতুন ইউজার তৈরি করা হচ্ছে
             await setDoc(doc(window.fbDB, 'users', user.uid), {
                 name: user.displayName || user.email.split('@')[0],
                 email: user.email,
-                role: 'teacher',
+                role: isAdmin ? 'admin' : 'teacher', // ★ এডমিন ইমেইল হলে admin, নাহলে teacher
                 createdAt: serverTimestamp()
             });
-            // পেজ রিলোড করি যাতে এপ্লিকেশন লোড হয়
-            location.reload();
+            
+            // ডাটা আবার লোড করে নিই
+            const snap = await getDoc(doc(window.fbDB, 'users', user.uid));
+            if (snap.exists()) {
+                userData = { uid: snap.id, ...snap.data() };
+            }
+        } catch (err) {
+            console.error('❌ অটো ইউজার তৈরি ব্যর্থ:', err);
+            showToast('❌ অ্যাকাউন্ট তৈরি করা যায়নি', 'error');
             return;
         }
     }
 
-    // Case 2: pending
+    // ★ Case 2: pending (অনুমোদনের অপেক্ষায়) 
+    // যেহেতু আমরা এখন উন্মুক্ত করছি, তাই pending থাকলেও তাকে teacher বানিয়ে ঢুকতে দেব
     if (userData.role === 'pending') {
-        console.log('→ Case 2: pending approval');
-        _pendingUid = user.uid;
-        _pendingCard = userData.cardNumber || '';
-        await loadConfigFromFirestore();
-        showLoginHidden();
-        document.getElementById('pending-card-display').textContent = _pendingCard;
-        document.getElementById('pending-card-share').textContent = _pendingCard;
-        document.getElementById('pending-screen').classList.remove('hidden');
-        document.getElementById('pending-screen').classList.add('flex');
-        return;
+        console.log('→ Pending ইউজারকে Teacher হিসেবে আপডেট করা হচ্ছে...');
+        try {
+            const { doc, updateDoc } = window.fbFuncs;
+            await updateDoc(doc(window.fbDB, 'users', user.uid), {
+                role: 'teacher'
+            });
+            userData.role = 'teacher';
+        } catch (err) {
+            console.error('❌ Pending আপডেট ব্যর্থ:', err);
+        }
     }
 
-    // Case 3: admin / teacher
+    // ★ Case 3: admin / teacher → সরাসরি অ্যাপে ঢুকবে ★
     if (userData.role === 'admin' || userData.role === 'teacher') {
-        console.log('→ Case 3: admin/teacher ঢুকছে');
+        console.log('→ সফলভাবে ঢুকছে:', userData.role);
         currentUserData = userData;
         
         try {
@@ -31889,22 +31888,29 @@ async function handleUserLogin(user) {
             await syncYearsFromFirestore();
             console.log('✅ Academic years synced');
         } catch (err) {
-            console.error('❌ Load error (এটাই silent fail ছিল):', err);
+            console.error('❌ Load error:', err);
         }
         
-        console.log('🚀 showApp কল করছি');
         showApp();
-        console.log('✅ showApp শেষ');
         return;
     }
 
-    // Case 4: unknown role
-    console.log('→ Case 4: unknown role:', userData.role);
-    _pendingUid = user.uid;
-    showLoginHidden();
-    document.getElementById('denied-message').textContent = 'আপনার অ্যাকাউন্টে ভুল role সেট করা আছে। এডমিনের সাথে যোগাযোগ করুন।';
-    document.getElementById('denied-screen').classList.remove('hidden');
-    document.getElementById('denied-screen').classList.add('flex');
+    // Case 4: unknown role (হলে একে teacher বানিয়ে ঢুকিয়ে দিই)
+    console.log('→ unknown role, teacher বানিয়ে ঢুকানো হচ্ছে');
+    try {
+        const { doc, updateDoc } = window.fbFuncs;
+        await updateDoc(doc(window.fbDB, 'users', user.uid), { role: 'teacher' });
+        userData.role = 'teacher';
+        currentUserData = userData;
+        
+        await loadConfigFromFirestore();
+        await loadRecordsFromFirestore();
+        await syncYearsFromFirestore();
+        
+        showApp();
+    } catch (err) {
+        console.error('❌ unknown role handling error:', err);
+    }
 }
 
 function showLoginHidden() {
