@@ -31825,13 +31825,36 @@ async function handleUserLogin(user) {
         console.error('❌ userDoc error:', err);
     }
 
-    // Case 1: user doc নেই → কার্ড verification
+    // Case 1: user doc নেই 
     if (!userData) {
-        console.log('→ Case 1: কার্ড verification');
-        _pendingUid = user.uid;
-        showLoginHidden();
-        showCardVerifyModal();
-        return;
+        // ★ আপনার ইমেইলটা এখানে বসান
+        const ADMIN_EMAIL = "আপনার-ইমেইল@gmail.com"; 
+        
+        if (user.email === ADMIN_EMAIL) {
+            // এডমিন হলে সরাসরি এডমিন হিসেবে সেভ করি
+            const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+            await setDoc(doc(window.fbDB, 'users', user.uid), {
+                name: "এডমিন",
+                email: user.email,
+                role: 'admin',
+                createdAt: serverTimestamp()
+            });
+            // রিলোড দিলে এডমিন হিসেবে ঢুকে যাবে
+            location.reload(); 
+            return;
+        } else {
+            // ★ শিক্ষক হলে সরাসরি টিচার হিসেবে ঢুকে যাক (কার্ড ছাড়াই)
+            const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+            await setDoc(doc(window.fbDB, 'users', user.uid), {
+                name: user.displayName || user.email.split('@')[0],
+                email: user.email,
+                role: 'teacher',
+                createdAt: serverTimestamp()
+            });
+            // পেজ রিলোড করি যাতে এপ্লিকেশন লোড হয়
+            location.reload();
+            return;
+        }
     }
 
     // Case 2: pending
