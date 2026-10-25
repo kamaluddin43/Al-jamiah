@@ -31813,9 +31813,9 @@ async function handleUserLogin(user) {
     // ★★★ আপনার এডমিন ইমেইলটি এখানে বসান ★★★
     const ADMIN_EMAIL = "n.mim6094@gmail.com"; 
 
-    // users কালেকশনে UID আছে কিনা
     let userData = null;
     try {
+        // ★ এখানে getDoc ডিক্লেয়ার করা হলো
         const { doc, getDoc } = window.fbFuncs;
         const snap = await getDoc(doc(window.fbDB, 'users', user.uid));
         if (snap.exists()) {
@@ -31832,7 +31832,8 @@ async function handleUserLogin(user) {
     if (!userData) {
         console.log('→ নতুন ইউজার, অটো রোল অ্যাসাইন হচ্ছে...');
         try {
-            const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+            // ★ এখানেও getDoc ডিক্লেয়ার করা হলো
+            const { doc, getDoc, setDoc, serverTimestamp } = window.fbFuncs;
             const isAdmin = (user.email === ADMIN_EMAIL);
             
             // ডাটাবেসে নতুন ইউজার তৈরি করা হচ্ছে
@@ -31856,10 +31857,10 @@ async function handleUserLogin(user) {
     }
 
     // ★ Case 2: pending (অনুমোদনের অপেক্ষায়) 
-    // যেহেতু আমরা এখন উন্মুক্ত করছি, তাই pending থাকলেও তাকে teacher বানিয়ে ঢুকতে দেব
     if (userData.role === 'pending') {
         console.log('→ Pending ইউজারকে Teacher হিসেবে আপডেট করা হচ্ছে...');
         try {
+            // ★ এখানেও updateDoc ডিক্লেয়ার করা হলো
             const { doc, updateDoc } = window.fbFuncs;
             await updateDoc(doc(window.fbDB, 'users', user.uid), {
                 role: 'teacher'
@@ -31895,7 +31896,7 @@ async function handleUserLogin(user) {
         return;
     }
 
-    // Case 4: unknown role (হলে একে teacher বানিয়ে ঢুকিয়ে দিই)
+    // Case 4: unknown role (হলে একে teacher বানিয়ে ঢুকিয়ে দিই)
     console.log('→ unknown role, teacher বানিয়ে ঢুকানো হচ্ছে');
     try {
         const { doc, updateDoc } = window.fbFuncs;
