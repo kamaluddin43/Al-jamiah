@@ -1045,8 +1045,8 @@ body { font-family: 'Hind Siliguri', 'Amiri', sans-serif; background-color: #f8f
             <div class="w-16 h-16 mx-auto bg-amber-500/20 rounded-2xl border-2 border-amber-400/40 flex items-center justify-center text-amber-400 text-3xl mb-3">
                 <i class="fa-solid fa-book-open-reader"></i>
             </div>
-            <h1 class="text-2xl font-bold font-arabic">مقادير الأسباق</h1>
-            <p class="text-sm text-emerald-200 mt-1">মাকাদীরে আসবাক সিস্টেম</p>
+            <h1 class="text-2xl font-bold font-arabic">الجامعة</h1>
+            <p class="text-sm text-emerald-200 mt-1">আল-জামিয়াহ সিস্টেম</p>
         </div>
 
         <div class="p-6 space-y-4">
@@ -1799,7 +1799,7 @@ body { font-family: 'Hind Siliguri', 'Amiri', sans-serif; background-color: #f8f
     <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-10">
         <div class="text-center mb-8">
             <h2 class="text-2xl md:text-3xl font-bold text-emerald-900 mb-2">স্বাগতম</h2>
-            <p class="text-sm text-slate-500" id="home-madrasa-name">মাকাদীরে আসবাক সিস্টেমে আপনাকে স্বাগত</p>
+            <p class="text-sm text-slate-500" id="home-madrasa-name">আল-জামিয়াহ সিস্টেমে আপনাকে স্বাগতম</p>
         </div>
 
                 <!-- ★ ১১টা বাটনের গ্রিড — ডেক্সটপে ৪+৪+৩, মোবাইলে ২×৬ -->
@@ -5146,7 +5146,7 @@ body { font-family: 'Hind Siliguri', 'Amiri', sans-serif; background-color: #f8f
                         </h4>
                         <div>
                             <label class="text-xs font-semibold text-slate-700 block mb-1">প্রিন্ট/PDF-এ ওয়াটারমার্ক টেক্সট (ফাঁকা রাখলে দেখাবে না)</label>
-                            <input type="text" id="setting-watermark-text" placeholder="যেমন: মাকাদীরে আসবাক" class="w-full rounded-lg border-slate-300 border p-2 text-sm">
+                            <input type="text" id="setting-watermark-text" placeholder="যেমন: আল-জামিয়াহ সিস্টেম" class="w-full rounded-lg border-slate-300 border p-2 text-sm">
                         </div>
                     </div>
                     <!-- সেভ বাটন -->
@@ -5165,7 +5165,7 @@ body { font-family: 'Hind Siliguri', 'Amiri', sans-serif; background-color: #f8f
 </main>
 
 <footer class="bg-slate-800 text-slate-400 text-center text-xs py-4 no-print mt-auto border-t border-slate-700">
-    <p>মাকাদীরে আসবাক (مقادير الأسباق) v3 &copy; ২০২৬ | কওমী মাদরাসার জন্য</p>
+    <p>আল-জামিয়াহ সিস্টেম; ২০২৬ | কওমী মাদরাসার জন্য</p>
 </footer>
 
 <!-- ═══════════════════ ACCOUNTING: TRANSACTION MODAL ═══════════════════ -->
@@ -27232,7 +27232,7 @@ window.printTeacherList = function() {
             <p>শিক্ষক তালিকা — ${deptName} বিভাগ</p>
         </div>
         ${area.innerHTML}
-        <p style="margin-top:14px;font-size:10px;text-align:center;color:#475569;">প্রিন্ট: ${new Date().toLocaleString('bn-BD')} | মাকাদীরে আসবাক সিস্টেম</p>
+        <p style="margin-top:14px;font-size:10px;text-align:center;color:#475569;">প্রিন্ট: ${new Date().toLocaleString('bn-BD')} | আল-জামিয়াহ সিস্টেম</p>
         </body></html>
     `);
     printWin.document.close();
@@ -28325,7 +28325,7 @@ window.printStudentTable = function(tableId, titlePrefix, className) {
             </div>
             ${cloned.outerHTML}
             <p style="margin-top:14px;font-size:9px;text-align:center;color:#475569;">
-                প্রিন্ট: ${new Date().toLocaleString('bn-BD')} | মাকাদীরে আসবাক সিস্টেম
+                প্রিন্ট: ${new Date().toLocaleString('bn-BD')} | আল-জামিয়াহ সিস্টেম
             </p>
         </body>
         </html>
@@ -32069,7 +32069,7 @@ function showApp() {
     // ★ হোম পেইজেও মাদরাসার নাম দেখাই
     const homeMadrasa = document.getElementById('home-madrasa-name');
     if (homeMadrasa && settings.madrasaName) {
-        homeMadrasa.textContent = settings.madrasaName + ' — মাকাদীরে আসবাক সিস্টেমে স্বাগতম';
+        homeMadrasa.textContent = settings.madrasaName + ' — আল-জামিয়াহ সিস্টেমে স্বাগতম';
     }
 
     const isAdmin = currentUserData?.role === 'admin';
@@ -46196,7 +46196,7 @@ window.admFormPrintFinal = async function(formId) {
                 </div>
 
                 <div style="margin-top:15px;font-size:9px;text-align:center;color:#94a3b8;">
-                    মাকাদীরে আসবাক সিস্টেম | প্রিন্ট: ${new Date().toLocaleDateString('bn-BD')}
+                    আল-জামিয়াহ সিস্টেম | প্রিন্ট: ${new Date().toLocaleDateString('bn-BD')}
                 </div>
             </div>
         `;
@@ -48340,7 +48340,7 @@ window.printAdmFormFromList = async function(formId) {
 
                 <!-- ফুটার -->
                 <div style="margin-top:15px;font-size:9px;text-align:center;color:#94a3b8;">
-                    মাকাদীরে আসবাক সিস্টেম | প্রিন্ট: ${new Date().toLocaleDateString('bn-BD')}
+                    আল-জামিয়াহ সিস্টেম | প্রিন্ট: ${new Date().toLocaleDateString('bn-BD')}
                 </div>
             </div>
         `;
@@ -48985,18 +48985,26 @@ window.admFormSaveStep2 = async function() {
 // ★★★ কোথায় বসাবেন: আগের admFormSaveToFirestore ফাংশনটি খুঁজে বের করে একদম এটা দিয়ে রিপ্লেস করবেন ★★★
 
 async function admFormSaveToFirestore(step) {
-    if (!currentUser) { showToast('❌ লগইন করুন', 'error'); return false; }
+    if (!currentUser) { 
+        showToast('❌ লগইন করুন', 'error'); 
+        return false; 
+    }
+    
     try {
         const { doc, setDoc, addDoc, collection, serverTimestamp, getDoc } = window.fbFuncs;
         const year = getCurrentYear();
         const cfg = configData?.admissionFormConfig || window.DEFAULT_ADMISSION_FORM_CONFIG;
         
-        let updatedSavedSteps = _admFormState.savedSteps.includes(step) 
-            ? _admFormState.savedSteps 
+        // ─── ১. savedSteps আপডেট ───
+        let updatedSavedSteps = _admFormState.savedSteps.includes(step)
+            ? _admFormState.savedSteps
             : [..._admFormState.savedSteps, step];
-
-        // ★ পরবর্তী ধাপের দায়িত্বশীল খুঁজে বের করা
+        
+        // ─── ২. next incharge নির্ধারণ ───
+        let nextIncharge = [];           // ✅ FIX: declare করা হলো
         let nextStep = step + 1;
+        let isFinalStep = false;
+        
         if (nextStep <= 11) {
             const nextStepKeys = {
                 3: 'step3_personal', 4: 'step4_guardian', 5: 'step5_studentPromise',
@@ -49004,75 +49012,83 @@ async function admFormSaveToFirestore(step) {
                 9: 'step9_admissionFees', 10: 'step10_monthlyFees', 11: 'step11_principal'
             };
             const nextKey = nextStepKeys[nextStep];
+            
             if (nextKey && cfg[nextKey] && cfg[nextKey].incharge) {
                 const inc = cfg[nextKey].incharge;
-                nextIncharge = Array.isArray(inc) ? inc : [inc]; // অ্যারে কনভার্ট
+                nextIncharge = Array.isArray(inc) ? inc : [inc];
+            } else {
+                // ✅ fallback: incharge সেট না থাকলে current user রাখি
+                nextIncharge = [currentUserData?.name || currentUser?.email || 'admin'];
+                console.warn(`⚠️ Step ${nextStep}-এ incharge সেট নেই। Fallback to current user.`);
             }
         } else {
+            isFinalStep = true;
             nextIncharge = ['COMPLETED'];
         }
         
-        // যদি পরবর্তী ধাপ ১১ এর সমান বা ছোট হয়
-        if (nextStep <= 11) {
-            const nextStepKeys = {
-                3: 'step3_personal', 4: 'step4_guardian', 5: 'step5_studentPromise',
-                6: 'step6_guardianPromise', 7: 'step7_exam', 8: 'step8_eduSec',
-                9: 'step9_admissionFees', 10: 'step10_monthlyFees', 11: 'step11_principal'
-            };
-            const nextKey = nextStepKeys[nextStep];
-            if (nextKey && cfg[nextKey] && cfg[nextKey].incharge) {
-                nextIncharge = cfg[nextKey].incharge;
+        // ─── ৩. workflow history পড়া ───
+        let existingHistory = [];
+        if (_admFormState.formId) {
+            try {
+                const existingSnap = await getDoc(doc(window.fbDB, 'admissionForms', _admFormState.formId));
+                if (existingSnap.exists()) {
+                    existingHistory = existingSnap.data()?.workflowHistory || [];
+                }
+            } catch (e) {
+                console.warn('History read failed:', e);
             }
-        } else {
-            // সব ধাপ শেষ, ফরম Approved
-            nextIncharge = 'COMPLETED';
         }
-
+        
+        const newHistory = [
+            ...existingHistory,
+            {
+                step: step,
+                stepName: `ধাপ ${step}`,
+                completedBy: currentUserData?.name || currentUser.email,
+                completedAt: new Date().toISOString()
+            }
+        ];
+        
+        // ─── ৪. payload তৈরি ───
         const payload = {
             academicYear: year,
-            dept: _admFormState.dept,
-            formNumber: _admFormState.formNumber,
-            studentId: _admFormState.studentId,
-            currentStep: nextStep,
+            dept: _admFormState.dept || '',
+            formNumber: _admFormState.formNumber || '',
+            studentId: _admFormState.studentId || '',
+            currentStep: isFinalStep ? 'COMPLETED' : nextStep,   // ✅ FIX: string vs number
             savedSteps: updatedSavedSteps,
-            data: _admFormState.data,
-            examMarks: _admFormState.examMarks,
-            eligibility: _admFormState.eligibility,
-            monthlyFees: _admFormState.monthlyFees,
-            admissionFees: _admFormState.admissionFees,
-            ghorabaConsent: _admFormState.ghorabaConsent,
-            
-            // ★ ওয়ার্কফ্লো আপডেট
-            incharge: nextIncharge, // কার কাছে এখন আছে
-            status: nextIncharge === 'COMPLETED' ? 'approved' : 'pending',
-            
+            data: _admFormState.data || {},
+            examMarks: _admFormState.examMarks || {},
+            eligibility: _admFormState.eligibility || {},
+            monthlyFees: _admFormState.monthlyFees || {},
+            admissionFees: _admFormState.admissionFees || {},
+            ghorabaConsent: _admFormState.ghorabaConsent || false,
+            incharge: nextIncharge,                                    // ✅ সবসময় array
+            status: isFinalStep ? 'approved' : 'pending',             // ✅ FIX: boolean ব্যবহার
+            workflowHistory: newHistory,
             updatedAt: serverTimestamp(),
             updatedBy: currentUser.uid
         };
-
-        // ★ ওয়ার্কফ্লো লগ তৈরি
-        if (!payload.workflowHistory) {
-            const existing = _admFormState.formId ? (await getDoc(doc(window.fbDB, 'admissionForms', _admFormState.formId))).data()?.workflowHistory || [] : [];
-            payload.workflowHistory = existing;
-        }
-        payload.workflowHistory.push({
-            step: step,
-            stepName: `ধাপ ${step}`,
-            completedBy: currentUserData?.name || currentUser.email,
-            completedAt: new Date().toISOString()
-        });
-
+        
+        // ─── ৫. Firestore-এ সেভ/আপডেট ───
         if (_admFormState.formId) {
-            await setDoc(doc(window.fbDB, 'admissionForms', _admFormState.formId), payload, { merge: true });
+            await setDoc(
+                doc(window.fbDB, 'admissionForms', _admFormState.formId),
+                payload,
+                { merge: true }
+            );
+            console.log('✅ Form updated:', _admFormState.formId, '→ nextStep:', nextStep);
         } else {
             payload.createdAt = serverTimestamp();
             payload.createdBy = currentUser.uid;
             const ref = await addDoc(collection(window.fbDB, 'admissionForms'), payload);
             _admFormState.formId = ref.id;
+            console.log('✅ Form created:', ref.id, '→ nextStep:', nextStep);
         }
-
+        
         _admFormState.savedSteps = updatedSavedSteps;
         return true;
+        
     } catch (err) {
         console.error('❌ admFormSaveToFirestore:', err);
         showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
