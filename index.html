@@ -32217,20 +32217,27 @@ function showApp() {
     // ★★★ হোম পেইজ দেখাই (ডিফল্ট) ★★★
     setTimeout(() => switchTab('home'), 100);
 
-        // ★★★ Firestore থেকে শিক্ষাবর্ষ ও অন্যান্য ডাটা লোড করা ★★★
+    // ★★★ নতুন যোগ করা লোডিং লজিক (এটি চেক করুন) ★★★
     setTimeout(async () => {
+        if (!window.fbDB) return;
         try {
-            if (typeof loadAcademicYears === 'function') {
-                await loadAcademicYears(); 
-                console.log("✅ Academic Years লোড হয়েছে");
+            const { doc, getDoc } = window.fbFuncs;
+            const ref = doc(window.fbDB, 'config', 'academicYears');
+            const snap = await getDoc(ref);
+            
+            if (snap.exists() && snap.data().years && snap.data().years.length > 0) {
+                academicYears = snap.data().years;
+                localStorage.setItem('madrasa_academic_years', JSON.stringify(academicYears));
+                console.log("✅ Firestore থেকে শিক্ষাবর্ষ লোড হয়েছে:", academicYears.length);
             }
-            if (typeof syncYearsFromFirestore === 'function') {
-                await syncYearsFromFirestore();
-            }
-        } catch (e) {
-            console.error("❌ ডাটা লোডে সমস্যা:", e);
+            
+            if (typeof populateYearDropdowns === 'function') populateYearDropdowns();
+            if (typeof renderYearMasterList === 'function') renderYearMasterList();
+            
+        } catch (err) {
+            console.error("❌ শিক্ষাবর্ষ লোডে সমস্যা:", err);
         }
-    }, 500);
+    }, 500); 
 
     // শিক্ষক হলে restriction
     if (isTeacher) {
