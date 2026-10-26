@@ -1,8 +1,7 @@
-const CACHE_NAME = 'al-jamiah-v3.1'; 
+const CACHE_NAME = 'al-jamiah-v3';
 const ASSETS_TO_CACHE = [
-  'index.html', // ★ './' বাদ দিয়ে সরাসরি ফাইলের নাম দিলাম
+  'index.html',
   'manifest.json',
-  'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
