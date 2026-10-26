@@ -2,7 +2,7 @@
   "name": "আল-জামিয়াহ সিস্টেম",
   "short_name": "আল-জামিয়াহ",
   "description": "কওমী মাদরাসার জন্য সম্পূর্ণ ব্যবস্থাপনা সিস্টেম",
-  "start_url": "./index.html",
+  "start_url": "index.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#064e3b",
