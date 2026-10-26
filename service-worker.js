@@ -1,4 +1,4 @@
-const CACHE_NAME = 'al-jamiah-v2'; // ★ ভার্সন আপডেট করলাম যাতে গিটহাবে নতুন ক্যাশ লোড হয়
+const CACHE_NAME = 'al-jamiah-v3'; // ★ ভার্সন আপডেট করলাম যাতে গিটহাবে নতুন ক্যাশ লোড হয়
 const ASSETS_TO_CACHE = [
   'index.html', // ★ './' বাদ দিয়ে সরাসরি ফাইলের নাম দিলাম
   'manifest.json',
