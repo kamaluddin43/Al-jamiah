@@ -1,7 +1,7 @@
-const CACHE_NAME = 'al-jamiah-v1';
+const CACHE_NAME = 'al-jamiah-v2'; // ★ ভার্সন আপডেট করলাম যাতে গিটহাবে নতুন ক্যাশ লোড হয়
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
+  'index.html', // ★ './' বাদ দিয়ে সরাসরি ফাইলের নাম দিলাম
+  'manifest.json',
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap',
@@ -57,8 +57,8 @@ self.addEventListener('fetch', (event) => {
         return fetchResponse;
       });
     }).catch(() => {
-      // অফলাইন হলে index.html দেখাই
-      return caches.match('./index.html');
+      // ★ অফলাইন হলে index.html দেখাই (গিটহাব ফিক্স)
+      return caches.match('index.html');
     })
   );
 });
