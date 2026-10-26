@@ -7240,20 +7240,49 @@ window.onload = function() {
     updateStats();
 };
 
-function loadSettings() {
+async function loadSettings() {
+    // ১. প্রথমে লোকাল স্টোরেজ থেকে লোড করি
     const saved = localStorage.getItem(SETTINGS_KEY);
     if (saved) {
         try { settings = JSON.parse(saved); } catch(e) {}
     }
+    
+    // ২. তারপর ফায়ারবেস থেকে ফ্রেশ ডাটা আনি
+    if (currentUser) {
+        try {
+            const { doc, getDoc } = window.fbFuncs;
+            const snap = await getDoc(doc(window.fbDB, 'config', 'main'));
+            if (snap.exists()) {
+                const fbData = snap.data();
+                // ফায়ারবেসে ডাটা থাকলে সেটাই সবচেয়ে নির্ভরযোগ্য
+                if (fbData.madrasaName !== undefined) {
+                    settings.madrasaName = fbData.madrasaName || '';
+                    settings.madrasaNameAr = fbData.madrasaNameAr || '';
+                    settings.address = fbData.address || '';
+                    settings.year = fbData.year || '২০২৪-২০২৫';
+                    settings.logo = fbData.logo || settings.logo;
+                    settings.signature = fbData.signature || settings.signature;
+                    
+                    // লোকাল স্টোরেজ আপডেট করি
+                    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+                }
+            }
+        } catch (err) {
+            console.error('❌ Firebase settings load failed:', err);
+        }
+    }
+
+    // ৩. UI-তে ডাটা বসাই
     document.getElementById('set-madrasa-bn').value = settings.madrasaName || '';
     document.getElementById('set-madrasa-ar').value = settings.madrasaNameAr || '';
     document.getElementById('set-address').value = settings.address || '';
     document.getElementById('set-year').value = settings.year || '২০২৪-২০২৫';
+    
     if (settings.logo) {
         document.getElementById('logo-preview').src = settings.logo;
         document.getElementById('logo-preview-wrap').classList.remove('hidden');
     }
-        // ★ স্বাক্ষর লোড
+    
     if (settings.signature) {
         const sigPreview = document.getElementById('signature-preview');
         const sigWrap = document.getElementById('signature-preview-wrap');
@@ -7262,6 +7291,7 @@ function loadSettings() {
             sigWrap.classList.remove('hidden');
         }
     }
+    
     applySettingsToUI();
 }
 
@@ -7307,15 +7337,49 @@ function applySettingsToUI() {
     document.getElementById('year-badge').textContent = 'শিক্ষাবর্ষ: ' + (settings.year || '২০২৪-২০২৫');
 }
 
-function saveSettings(e) {
+async function saveSettings(e) {
     e.preventDefault();
+    
+    // ১. ইনপুট থেকে ডাটা নেওয়া
     settings.madrasaName = document.getElementById('set-madrasa-bn').value.trim();
     settings.madrasaNameAr = document.getElementById('set-madrasa-ar').value.trim();
     settings.address = document.getElementById('set-address').value.trim();
     settings.year = document.getElementById('set-year').value.trim() || '২০২৪-২০২৫';
+    
+    // (লোগো ও সিগনেচার আগেই handleLogoUpload ফাংশনে settings-এ সেভ হয়ে গেছে)
+    
+    // ২. লোকাল স্টোরেজে সেভ
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    
+    // ৩. UI আপডেট
     applySettingsToUI();
-    showToast('✅ সেটিংস সফলভাবে সংরক্ষিত হয়েছে', 'success');
+    
+    // ৪. ★★★ ফায়ারবেসে সেভ করা (সব ডিভাইসে সিঙ্ক হওয়ার জন্য) ★★★
+    if (currentUser) {
+        try {
+            const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+            await setDoc(doc(window.fbDB, 'config', 'main'), {
+                madrasaName: settings.madrasaName,
+                madrasaNameAr: settings.madrasaNameAr,
+                address: settings.address,
+                year: settings.year,
+                logo: settings.logo || '',
+                signature: settings.signature || '',
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+            
+            showToast('✅ সেটিংস সফলভাবে ফায়ারবেসে সেভ হয়েছে', 'success');
+        } catch (err) {
+            console.error('❌ Firebase save error:', err);
+            showToast('❌ লোকাল সেভ হয়েছে, তবে ফায়ারবেসে যায়নি', 'error');
+        }
+    } else {
+        showToast('✅ সেটিংস লোকাল সেভ হয়েছে (লগইন নেই)', 'warn');
+    }
+    
+    // হেডারের নাম আপডেট
+    const headerName = document.getElementById('header-madrasa-name');
+    if (headerName) headerName.textContent = settings.madrasaName;
 }
 
 // ═══════════════════ শিক্ষাবর্ষ ম্যানেজমেন্ট ═══════════════════
