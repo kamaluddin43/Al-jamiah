@@ -7259,34 +7259,36 @@ function saveSettings(e) {
 }
 
 // ═══════════════════ শিক্ষাবর্ষ ম্যানেজমেন্ট ═══════════════════
-let academicYears = [];  // [{ id, name, isCurrent }]
+let academicYears = [];  // [{ id, name, isCurrent, type }]
 
-function loadAcademicYears() {
-    // ★ প্রথমে localStorage থেকে load করি (দ্রুত)
-    const saved = localStorage.getItem('madrasa_academic_years');
+// ★ ফাংশনটিকে async করলাম যাতে Firestore এর ডাটা আসা পর্যন্ত অপেক্ষা করা যায়
+async function loadAcademicYears() {
+    const CACHE_KEY = 'madrasa_academic_years';
+    
+    // ১. প্রথমে লোকাল স্টোরেজ থেকে লোড করি (দ্রুত রেন্ডারের জন্য)
+    const saved = localStorage.getItem(CACHE_KEY);
     if (saved) {
         try { academicYears = JSON.parse(saved); } catch(e) { academicYears = []; }
     }
     
-    // ★ যদি কোনো বছর না থাকে — default "২০২৬-২০২৭" তৈরি করি
-    if (academicYears.length === 0) {
+    // ২. ডাটা না থাকলে ডিফল্ট সেট করি
+    if (!academicYears || academicYears.length === 0) {
         academicYears = [
-            { id: 'year_' + Date.now(), name: '২০২৬-২০২৭', isCurrent: true }
+            { id: 'year_' + Date.now(), name: '২০২৬-২০২৭', isCurrent: true, type: 'hijri' }
         ];
-        saveAcademicYearsToStorage();
+        localStorage.setItem(CACHE_KEY, JSON.stringify(academicYears));
     }
     
+    // ৩. UI-তে সাথে সাথে দেখাই (লোডিং স্পিড বাড়ানোর জন্য)
     renderYearMasterList();
     populateYearDropdowns();
     
-    // ★ Firestore থেকেও sync করি (background)
-    syncYearsFromFirestore();
+    // ৪. এরপর Firestore থেকে ডাটা সিঙ্ক করি এবং অপেক্ষা করি
+    await syncYearsFromFirestore();
 }
 
-// ★ Firestore থেকে years load
-// ★ Firestore থেকে years load (নিখুঁত ও জোরালো লজিক)
+// ★ Firestore থেকে years load (নিখুঁত লজিক, যা অন্যগুলোকে ওভাররাইড করবে)
 async function syncYearsFromFirestore() {
-    // ★ ইউজার লগইন না করলেও চেষ্টা করবে, তবে currentUser না থাকলে অ্যাপ ক্র্যাশ করবে না
     if (!window.fbDB) return; 
     
     try {
@@ -7298,44 +7300,65 @@ async function syncYearsFromFirestore() {
         
         if (snap.exists()) {
             const data = snap.data();
-            // ডাটাবেসে years অ্যারে আছে কি না চেক
+            
+            // ফায়ারবেসে যদি years অ্যারে থাকে এবং সেটি খালি না হয়
             if (data.years && Array.isArray(data.years) && data.years.length > 0) {
                 
-                // ★ চেক করা হচ্ছে লোকালস্টোরেজে থাকা ডাটার সাথে ডাটাবেসের ডাটা মিলছে কি না
                 const localStr = JSON.stringify(academicYears);
                 const firestoreStr = JSON.stringify(data.years);
 
+                // যদি ফায়ারবেসের ডাটা লোকালের চেয়ে আলাদা হয়, তবে লোকাল আপডেট করি
                 if (localStr !== firestoreStr) {
-                    // ডাটা না মিললে ডাটাবেসের ডাটা দিয়ে লোকাল আপডেট করি
                     academicYears = data.years;
                     localStorage.setItem('madrasa_academic_years', JSON.stringify(academicYears));
                     
-                    // UI রিফ্রেশ
                     renderYearMasterList();
                     populateYearDropdowns();
-                    console.log('✅ নতুন ডাটা পাওয়া গেছে! মোট শিক্ষাবর্ষ:', academicYears.length);
+                    console.log('✅ ফায়ারবেস থেকে নতুন ডাটা লোড হয়েছে! মোট:', academicYears.length);
                 } else {
                     console.log('ℹ️ ডাটাবেসে থাকা ডাটা লোকালের সমান, রিফ্রেশ লাগবে না।');
                 }
-                return; // সফলভাবে ডাটা পাওয়া গেলে ফাংশন শেষ
+                return; 
             }
         } 
         
-        // ★ যদি ডাটাবেসে ডাটা না থাকে, তবে লোকালস্টোরেজের ডাটাই Firestore-এ সেভ করে দিই (Backup)
+        // ★ যদি ফায়ারবেসে ডাটা না থাকে, তবে লোকাল ডাটা ফায়ারবেসে ব্যাকআপ করি
         console.log('⚠️ Firestore-এ কোনো শিক্ষাবর্ষ পাওয়া যায়নি। লোকাল ডাটা সেভ করা হচ্ছে...');
-        if (academicYears.length > 0) {
+        if (academicYears.length > 0 && currentUser) {
             const { setDoc, serverTimestamp } = window.fbFuncs;
             await setDoc(ref, {
                 years: academicYears,
                 updatedAt: serverTimestamp(),
-                updatedBy: currentUser?.uid || 'admin'
+                updatedBy: currentUser.uid
             }, { merge: true });
             console.log('✅ লোকাল ডাটা Firestore-এ ব্যাকআপ করা হয়েছে।');
         }
         
     } catch (err) {
         console.error('❌ syncYearsFromFirestore error:', err);
-        // এরর খেলেও অ্যাপ চলবে, লোকাল ডাটা দিয়েই
+    }
+}
+
+function saveAcademicYearsToStorage() {
+    localStorage.setItem('madrasa_academic_years', JSON.stringify(academicYears));
+    saveAcademicYearsToFirestore();
+}
+
+async function saveAcademicYearsToFirestore() {
+    if (!currentUser) return;
+    try {
+        const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+        const ref = doc(window.fbDB, 'config', 'academicYears');
+        
+        await setDoc(ref, {
+            years: academicYears,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser.uid
+        });
+        console.log('☁️ Academic years saved to Firestore successfully!');
+    } catch (err) {
+        console.error('❌ saveAcademicYearsToFirestore error:', err);
+        showToast('❌ ফায়ারবেসে ডাটা সেভ করা যায়নি!', 'error');
     }
 }
 
