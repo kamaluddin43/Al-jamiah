@@ -1,4 +1,4 @@
-const CACHE_NAME = 'al-jamiah-v3';
+const CACHE_NAME = 'al-jamiah-v3.2';
 const ASSETS_TO_CACHE = [
   'index.html',
   'manifest.json',
