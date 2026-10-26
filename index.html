@@ -35,7 +35,30 @@ const firebaseConfig = {
 tailwind.config = {
     theme: {
         extend: {
-            colors: { emerald: { 800: '#065f46', 900: '#064e3b' }, amber: { 600: '#d97706' } },
+            colors: { 
+                // ★ নতুন: কালার প্যালেট ভেরিয়েবল
+                theme: {
+                    50: 'var(--theme-50, #ecfdf5)',
+                    100: 'var(--theme-100, #d1fae5)',
+                    200: 'var(--theme-200, #a7f3d0)',
+                    300: 'var(--theme-300, #6ee7b7)',
+                    400: 'var(--theme-400, #34d399)',
+                    500: 'var(--theme-500, #10b981)',
+                    600: 'var(--theme-600, #059669)',
+                    700: 'var(--theme-700, #047857)',
+                    800: 'var(--theme-800, #065f46)',
+                    900: 'var(--theme-900, #064e3b)',
+                },
+                // পুরনো ক্লাসগুলো যাতে নষ্ট না হয়, সেজন্য এদেরও থিমের সাথে লিংক করে দিলাম
+                emerald: {
+                    500: 'var(--theme-500, #10b981)',
+                    600: 'var(--theme-600, #059669)',
+                    700: 'var(--theme-700, #047857)',
+                    800: 'var(--theme-800, #065f46)', 
+                    900: 'var(--theme-900, #064e3b)' 
+                }, 
+                amber: { 600: '#d97706' } 
+            },
             fontFamily: { arabic: ['Amiri', 'Noto Naskh Arabic', 'serif'], bengali: ['Hind Siliguri', 'sans-serif'] }
         }
     }
@@ -924,7 +947,6 @@ body { font-family: 'Hind Siliguri', 'Amiri', sans-serif; background-color: #f8f
 /* ═══════════════════════════════════════════════════════════════ */
 /* ★★★ শুধুমাত্র বাটন বক্সের সাইজ কমানোর CSS ★★★ */
 /* ═══════════════════════════════════════════════════════════════ */
-
 /* বাটনগুলোর প্যাডিং ও হাইট ছোট করা হলো (লেখা ও আইকন আগের সাইজেই থাকবে) */
 button, 
 .tab-btn, 
@@ -946,7 +968,7 @@ button,
 
 @media (min-width: 768px) {
     .tab-btn {
-        min-height: 140px !important; 
+        min-height: 160px !important; 
     }
 }
 
@@ -967,6 +989,50 @@ header button {
     border-radius: 9999px !important;
 }
 /* ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════ */
+/* ★★★ সাব-পেজের বাটনগুলোর হাইট ফিক্স (ডেক্সটপ) ★★★ */
+/* ═══════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+    /* ভর্তি, হিসাব, পরীক্ষা, গার্ডিয়ান, মাকাদীরে আসবাক সাব-মেনু */
+    #tab-admission .tab-btn, 
+    #tab-accounting .acct-menu-btn, 
+    #tab-exam .exam-sub-btn, 
+    #tab-guardian .guardian-main-btn,
+    #tab-asbaq .tab-btn {
+        min-height: 150px !important; /* 👈 এখানে ১৪০ বা ১৬০ আপনার পছন্দমতো দিতে পারেন */
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+}
+
+/* মোবাইলের জন্য (যদি দরকার হয়) */
+@media (max-width: 767px) {
+    #tab-admission .tab-btn, 
+    #tab-accounting .acct-menu-btn, 
+    #tab-exam .exam-sub-btn, 
+    #tab-guardian .guardian-main-btn,
+    #tab-asbaq .tab-btn {
+        min-height: 110px !important;
+    }
+}
+/* ═══════════════════════════════════════════════════════════════ */
+/* ★★★ ডেক্সটপে সাব-পেজের বাটনগুলোর হাইট ফিক্স (কনসোল টেস্টেড) ★★★ */
+/* ═══════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+    #tab-admission .grid button, 
+    #tab-accounting .grid button, 
+    #tab-exam .grid button,
+    #tab-guardian .grid button,
+    #tab-asbaq .grid button {
+        min-height: 150px !important; /* আপনি চাইলে ১৬০ বা ১৮০ করতে পারেন */
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+}
 </style>
 </head>
 <body class="min-h-screen text-slate-800 flex flex-col">
@@ -1849,6 +1915,26 @@ header button {
 </header>
 
 <main class="flex-grow max-w-7xl w-full mx-auto p-3 md:p-6">
+
+<!-- ★★★ পেজভিত্তিক শিক্ষাবর্ষ সিলেক্টর ★★★ -->
+<div id="global-year-bar" class="w-full flex justify-end mb-3 px-1 no-print hidden">
+    <div class="relative inline-block text-left">
+        <div>
+            <button type="button" onclick="toggleGlobalYearMenu()" class="inline-flex justify-center w-full rounded-md border-2 border-emerald-600 shadow-sm px-4 py-2 bg-white text-sm font-bold text-emerald-800 hover:bg-emerald-50 focus:outline-none transition-all">
+                <i class="fa-solid fa-calendar-check mr-2 mt-0.5 text-emerald-600"></i>
+                শিক্ষাবর্ষ: <span id="current-global-year-text" class="ml-1 text-emerald-900">---</span>
+                <i class="fa-solid fa-chevron-down ml-2 mt-1 text-xs text-slate-500"></i>
+            </button>
+        </div>
+
+        <!-- ড্রপডাউন মেনু -->
+        <div id="global-year-menu" class="hidden origin-top-right absolute left-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[500]">
+            <div class="py-1" id="global-year-menu-items" role="menu">
+                <!-- JS দিয়ে অপশন লোড হবে -->
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- ═══════════════════ TAB 0: HOME ═══════════════════ -->
 <section id="tab-home" class="tab-content space-y-6">
@@ -3153,6 +3239,21 @@ header button {
                 </button>
             </div>
         </form>
+
+        <!-- ★★★ নতুন: অ্যাপ থিম কালার সেটিংস ★★★ -->
+        <div class="mt-8 pt-6 border-t border-slate-200">
+            <h3 class="text-sm font-bold text-slate-700 mb-3">
+                <i class="fa-solid fa-palette text-emerald-600"></i> অ্যাপের কালার থিম পরিবর্তন
+            </h3>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <p class="text-[11px] text-slate-500 mb-4">
+                    <i class="fa-solid fa-info-circle"></i> নিচের যেকোনো একটি কালার সিলেক্ট করলে পুরো অ্যাপের হেডার, বাটন এবং ব্যাকগ্রাউন্ডের রঙ পরিবর্তন হয়ে যাবে।
+                </p>
+                <div class="flex flex-wrap gap-4" id="theme-color-picker">
+                    <!-- কালার বাটনগুলো JS দিয়ে জেনারেট হবে -->
+                </div>
+            </div>
+        </div>
                 <!-- ═══════════════════ শিক্ষাবর্ষ মাস্টার লিস্ট ═══════════════════ -->
         <div class="mt-8 pt-6 border-t border-slate-200">
             <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -5599,56 +5700,9 @@ let routineState = {
 let routinesCache = [];  // বর্তমান শিক্ষাবর্ষের সব রুটিন স্লট
 // ★ Multi-class save-এর জন্য pending এন্ট্রি (সেভ না হওয়া পর্যন্ত memory-তে থাকবে)
 let pendingRoutineEntries = {};  // আর ব্যবহার হচ্ছে না — এন্ট্রি এখন সরাসরি সেভ হয়
+
 // ═══════════════════ শিক্ষক মাস্টার ডাটাবেস ═══════════════════
-const SEED_TEACHERS = [
-    // ═══ শরীয়াহ বিভাগ (২৩ জন) ═══
-    { dept: 'শরীয়াহ', sl: 1,  name: 'মাও. রুহুল আমীন কাসেমী',      card: '0012203', post: 'অধ্যক্ষ',           joinDate: '21-05-2017', mobile: '01711148200, 01873148200' },
-    { dept: 'শরীয়াহ', sl: 2,  name: 'মাও. হাবীবুর রহমান',           card: '0012511', post: 'সহকারী অধ্যক্ষ',     joinDate: '12.06.2019', mobile: '01871210092, 01929704627' },
-    { dept: 'শরীয়াহ', sl: 3,  name: 'মাও. কামালুদ্দীন শেখ',         card: '0034138', post: 'শিক্ষাসচিব',        joinDate: '09.02.2020', mobile: '01876316050, 01860978057' },
-    { dept: 'শরীয়াহ', sl: 4,  name: 'মাও. হুসাইন আহমাদ',            card: '0012372', post: 'সহ. শিক্ষক',         joinDate: '24.04.2019', mobile: '01818828426' },
-    { dept: 'শরীয়াহ', sl: 5,  name: 'মাও. শিহাব উদ্দীন',            card: '0012369', post: 'সহ. শিক্ষক',         joinDate: '26.04.2019', mobile: '01725426555, 01882042932' },
-    { dept: 'শরীয়াহ', sl: 6,  name: 'মাও. মুহিব্বুল্লাহ',           card: '0046779', post: 'সহ. শিক্ষক',         joinDate: '24.05.2021', mobile: '01862534875' },
-    { dept: 'শরীয়াহ', sl: 7,  name: 'মাও. নুরুল্লাহ',               card: '0046780', post: 'সহ. শিক্ষক',         joinDate: '24.05.2021', mobile: '01943248269' },
-    { dept: 'শরীয়াহ', sl: 8,  name: 'মাও. যাকারিয়া',                card: '0012209', post: 'সহ. শিক্ষক',         joinDate: '19-05-2018', mobile: '01883317241' },
-    { dept: 'শরীয়াহ', sl: 9,  name: 'মাও. মো. আবদুল্লাহ',           card: '0012206', post: 'সহ. শিক্ষক',         joinDate: '09-07-2017', mobile: '01988199519, 01984162223' },
-    { dept: 'শরীয়াহ', sl: 10, name: 'মাও. মো. নাঈম আহমাদ',          card: '0012208', post: 'সহ. শিক্ষক',         joinDate: '03-07-2017', mobile: '01880240224' },
-    { dept: 'শরীয়াহ', sl: 11, name: 'মাও. হাবীবুল্লাহ',             card: '0036217', post: 'সহ. শিক্ষক',         joinDate: '08-08-2020', mobile: '01839790949' },
-    { dept: 'শরীয়াহ', sl: 12, name: 'মাও. কামরুল হাসান',            card: '0046781', post: 'সহ. শিক্ষক',         joinDate: '24.05.2021', mobile: '01303717835' },
-    { dept: 'শরীয়াহ', sl: 13, name: 'মাও. মাহবুবুর রহমান',          card: '0046778', post: 'সহ. শিক্ষক',         joinDate: '24.05.2021', mobile: '01609080135' },
-    { dept: 'শরীয়াহ', sl: 14, name: 'মাও. সাব্বির আহমাদ',           card: '88271',   post: 'সহ. শিক্ষক',         joinDate: '10.05.2022', mobile: '01712026299' },
-    { dept: 'শরীয়াহ', sl: 15, name: 'মাও. ইমরান হুসাইন',            card: '88270',   post: 'সহ. শিক্ষক',         joinDate: '10.05.2022', mobile: '01308087428' },
-    { dept: 'শরীয়াহ', sl: 16, name: 'মাও. কামরুজ্জামান',            card: '104960',  post: 'সহ. শিক্ষক',         joinDate: '29.04.2023', mobile: '01744553425' },
-    { dept: 'শরীয়াহ', sl: 17, name: 'মাও. রোকনুজ্জামান',            card: '88556',   post: 'নাযেমে মাকতাবা',     joinDate: '10.05.2022', mobile: '01303812535' },
-    { dept: 'শরীয়াহ', sl: 18, name: 'মাও. আলিমুল ইসলাম',            card: '126122',  post: 'সহ. শিক্ষক',         joinDate: '18-04-2024', mobile: '01866996884' },
-    { dept: 'শরীয়াহ', sl: 19, name: 'মাও. জুবায়ের হুসাইন',           card: '126123',  post: 'সহ. শিক্ষক',         joinDate: '18-04-2024', mobile: '01612992680' },
-    { dept: 'শরীয়াহ', sl: 20, name: 'মাও. মিজানুর রহমান',           card: '126124',  post: 'সহ. শিক্ষক',         joinDate: '18-04-2024', mobile: '01616837433' },
-    { dept: 'শরীয়াহ', sl: 21, name: 'মাও. শুআইব আহমাদ',             card: '0012218', post: 'সহ. শিক্ষক',         joinDate: '24-03-2018', mobile: '01754212325' },
-    { dept: 'শরীয়াহ', sl: 22, name: 'জনাব মারুফ সিকদার',            card: '0031825', post: 'সহ. শিক্ষক',         joinDate: '19-10-2019', mobile: '01917590370' },
-    { dept: 'শরীয়াহ', sl: 23, name: 'জনাব ইয়াকুব আলী',             card: '147371',  post: 'সহ. শিক্ষক',         joinDate: '16-08-2025', mobile: '01780301807, 01982012643' },
-
-    // ═══ নূরানী-নাযেরা বিভাগ (১০ জন) ═══
-    { dept: 'নূরানী-নাযেরা', sl: 1,  name: 'মাও. মুরাদুল ইসলাম',     card: '0012627', post: 'সহ. শিক্ষক', joinDate: '20.8.2019',  mobile: '01761844165' },
-    { dept: 'নূরানী-নাযেরা', sl: 2,  name: 'হা. মহসিন উদ্দীন',       card: '0031828', post: 'সহ. শিক্ষক', joinDate: '03-11-2019', mobile: '01782107176' },
-    { dept: 'নূরানী-নাযেরা', sl: 3,  name: 'হা. মাযহারুল ইসলাম',     card: '-',       post: 'সহ. শিক্ষক', joinDate: '27-11-2025', mobile: '01401268096' },
-    { dept: 'নূরানী-নাযেরা', sl: 4,  name: 'মাও. মাহমুদুল হাসান',    card: '0012210', post: 'সহ. শিক্ষক', joinDate: '17-08-2013', mobile: '01920128796' },
-    { dept: 'নূরানী-নাযেরা', sl: 5,  name: 'হা. আবুল হোসেন মোল্লা',  card: '0012629', post: 'সহ. শিক্ষক', joinDate: '11-09-2019', mobile: '01772212770' },
-    { dept: 'নূরানী-নাযেরা', sl: 6,  name: 'হা. আহসান হাবীব',        card: '0044621', post: 'সহ. শিক্ষক', joinDate: '06/02/2021', mobile: '01756689398' },
-    { dept: 'নূরানী-নাযেরা', sl: 7,  name: 'মাও. আশরাফুল ইসলাম',     card: '0044622', post: 'সহ. শিক্ষক', joinDate: '06/02/2021', mobile: '01735694621' },
-    { dept: 'নূরানী-নাযেরা', sl: 8,  name: 'মাও. আ. আউয়াল',          card: '0031826', post: 'সহ. শিক্ষক', joinDate: '02-11-2019', mobile: '01731423602' },
-    { dept: 'নূরানী-নাযেরা', sl: 9,  name: 'হা. নাযির আহমাদ',        card: '0012233', post: 'সহ. শিক্ষক', joinDate: '07-07-2018', mobile: '01682671629, 01728180009' },
-    { dept: 'নূরানী-নাযেরা', sl: 10, name: 'জনাব মো: সাইফুল ইসলাম',  card: '147368',  post: 'সহ. শিক্ষক', joinDate: '15/07/2025', mobile: '01843329298, 01317138710' },
-
-    // ═══ অনাবাসিক বিভাগ (৯ জন) ═══
-    { dept: 'অনাবাসিক', sl: 1, name: 'জনাব মহিবুল ইসলাম',       card: '0036216', post: 'সহ. শিক্ষক', joinDate: '08-08-2001', mobile: '01950893757' },
-    { dept: 'অনাবাসিক', sl: 2, name: 'মাও. আব্দুল হান্নান',      card: '0012211', post: 'সহ. শিক্ষক', joinDate: '08-08-2014', mobile: '01785436571' },
-    { dept: 'অনাবাসিক', sl: 3, name: 'মাও. সুহাইল',              card: '0067123', post: 'সহ. শিক্ষক', joinDate: '30/09/2021', mobile: '01767252932' },
-    { dept: 'অনাবাসিক', sl: 4, name: 'এস. এম. সাদেকুর রহমান',    card: '0036214', post: 'সহ. শিক্ষক', joinDate: '08-08-2002', mobile: '01722499739, 01672520883' },
-    { dept: 'অনাবাসিক', sl: 5, name: 'মাও. ফজলে রাব্বী',         card: '139041',  post: 'সহ. শিক্ষক', joinDate: '03-12-2024', mobile: '01921732560' },
-    { dept: 'অনাবাসিক', sl: 6, name: 'মাও. মাহমুদুল হাসান',      card: '126125',  post: 'সহ. শিক্ষক', joinDate: '18-04-2024', mobile: '-' },
-    { dept: 'অনাবাসিক', sl: 7, name: 'মাও. কাউসার আলম',          card: '-',       post: 'সহ. শিক্ষক', joinDate: '08-11-2025', mobile: '01709880511, 01982742096' },
-    { dept: 'অনাবাসিক', sl: 8, name: 'ক্বারী মো. জসিম উদ্দীন',    card: '012213',  post: 'সহ. শিক্ষক', joinDate: '01-11-2012', mobile: '01756705330, 01731343631' },
-    { dept: 'অনাবাসিক', sl: 9, name: 'মাও. আমীরুল ইসলাম',        card: '143802',  post: 'সহ. শিক্ষক', joinDate: '06/03/2025', mobile: '01781881995, 01623462960' }
-];
+const SEED_TEACHERS = [];
 
 const TEACHERS_STORAGE_KEY = 'madrasa_teachers_v3';
 
@@ -7208,13 +7262,12 @@ function loadSettings() {
 let teachers = [];
 
 function loadTeachers() {
-    const saved = localStorage.getItem(TEACHERS_STORAGE_KEY);
-    if (saved) {
-        try { teachers = JSON.parse(saved); } catch(e) { teachers = [...SEED_TEACHERS]; }
-    } else {
-        teachers = [...SEED_TEACHERS];
-        localStorage.setItem(TEACHERS_STORAGE_KEY, JSON.stringify(teachers));
-    }
+    // ★ পুরনো লোকাল স্টোরেজ মুছে ফেলা হচ্ছে
+    localStorage.removeItem('madrasa_teachers_v3');
+    
+    // ★ যেহেতু SEED_TEACHERS খালি করে দিয়েছি, তাই সরাসরি empty array নিবে
+    teachers = [...SEED_TEACHERS];
+    
     renderTeacherMasterList();
     populateTeacherFilters();
     populateTeacherFilterDropdown();
@@ -7344,18 +7397,21 @@ function saveAcademicYearsToStorage() {
     saveAcademicYearsToFirestore();
 }
 
+// ★ Firestore-এ years সেভ (আগের ডাটা না মুছে আপডেট করার জন্য merge: true)
 async function saveAcademicYearsToFirestore() {
     if (!currentUser) return;
     try {
         const { doc, setDoc, serverTimestamp } = window.fbFuncs;
         const ref = doc(window.fbDB, 'config', 'academicYears');
         
+        // ★★★ এখানে merge: true যোগ করা হলো ★★★
         await setDoc(ref, {
             years: academicYears,
             updatedAt: serverTimestamp(),
             updatedBy: currentUser.uid
-        });
-        console.log('☁️ Academic years saved to Firestore successfully!');
+        }, { merge: true });
+        
+        console.log('☁️ Academic years saved to Firestore');
     } catch (err) {
         console.error('❌ saveAcademicYearsToFirestore error:', err);
         showToast('❌ ফায়ারবেসে ডাটা সেভ করা যায়নি!', 'error');
@@ -7368,26 +7424,179 @@ function saveAcademicYearsToStorage() {
     saveAcademicYearsToFirestore();
 }
 
-// ★ Firestore-এ years সেভ
-async function saveAcademicYearsToFirestore() {
-    if (!currentUser) return;
+// ★ গ্লোবাল ভেরিয়েবল
+let activeResidentialYear = '';
+let activeNonResidentialYear = '';
+let globalActiveYear = ''; // বর্তমানে স্ক্রিনে কোন বছর চলছে
+let globalYearMenuOpen = false;
+
+// ★ ডিফল্ট বছরগুলো ফায়ারবেস থেকে লোড করা
+async function loadDefaultYearsFromConfig() {
+    if (!window.fbDB) return;
     try {
-        const { doc, setDoc, serverTimestamp, getDoc } = window.fbFuncs;
-        const ref = doc(window.fbDB, 'config', 'academicYears');
-        await setDoc(ref, {
-            years: academicYears,
-            updatedAt: serverTimestamp(),
-            updatedBy: currentUser.uid
-        });
-        console.log('☁️ Academic years saved to Firestore');
-    } catch (err) {
-        console.error('❌ saveAcademicYearsToFirestore error:', err);
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, 'config', 'main'));
+        if (snap.exists()) {
+            const data = snap.data();
+            activeResidentialYear = data.defaultResidentialYear || getCurrentYearFallback();
+            activeNonResidentialYear = data.defaultNonResidentialYear || getCurrentYearFallback();
+        } else {
+            activeResidentialYear = getCurrentYearFallback();
+            activeNonResidentialYear = getCurrentYearFallback();
+        }
+    } catch (e) {
+        console.error("Error loading default years", e);
+        activeResidentialYear = getCurrentYearFallback();
+        activeNonResidentialYear = getCurrentYearFallback();
     }
 }
 
+// ★★★ নতুন গ্লোবাল ফাংশন যা পুরনো কোডের সাথে সামঞ্জস্য রাখবে ★★★
 function getCurrentYear() {
+    // যদি গ্লোবাল বছর সেট করা থাকে, তবে সেটাই রিটার্ন করবে
+    if (typeof globalActiveYear !== 'undefined' && globalActiveYear) {
+        return globalActiveYear;
+    }
+    
+    // নাহলে ডিফল্ট আবাসিক বছরটি রিটার্ন করবে
+    if (typeof activeResidentialYear !== 'undefined' && activeResidentialYear) {
+        return activeResidentialYear;
+    }
+
+    // একদমই কিছু না থাকলে ফallback
+    if (typeof getCurrentYearFallback === 'function') {
+        return getCurrentYearFallback();
+    }
+    
+    return '২০২৬-২০২৭';
+}
+
+function getCurrentYearFallback() {
     const cur = academicYears.find(y => y.isCurrent);
     return cur ? cur.name : (academicYears[0]?.name || '২০২৬-২০২৭');
+}
+
+// ★ পেজ আবাসিক না অনাবাসিক?
+function isNonResidentialPage() {
+    if (typeof _currentStudentSub !== 'undefined' && _currentStudentSub === 'non_res') return true;
+    if (typeof erState !== 'undefined' && erState.dept === 'non_res') return true;
+    if (typeof routineState !== 'undefined' && routineState.dept === 'non_res') return true;
+    
+    // যদি ক্যালেন্ডার পেজে থাকে, তবে ক্যালেন্ডারের ডিপার্টমেন্ট দেখি
+    if (typeof calState !== 'undefined' && calState.dept === 'non_res') return true;
+
+    return false;
+}
+
+// ★ গ্লোবাল বছর আপডেট করা
+function setGlobalActiveYear(year) {
+    globalActiveYear = year;
+    
+    const textEl = document.getElementById('current-global-year-text');
+    if (textEl) textEl.textContent = year;
+    
+    toggleGlobalYearMenu(false);
+    
+    // ★ পেজভিত্তিক ডাটা রিফ্রেশ (যাতে নতুন বছরের ডাটা লোড হয়)
+    if (typeof renderCalendarContent === 'function') renderCalendarContent();
+    if (typeof renderJamatReport === 'function') renderJamatReport();
+    if (typeof renderTeacherReport === 'function') renderTeacherReport();
+    if (typeof renderAdminStudents === 'function') renderAdminStudents();
+    if (typeof renderAdminApprovals === 'function') renderAdminApprovals();
+    
+    // অন্যান্য ড্রপডাউনগুলোতেও ভ্যালু সিঙ্ক করি
+    const dropdownsToUpdate = ['syllabus-academic-year', 'reading-academic-year', 'jamat-filter-year', 'teacher-filter-year', 'cal-session'];
+    dropdownsToUpdate.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && Array.from(el.options).some(o => o.value === year)) {
+            el.value = year;
+        }
+    });
+    
+    console.log("🔄 Global Year changed to:", year);
+}
+
+// ★ মেনু ওপেন/ক্লোজ
+window.toggleGlobalYearMenu = function(forceState) {
+    const menu = document.getElementById('global-year-menu');
+    if (!menu) return;
+    
+    if (typeof forceState === 'boolean') {
+        globalYearMenuOpen = forceState;
+    } else {
+        globalYearMenuOpen = !globalYearMenuOpen;
+    }
+    
+    if (globalYearMenuOpen) {
+        menu.classList.remove('hidden');
+    } else {
+        menu.classList.add('hidden');
+    }
+}
+
+// ★ পেজের বাটনে ডাটা লোড করা (switchTab থেকে কল হবে)
+window.updateGlobalYearBar = function() {
+    const bar = document.getElementById('global-year-bar');
+    const textEl = document.getElementById('current-global-year-text');
+    const menuItems = document.getElementById('global-year-menu-items');
+    
+    if (!bar || !textEl || !menuItems) return;
+
+    bar.classList.remove('hidden');
+    const isNonRes = isNonResidentialPage();
+    const defaultYear = isNonRes ? activeNonResidentialYear : activeResidentialYear;
+    
+    if (!globalActiveYear || globalActiveYear !== defaultYear) {
+        globalActiveYear = defaultYear;
+    }
+    
+    textEl.textContent = globalActiveYear;
+
+    // মেনু রেন্ডার
+    menuItems.innerHTML = '';
+    const filteredYears = academicYears.filter(y => {
+        if (isNonRes && y.type === 'hijri') return false;
+        if (!isNonRes && y.type === 'gregorian') return false;
+        return true;
+    });
+
+    filteredYears.forEach(y => {
+        const isSelected = y.name === globalActiveYear;
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left block px-4 py-2 text-sm font-bold ${isSelected ? 'bg-emerald-50 text-emerald-900' : 'text-slate-700 hover:bg-slate-100'}`;
+        btn.innerHTML = `${y.name} ${isSelected ? '<i class="fa-solid fa-check float-right text-emerald-600 mt-1"></i>' : ''}`;
+        btn.onclick = () => setGlobalActiveYear(y.name);
+        menuItems.appendChild(btn);
+    });
+    
+    if (!window.hasYearMenuClickListener) {
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('global-year-bar');
+            if (wrapper && !wrapper.contains(e.target)) toggleGlobalYearMenu(false);
+        });
+        window.hasYearMenuClickListener = true;
+    }
+
+    // ★★★ নতুন ফিক্স: রুটিন ও ক্যালেন্ডারের ড্রপডাউন সিঙ্ক করা ★★★
+    setTimeout(() => {
+        // ১. ক্লাস রুটিন সিঙ্ক
+        const routineYearSel = document.getElementById('routine-academic-year');
+        if (routineYearSel && routineYearSel.value !== globalActiveYear) {
+            routineYearSel.value = globalActiveYear;
+            // ★ ফিক্স: সবসময় ফাংশন কল করি, শুধু ভ্যালু আলাদা হলেই না
+            routineState.academicYear = globalActiveYear;
+            if (typeof onRoutineYearChange === 'function') onRoutineYearChange();
+        }
+
+        // ২. ক্যালেন্ডার সিঙ্ক
+        const calSessionSel = document.getElementById('cal-session');
+        if (calSessionSel && calSessionSel.value !== globalActiveYear) {
+            calSessionSel.value = globalActiveYear;
+            // ★ ফিক্স: সবসময় ফাংশন কল করি
+            calState.session = globalActiveYear;
+            if (typeof onCalSessionChange === 'function') onCalSessionChange();
+        }
+    }, 100);
 }
 
 function renderYearMasterList() {
@@ -7516,6 +7725,12 @@ window.deleteAcademicYear = function(idx) {
     const y = academicYears[idx];
     if (!y) return;
     
+    // ★ ডিফল্ট বছর চেক
+    if (y.name === activeResidentialYear || y.name === activeNonResidentialYear) {
+        showToast('🚫 এই বছরটি ডিফল্ট হিসেবে সেট করা আছে! প্রথমে অন্য বছরকে ডিফল্ট করুন, তারপর ডিলিট করুন।', 'error');
+        return;
+    }
+
     if (academicYears.length === 1) {
         showToast('⚠️ কমপক্ষে একটি শিক্ষাবর্ষ থাকতে হবে', 'warn');
         return;
@@ -11074,48 +11289,8 @@ let calState = {
 // Firestore + LocalStorage-এ events cache key
 const CALENDAR_STORAGE_KEY = 'madrasa_calendar_events_v1';
 
-// ★ ডিফল্ট ইভেন্ট সেট (আপনার দেওয়া লিস্ট থেকে)
-const DEFAULT_CALENDAR_EVENTS = [
-    // ═══ শিক্ষাবর্ষের প্রারম্ভিক পর্যায় ═══
-    { hijriMonth: 'shawwal', hijriDate: '৮ শাওয়াল', gregorianDate: '২৮ মার্চ', title: 'শিক্ষাবর্ষের শুরু', details: '', time: '', location: '', category: 'start' },
-    { hijriMonth: 'shawwal', hijriDate: '৮-১০ শাওয়াল', gregorianDate: '২৮-৩০ মার্চ', title: 'ভর্তি ও আনুষঙ্গিক কার্যক্রম', details: 'শনি-সোমবার', time: '', location: '', category: 'admin' },
-    { hijriMonth: 'shawwal', hijriDate: '১২ শাওয়াল', gregorianDate: '১ এপ্রিল', title: 'সবক উদ্বোধনী জলসা', details: 'বুধবার', time: 'সকাল ৮টা', location: 'মসজিদ', category: 'mahfil' },
-    { hijriMonth: 'shawwal', hijriDate: '১৩ শাওয়াল', gregorianDate: '২ এপ্রিল', title: 'নিয়মতান্ত্রিক দরস', details: 'বৃহস্পতিবার', time: 'সকাল ৭:৩০ - ১২:৪৫', location: 'দরসগাহ', category: 'start' },
-
-    // ═══ প্রারম্ভিক ছুটি ও মাহফিল ═══
-    { hijriMonth: 'shawwal', hijriDate: '২১ শাওয়াল', gregorianDate: '১০ এপ্রিল', title: 'পাক্ষিক ছুটি (মক্তব)', details: '', time: '', location: '', category: 'holiday' },
-    { hijriMonth: 'zilqad',  hijriDate: '৫-৬ জিলকদ', gregorianDate: '২৩-২৪ এপ্রিল', title: 'বার্ষিক পুরস্কার বিতরণ ও ডোনার আপ্যায়ন', details: '', time: '', location: '', category: 'mahfil' },
-    { hijriMonth: 'zilqad',  hijriDate: '২০ জিলকদ', gregorianDate: '৮ মে', title: 'ইসলাহী মাহফিল', details: 'দ্বিতীয় শুক্রবার', time: 'বাদ মাগরিব', location: 'মসজিদ', category: 'mahfil' },
-    { hijriMonth: 'zilhajj', hijriDate: '১-৪ জিলহজ', gregorianDate: '১৯-২২ মে', title: 'হাতের লেখার কোর্স', details: '', time: '', location: '', category: 'course' },
-    { hijriMonth: 'zilhajj', hijriDate: '৫-৬ জিলহজ', gregorianDate: '২৩-২৪ মে', title: 'সাকাফি প্রতিযোগিতা ও পুরস্কার', details: '', time: '', location: '', category: 'competition' },
-
-    // ═══ কুরবানী ও ১ম সাময়িক পরীক্ষা ═══
-    { hijriMonth: 'zilhajj', hijriDate: '২৫ মে - ৫ জুন', gregorianDate: '', title: 'পবিত্র কুরবানীর ছুটি', details: 'মোট ১২ দিন', time: '', location: '', category: 'holiday' },
-    { hijriMonth: 'zilhajj', hijriDate: '২৯ জিলহজ', gregorianDate: '১২ জুন', title: 'ইসলাহী মাহফিল', details: 'দ্বিতীয় শুক্রবার', time: 'বাদ মাগরিব', location: 'মসজিদ', category: 'mahfil' },
-    { hijriMonth: 'muharram', hijriDate: '২৯ মুহাররম', gregorianDate: '১৫ জুলাই', title: '১ম সাময়িক পরীক্ষা', details: 'সোমবার বাদ যোহর', time: 'সকাল ৯:০০ টা', location: 'হলরুম', category: 'exam' },
-    { hijriMonth: 'muharram', hijriDate: '২৪-৩১ জুলাই', gregorianDate: '', title: '১ম পরীক্ষার ছুটি', details: 'মোট ৮ দিন', time: '', location: '', category: 'holiday' },
-
-    // ═══ ২য় সাময়িক পরীক্ষা ও সংশ্লিষ্ট ═══
-    { hijriMonth: 'safar', hijriDate: '২০-২৩ সফর', gregorianDate: '', title: 'ইংরেজি কোর্স', details: 'দিনব্যাপী', time: '', location: 'ক্যান্টিন', category: 'course' },
-    { hijriMonth: 'safar', hijriDate: '২৪ সফর', gregorianDate: '৮ আগস্ট', title: 'ফলাফল ও পুরস্কার প্রদান', details: '', time: 'বাদ যোহর', location: 'মসজিদ', category: 'result' },
-    { hijriMonth: 'rabiul_awwal', hijriDate: '৬ রবি. আ.', gregorianDate: '২০ আগস্ট', title: 'সিরাত প্রতিযোগিতা', details: '', time: 'বাদ মাগরিব', location: 'টিনশেড', category: 'competition' },
-    { hijriMonth: 'jumadal_ula', hijriDate: '২ জুমা. উলা', gregorianDate: '১৪ অক্টোবর', title: '২য় সাময়িক পরীক্ষা', details: 'বুধবার', time: 'সকাল ৯:০০ টা', location: 'হলরুম', category: 'exam' },
-    { hijriMonth: 'jumadal_ula', hijriDate: '২৩-৩০ অক্টোবর', gregorianDate: '', title: '২য় পরীক্ষার ছুটি', details: 'মোট ৮ দিন', time: '', location: '', category: 'holiday' },
-
-    // ═══ বার্ষিক পরীক্ষা ও সমাপনী ═══
-    { hijriMonth: 'jumadal_akhirah', hijriDate: '৮ জুমা. উখ.', gregorianDate: '১৯ নভেম্বর', title: 'বার্ষিক সাকাফি অনুষ্ঠান', details: 'বৃহস্পতিবার', time: 'বাদ মাগরিব', location: 'টিনশেড', category: 'mahfil' },
-    { hijriMonth: 'jumadal_akhirah', hijriDate: '২২ জুমা. উখ.', gregorianDate: '৩ ডিসেম্বর', title: 'বার্ষিক মাহফিল ও খতমে বুখারী', details: 'বৃহস্পতিবার', time: 'সকাল ১০টা - রাত ১১টা', location: '', category: 'mahfil' },
-    { hijriMonth: 'jumadal_akhirah', hijriDate: '২৪ জুমা. উখ.', gregorianDate: '৫ ডিসেম্বর', title: 'বার্ষিক খেয়ার', details: 'শুক্রবার', time: 'বাদ মাগরিব', location: '', category: 'mahfil' },
-    { hijriMonth: 'rajab', hijriDate: '৩০ রজব', gregorianDate: '৯ জানুয়ারি', title: 'বার্ষিক পরীক্ষা', details: 'শনিবার', time: 'সকাল ৯:০০ টা', location: 'হলরুম', category: 'exam' },
-    { hijriMonth: 'shaban', hijriDate: '১ শাবান', gregorianDate: '১০ জানুয়ারি', title: 'বোর্ড পরীক্ষা', details: 'রবিবার', time: 'সকাল ৯:০০ টা', location: '', category: 'exam' },
-    { hijriMonth: 'shaban', hijriDate: '৯ শাবান', gregorianDate: '১৮ জানুয়ারি', title: 'বার্ষিক ফলাফল ও বিদায়ী অনুষ্ঠান', details: 'সোমবার', time: 'দিনব্যাপী', location: '', category: 'result' },
-    { hijriMonth: 'shaban', hijriDate: '২০ জানুয়ারি - ১ ফেব্রুয়ারি', gregorianDate: '', title: 'বার্ষিক ছুটি', details: 'মোট ১৩ দিন', time: '', location: '', category: 'holiday' },
-
-    // ═══ রমযান ও ঈদুল ফিতর ═══
-    { hijriMonth: 'shaban', hijriDate: '২৩-২৭ শাবান', gregorianDate: '১-৫ ফেব্রুয়ারি', title: 'রমযান সাময়িক শুরু ও প্রস্তুতি সভা', details: '', time: '', location: '', category: 'start' },
-    { hijriMonth: 'ramadan', hijriDate: '২৩-২৪ রমযান', gregorianDate: '', title: 'সাধারণ পরীক্ষা', details: 'বুধ ও বৃহস্পতিবার', time: 'সকাল ৯টা', location: '', category: 'exam' },
-    { hijriMonth: 'ramadan', hijriDate: '৫ মার্চ - ১৬ মার্চ', gregorianDate: '', title: 'ঈদুল ফিতরের ছুটি', details: 'মোট ১২ দিন', time: '', location: '', category: 'holiday' }
-];
+// ★ ডিফল্ট ইভেন্ট সরিয়ে ফেলা হলো, এখন সব ইভেন্ট ফায়ারবেস থেকে আসবে
+const DEFAULT_CALENDAR_EVENTS = [];
 
 // ★ ইভেন্টের ক্যাটাগরি রঙ
 const CAL_CATEGORY_COLORS = {
@@ -11294,38 +11469,10 @@ async function loadCalendarEvents(session, dept) {
         }
     }
 
-    // ★ ধাপ ৩: কোনো ডেটাই না থাকলে ডিফল্ট সেট
+    // ★ ধাপ ৩: কোনো ডেটাই না থাকলে ডিফল্ট সেট বন্ধ (এখন সব ইভেন্ট এডমিন থেকে আসবে)
     if (!allEvents || allEvents.length === 0) {
-        console.log('📅 ক্যালেন্ডার empty — ডিফল্ট সেট generate করছি');
-        allEvents = DEFAULT_CALENDAR_EVENTS.map((e, i) => ({
-            ...e,
-            id: 'default_' + i + '_' + Date.now(),
-            session: 'all',
-            dept: 'shariah_noorani'
-        }));
-        
-        // LocalStorage-এ save
-        localStorage.setItem(cacheKey, JSON.stringify(allEvents));
-
-        // ★ Firestore-এও save (auto-seed) — শুধু এডমিন হলে
-        if (currentUser && currentUserData?.role === 'admin') {
-            try {
-                const { doc, setDoc, serverTimestamp, getDoc } = window.fbFuncs;
-                await setDoc(doc(window.fbDB, 'calendars', 'main'), {
-                    events: allEvents,
-                    updatedAt: serverTimestamp(),
-                    updatedBy: currentUser.uid,
-                    updatedByName: currentUserData.name || 'এডমিন',
-                    autoSeeded: true
-                }, { merge: false });
-                source = 'firestore-autoseed';
-                console.log('☁️ ক্যালেন্ডার auto-seed Firestore-এ সেভ হয়েছে');
-            } catch (err) {
-                console.warn('⚠️ Auto-seed Firestore save failed:', err);
-            }
-        } else {
-            source = 'default-local';
-        }
+        console.log('📅 ক্যালেন্ডার empty — এডমিন প্যানেল থেকে ইভেন্ট যোগ করুন');
+        allEvents = [];
     }
 
     console.log(`📅 Calendar loaded from: ${source} | Events: ${allEvents.length}`);
@@ -28640,6 +28787,25 @@ function switchTab(tabId) {
         const mainMenuHomeBtn = document.getElementById('exam-main-menu-home-btn');
         if (mainMenuHomeBtn) mainMenuHomeBtn.classList.remove('hidden');
 
+        // ★ প্রতিবার ট্যাব চেঞ্জ হলে বছর বাটন আপডেট করি
+        if (typeof updateGlobalYearBar === 'function') {
+            // ★ ফিক্স: সরাসরি '' না করে, আগে আপডেট হতে দিন
+            globalActiveYear = ''; 
+            updateGlobalYearBar();
+            
+            // ★ নতুন ফিক্স: ড্রপডাউনগুলো আপডেট হওয়ার পর ফাংশনগুলো একটু দেরিতে ট্রিগার করি
+            setTimeout(() => {
+                const currentTab = document.querySelector('.tab-content:not(.hidden)');
+                if (currentTab) {
+                    if (currentTab.id === 'tab-routine') {
+                        if (typeof onRoutineYearChange === 'function') onRoutineYearChange();
+                    }
+                    if (currentTab.id === 'tab-calendar') {
+                        if (typeof onCalSessionChange === 'function') onCalSessionChange();
+                    }
+                }
+            }, 150);
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
     }
@@ -28675,17 +28841,43 @@ function switchTab(tabId) {
     if (tabId === 'dashboard') renderDashboard();
     if (tabId === 'routine') {
         populateRoutineYearDropdown();
-        populateRoutineDeptDropdown(); // ★ নতুন লাইন: ড্রপডাউন লোড করার জন্য
+        populateRoutineDeptDropdown();
         
         if (routineState.subView === 'entry' && currentUserData?.role !== 'admin') {
             routineState.subView = 'teacher';
         }
+        
+        // ★★★ ফিক্স: ডিফল্ট মান স্টেটে সিঙ্ক করি এবং readiness চেক করি ★★★
+        setTimeout(() => {
+            const yearSel = document.getElementById('routine-academic-year');
+            const deptSel = document.getElementById('routine-dept');
+            
+            routineState.academicYear = yearSel?.value || '';
+            routineState.dept = deptSel?.value || '';
+            
+            // department display update
+            if (routineState.dept && typeof onRoutineDeptChange === 'function') {
+                onRoutineDeptChange();
+            } else {
+                checkRoutineReadiness();
+            }
+        }, 100);
     }
     if (tabId === 'calendar') {
         populateCalendarDropdowns();
-        if (calState.session && calState.dept) {
-            checkCalReadiness();
-        }
+        
+        // ★★★ ফিক্স: ডিফল্ট মান স্টেটে সিঙ্ক করি এবং readiness চেক করি ★★★
+        setTimeout(() => {
+            const sessSel = document.getElementById('cal-session');
+            const deptSel = document.getElementById('cal-dept');
+            
+            calState.session = sessSel?.value || '';
+            calState.dept = deptSel?.value || '';
+            
+            if (calState.session && calState.dept) {
+                checkCalReadiness();
+            }
+        }, 100);
     }
     // ★★ শিক্ষক মূল মেনুতে গেলে sub রিসেট ★★
     if (tabId === 'teachers') {
@@ -28741,6 +28933,22 @@ function switchTab(tabId) {
     if (tabId === 'accounting') {
         // ★ হিসাব মেনুতে ফিরে যাই
         acctBackToMainMenu();
+    }
+        if (tabId === 'accounting') {
+        // ★ হিসাব মেনুতে ফিরে যাই
+        acctBackToMainMenu();
+    }
+    
+    // ★★★ এখানে যোগ করুন ★★★
+    if (tabId === 'routine' || tabId === 'calendar') {
+        setTimeout(() => {
+            if (tabId === 'routine' && typeof onRoutineDeptChange === 'function') {
+                onRoutineDeptChange();
+            }
+            if (tabId === 'calendar' && typeof onCalDeptChange === 'function') {
+                onCalDeptChange();
+            }
+        }, 200);
     }
 }
 
@@ -32237,6 +32445,12 @@ function showApp() {
         });
     }, 800);
 
+    // ★ ডিফল্ট শিক্ষাবর্ষ লোড করি
+    loadDefaultYearsFromConfig().then(() => {
+        globalActiveYear = '';
+        if (typeof updateGlobalYearBar === 'function') updateGlobalYearBar();
+    });
+
     // ★★★ হোম পেইজ দেখাই (ডিফল্ট) ★★★
     setTimeout(() => switchTab('home'), 100);
 
@@ -33158,8 +33372,38 @@ window.renderAdminTerm = function() {
         });
     }
 
+    // ★ ডিফল্ট বছর নির্ধারণের HTML
+    const yearSettingsHTML = `
+        <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
+            <h4 class="text-sm font-bold text-indigo-900 mb-2"><i class="fa-solid fa-calendar-check"></i> ডিফল্ট শিক্ষাবর্ষ নির্ধারণ</h4>
+            <p class="text-[11px] text-indigo-700 mb-3">এখানে যে বছর সেট করবেন, অ্যাপের সব পেজে সেটিই ডিফল্ট হিসেবে দেখাবে।</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">আবাসিক (শরীয়াহ ও নূরানী)</label>
+                    <select id="default-res-year" class="w-full rounded border border-slate-300 p-2 text-sm bg-white">
+                        ${academicYears.map(y => `<option value="${y.name}" ${y.name === activeResidentialYear ? 'selected' : ''}>${y.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">অনাবাসিক (প্লে - ৫ম)</label>
+                    <select id="default-nonres-year" class="w-full rounded border border-slate-300 p-2 text-sm bg-white">
+                        ${academicYears.map(y => `<option value="${y.name}" ${y.name === activeNonResidentialYear ? 'selected' : ''}>${y.name}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="mt-3 text-right">
+                <button onclick="saveDefaultAcademicYears()" class="px-4 py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold rounded shadow">
+                    <i class="fa-solid fa-save"></i> সেভ করুন
+                </button>
+            </div>
+        </div>
+    `;
+
+    // ★ content.innerHTML-এ yearSettingsHTML যুক্ত করা হলো
     content.innerHTML = `
         <div class="space-y-4">
+            ${yearSettingsHTML}
+
             <div class="flex items-center justify-between flex-wrap gap-3">
                 <div class="flex items-center gap-3 flex-wrap">
                     <label class="text-sm font-bold text-slate-700">বিভাগ:</label>
@@ -33196,6 +33440,30 @@ window.renderAdminTerm = function() {
             </div>
         </div>
     `;
+};
+
+window.saveDefaultAcademicYears = async function() {
+    const resYear = document.getElementById('default-res-year').value;
+    const nonResYear = document.getElementById('default-nonres-year').value;
+    
+    activeResidentialYear = resYear;
+    activeNonResidentialYear = nonResYear;
+    
+    try {
+        const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+        await setDoc(doc(window.fbDB, 'config', 'main'), {
+            defaultResidentialYear: resYear,
+            defaultNonResidentialYear: nonResYear,
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+        
+        showToast('✅ ডিফল্ট শিক্ষাবর্ষ সেভ হয়েছে', 'success');
+        globalActiveYear = ''; 
+        if (typeof updateGlobalYearBar === 'function') updateGlobalYearBar(); // ★ সামান্য ফিক্স
+    } catch (err) {
+        console.error(err);
+        showToast('❌ সেভ ব্যর্থ', 'error');
+    }
 };
 
 window.onAdminTermDeptChange = function() {
@@ -34075,10 +34343,14 @@ window.renderAdminTeacher = function() {
                     <i class="fa-solid fa-users text-emerald-600"></i> শিক্ষক তালিকা
                     <span class="badge bg-emerald-100 text-emerald-800 ml-2">${allTeachers.length} জন</span>
                 </h3>
-                <div class="flex gap-2">
+                <div class="flex gap-2 flex-wrap">
                     <input type="text" id="adm-teacher-search" oninput="onAdminTeacherSearch()" value="${adminTeacherSearch}" placeholder="🔍 নাম/কার্ড/মোবাইল" class="rounded-lg border-slate-300 border p-2 text-xs w-48">
                     <button onclick="addAdminTeacher()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-lg transition flex items-center gap-2">
                         <i class="fa-solid fa-plus"></i> নতুন শিক্ষক
+                    </button>
+                    <!-- ★ নতুন যোগ করা বাটন -->
+                    <button onclick="deleteAllAdminTeachers()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition flex items-center gap-2 shadow">
+                        <i class="fa-solid fa-trash-can"></i> সব শিক্ষক ডিলিট
                     </button>
                 </div>
             </div>
@@ -34179,6 +34451,75 @@ window.deleteAdminTeacher = async function(idx) {
     await saveAdminConfig();
     renderAdminTeacher();
     showToast('🗑️ শিক্ষক মুছে ফেলা হয়েছে', 'info');
+};
+// ═══════════════════════════════════════════════════════════════
+// ★★★ সকল শিক্ষক একসাথে ডিলিট করার ফাংশন ★★★
+// ═══════════════════════════════════════════════════════════════
+window.deleteAllAdminTeachers = async function() {
+    // ১. এডমিন কি না চেক করা
+    if (currentUserData?.role !== 'admin') {
+        showToast('❌ শুধু এডমিন এই কাজ করতে পারবেন', 'error');
+        return;
+    }
+
+    const teachers = configData?.teachers || [];
+    if (teachers.length === 0) {
+        showToast('⚠️ ডিলিট করার মতো কোন শিক্ষক নেই', 'warn');
+        return;
+    }
+
+    // ২. প্রথম নিশ্চিতকরণ
+    const confirm1 = confirm(`⚠️ সতর্কতা!\n\nআপনি কি সত্যিই এই মাদরাসার সব (${teachers.length} জন) শিক্ষককে ডিলিট করতে চান?\n\nএই কাজটি আর ফিরিয়ে আনা যাবে না।`);
+    if (!confirm1) return;
+
+    // ৩. দ্বিতীয় নিশ্চিতকরণ (নিরাপত্তার জন্য)
+    const confirm2 = prompt(`নিশ্চিত করতে "DELETE" লিখুন (বড় হাতের অক্ষরে):`);
+    if (confirm2 !== 'DELETE') {
+        showToast('❌ ডিলিট বাতিল করা হয়েছে', 'info');
+        return;
+    }
+
+    showToast('⏳ সব শিক্ষক ডিলিট করা হচ্ছে...', 'info');
+
+    try {
+        // ৪. কনফিগ থেকে শিক্ষকদের অ্যারে খালি করা
+        if (!configData) configData = {};
+        configData.teachers = [];
+        
+        // ৫. দায়িত্বশীল (Assignments) থেকেও শিক্ষকদের নাম মুছে ফেলা (যদি থাকে)
+        if (configData.assignments) {
+            Object.keys(configData.assignments).forEach(key => {
+                configData.assignments[key] = []; // সব দায়িত্বশীল খালি করা
+            });
+        }
+
+        // ৬. ফায়ারবেসে সেভ করা
+        const { doc, setDoc, serverTimestamp, getDoc } = window.fbFuncs;
+        const ref = doc(window.fbDB, CONFIG_DOC_PATH, CONFIG_DOC_ID);
+        
+        await setDoc(ref, { 
+            teachers: [],
+            assignments: configData.assignments || {},
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser.uid
+        }, { merge: true });
+
+        // ৭. লোকাল স্টোরেজ এবং মেমরি আপডেট
+        localStorage.removeItem('madrasa_teachers_v3');
+        window.teachers = []; 
+        
+        showToast('✅ সব শিক্ষক সফলভাবে ডিলিট করা হয়েছে', 'success');
+        
+        // ৮. UI রিফ্রেশ করা
+        renderAdminTeacher();
+        if (typeof populateTeacherFilters === 'function') populateTeacherFilters();
+        if (typeof populateTeacherFilterDropdown === 'function') populateTeacherFilterDropdown();
+        if (typeof populateTeacherDatalist === 'function') populateTeacherDatalist();
+
+    } catch (err) {
+        console.error('❌ deleteAllAdminTeachers error:', err);
+        showToast('❌ ডিলিট ব্যর্থ: ' + err.message, 'error');
+    }
 };
 // ═══════════════════ ADMIN: দায়িত্বশীল (Assignment) ═══════════════════
 let adminAssignDept = '';
@@ -44767,6 +45108,148 @@ window.acctPrintSalarySheet = function() {
 console.log('✅ হিসাব বিভাগ মডিউল লোড হয়েছে');
 
 // ═══════════════════════════════════════════════════════════════
+// ★★★ অ্যাপ থিম কালার ম্যানেজমেন্ট ★★★
+// ═══════════════════════════════════════════════════════════════
+const APP_THEMES = {
+    emerald: {
+        name: 'সবুজ (ডিফল্ট)',
+        bg: '#f0fdf4', // হালকা সবুজ ব্যাকগ্রাউন্ড
+        colors: { 50:'#ecfdf5', 100:'#d1fae5', 200:'#a7f3d0', 300:'#6ee7b7', 400:'#34d399', 500:'#10b981', 600:'#059669', 700:'#047857', 800:'#065f46', 900:'#064e3b' }
+    },
+    sky: {
+        name: 'আকাশি',
+        bg: '#f0f9ff',
+        colors: { 50:'#f0f9ff', 100:'#e0f2fe', 200:'#bae6fd', 300:'#7dd3fc', 400:'#38bdf8', 500:'#0ea5e9', 600:'#0284c7', 700:'#0369a1', 800:'#075985', 900:'#0c4a6e' }
+    },
+    rose: {
+        name: 'গোলাপি',
+        bg: '#fff1f2',
+        colors: { 50:'#fff1f2', 100:'#ffe4e6', 200:'#fecdd3', 300:'#fda4af', 400:'#fb7185', 500:'#f43f5e', 600:'#e11d48', 700:'#be123c', 800:'#9f1239', 900:'#881337' }
+    },
+    indigo: {
+        name: 'নীল',
+        bg: '#eef2ff',
+        colors: { 50:'#eef2ff', 100:'#e0e7ff', 200:'#c7d2fe', 300:'#a5b4fc', 400:'#818cf8', 500:'#6366f1', 600:'#4f46e5', 700:'#4338ca', 800:'#3730a3', 900:'#312e81' }
+    },
+    violet: {
+        name: 'বেগুনি',
+        bg: '#f5f3ff',
+        colors: { 50:'#f5f3ff', 100:'#ede9fe', 200:'#ddd6fe', 300:'#c4b5fd', 400:'#a78bfa', 500:'#8b5cf6', 600:'#7c3aed', 700:'#6d28d9', 800:'#5b21b6', 900:'#4c1d95' }
+    },
+    amber: {
+        name: 'সোনালী',
+        bg: '#fffbeb',
+        colors: { 50:'#fffbeb', 100:'#fef3c7', 200:'#fde68a', 300:'#fcd34d', 400:'#fbbf24', 500:'#f59e0b', 600:'#d97706', 700:'#b45309', 800:'#92400e', 900:'#78350f' }
+    },
+    teal: {
+        name: 'সবুজাভ নীল',
+        bg: '#f0fdfa',
+        colors: { 50:'#f0fdfa', 100:'#ccfbf1', 200:'#99f6e4', 300:'#5eead4', 400:'#2dd4bf', 500:'#14b8a6', 600:'#0d9488', 700:'#0f766e', 800:'#115e59', 900:'#134e4a' }
+    },
+    fuchsia: {
+        name: 'ম্যাজেন্টা',
+        bg: '#fdf4ff',
+        colors: { 50:'#fdf4ff', 100:'#fae8ff', 200:'#f5d0fe', 300:'#f0abfc', 400:'#e879f9', 500:'#d946ef', 600:'#c026d3', 700:'#a21caf', 800:'#86198f', 900:'#701a75' }
+    },
+    red: {
+        name: 'লাল',
+        bg: '#fef2f2',
+        colors: { 50:'#fef2f2', 100:'#fee2e2', 200:'#fecaca', 300:'#fca5a5', 400:'#f87171', 500:'#ef4444', 600:'#dc2626', 700:'#b91c1c', 800:'#991b1b', 900:'#7f1d1d' }
+    },
+    slate: {
+        name: 'ধূসর (ক্লাসিক)',
+        bg: '#f8fafc',
+        colors: { 50:'#f8fafc', 100:'#f1f5f9', 200:'#e2e8f0', 300:'#cbd5e1', 400:'#94a3b8', 500:'#64748b', 600:'#475569', 700:'#334155', 800:'#1e293b', 900:'#0f172a' }
+    }
+};
+
+// ১. থিম লোড ও প্রয়োগ করার ফাংশন
+window.applyAppTheme = function(themeKey) {
+    const theme = APP_THEMES[themeKey] || APP_THEMES.emerald;
+    const root = document.documentElement;
+    
+    // CSS ভেরিয়েবল আপডেট করা
+    for (let i = 50; i <= 900; i += 100) {
+        if (theme.colors[i]) {
+            root.style.setProperty(`--theme-${i}`, theme.colors[i]);
+        }
+    }
+    
+    // লোকাল স্টোরেজে সেভ করা
+    localStorage.setItem('madrasa_app_theme', themeKey);
+    
+    // ★★★ নতুন ফিক্স ১: বডির মূল ব্যাকগ্রাউন্ড কালার পরিবর্তন ★★★
+    document.body.style.backgroundColor = theme.bg;
+
+    // ★★★ নতুন ফিক্স ২: হেডার কালার পরিবর্তন ★★★
+    const headerEl = document.querySelector('header');
+    if (headerEl) {
+        headerEl.style.backgroundColor = theme.colors[900];
+    }
+
+    // ★★★ নতুন ফিক্স ৩: সাদা কার্ডগুলোকে (বা slate-50/100) হালকা কালার দেওয়া ★★★
+    // পেজের ভেতরের মূল কন্টেইনারগুলোর ব্যাকগ্রাউন্ড হালকা করা হচ্ছে
+    document.querySelectorAll('.bg-slate-50, .bg-slate-100').forEach(el => {
+        // যদি সেটা ইনপুট ফিল্ড বা ছোট কোনো বাটন না হয়
+        if (!el.classList.contains('rounded-full') && el.tagName !== 'INPUT' && el.tagName !== 'SELECT') {
+            el.style.backgroundColor = theme.bg;
+        }
+    });
+
+    // UI তে অ্যাক্টিভ বর্ডার দেখানো
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        if (btn.dataset.theme === themeKey) {
+            btn.classList.add('ring-4', 'ring-offset-2', 'ring-slate-800', 'scale-110');
+        } else {
+            btn.classList.remove('ring-4', 'ring-offset-2', 'ring-slate-800', 'scale-110');
+        }
+    });
+};
+
+// ২. সেটিংস পেজে কালার বাটন রেন্ডার করা
+window.renderThemePicker = function() {
+    const container = document.getElementById('theme-color-picker');
+    if (!container) return;
+    
+    const currentTheme = localStorage.getItem('madrasa_app_theme') || 'emerald';
+    
+    container.innerHTML = Object.keys(APP_THEMES).map(key => {
+        const t = APP_THEMES[key];
+        return `
+            <button onclick="applyAppTheme('${key}')" 
+                    class="theme-btn flex flex-col items-center gap-2 transition-transform duration-200" 
+                    data-theme="${key}"
+                    title="${t.name}">
+                <!-- হালকা ব্যাকগ্রাউন্ড এবং গাঢ় বাটন কালারের কম্বিনেশন -->
+                <div class="w-12 h-12 rounded-full shadow border-4 border-white flex items-center justify-center" 
+                     style="background-color: ${t.bg}; border-color: ${t.colors[500]};">
+                     <div class="w-6 h-6 rounded-full" style="background-color: ${t.colors[600]};"></div>
+                </div>
+                <span class="text-[10px] font-bold text-slate-600 text-center w-16">${t.name}</span>
+            </button>
+        `;
+    }).join('');
+    
+    applyAppTheme(currentTheme);
+};
+
+// ৩. পেইজ লোড হওয়ার সময় থিম লোড করা
+window.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('madrasa_app_theme') || 'emerald';
+    applyAppTheme(savedTheme);
+});
+
+// ৪. Settings ট্যাবে ঢোকার সময় বাটনগুলো রেন্ডার করা
+// switchTab ফাংশনে 'settings' ট্যাবের ভেতরে এটি কল করুন
+const originalSwitchTabForTheme = switchTab;
+window.switchTab = function(tabId) {
+    originalSwitchTabForTheme(tabId);
+    if (tabId === 'settings') {
+        setTimeout(renderThemePicker, 100);
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
 // ★★★ ভর্তি প্ল্যান — শ্রেণিভিত্তিক বিস্তারিত সিস্টেম ★★★
 // ═══════════════════════════════════════════════════════════════
 
@@ -45181,8 +45664,18 @@ async function admFormRenderStep3() {
     }
 
     const occupations = configData?.admissionFormConfig?.occupations || DEFAULT_ADMISSION_FORM_CONFIG.occupations;
-    const prevClasses = getClassesForDept(currentDept);
+    // ★ ১. 'পরবর্তী শ্রেণি' (nextClass) এর জন্য শুধু বর্তমান বিভাগের ক্লাস
     const nextClasses = getClassesForDept(currentDept);
+
+    // ★ ২. 'পূর্ববর্তী শ্রেণি' (prevClass) এর জন্য সব বিভাগের ক্লাস (কারণ ছাত্র অন্য বিভাগ থেকেও আসতে পারে)
+    const prevClassesSet = new Set();
+    const allDepts = configData?.departments || [];
+    
+    allDepts.forEach(d => {
+        const classes = getClassesForDept(d.key);
+        classes.forEach(c => prevClassesSet.add(c)); // সেট ব্যবহার করে ডুপ্লিকেট বাদ দেওয়া হলো
+    });
+    const prevClasses = Array.from(prevClassesSet); // অ্যারেতে রূপান্তর
 
     body.innerHTML = `
         <div class="border border-slate-200 rounded-lg overflow-hidden">
