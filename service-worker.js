@@ -1,7 +1,11 @@
-const CACHE_NAME = 'al-jamiah-v3.2';
+// ★★★ ক্যাশ ভার্সন আপডেট করা হলো (v3 থেকে v4) ★★★
+const CACHE_NAME = 'al-jamiah-v4';
+
 const ASSETS_TO_CACHE = [
+  './',
   'index.html',
   'manifest.json',
+  // Tailwind CDN এখান থেকে বাদ দেওয়া হয়েছে, কারণ এটি CORS এরর দিচ্ছিল
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
@@ -25,6 +29,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -43,11 +48,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // ★ শুধুমাত্র একই ডোমেইনের ফাইল ক্যাশ থেকে সার্ভ করব (বাইরের লিংক যেমন Tailwind সরাসরি নেটওয়ার্ক থেকে লোড হবে)
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) {
+    return; 
+  }
+
   event.respondWith(
     caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((fetchResponse) => {
-        // নতুন রিকোয়েস্ট হলে ক্যাশে সেভ করি (শুধু GET রিকোয়েস্ট)
-        if (event.request.method === 'GET' && fetchResponse.status === 200) {
+      // ক্যাশে থাকলে ক্যাশ থেকে দিই
+      if (response) {
+        return response;
+      }
+      
+      // না থাকলে নেটওয়ার্ক থেকে আনি এবং ক্যাশে সেভ করি
+      return fetch(event.request).then((fetchResponse) => {
+        if (fetchResponse.status === 200) {
           const responseToCache = fetchResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
@@ -56,7 +72,7 @@ self.addEventListener('fetch', (event) => {
         return fetchResponse;
       });
     }).catch(() => {
-      // ★ অফলাইন হলে index.html দেখাই (গিটহাব ফিক্স)
+      // অফলাইন হলে index.html দেখাই
       return caches.match('index.html');
     })
   );
