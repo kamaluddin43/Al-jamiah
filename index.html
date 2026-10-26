@@ -7228,25 +7228,58 @@ function loadAcademicYears() {
 }
 
 // ★ Firestore থেকে years load
+// ★ Firestore থেকে years load (নিখুঁত ও জোরালো লজিক)
 async function syncYearsFromFirestore() {
-    if (!currentUser) return;
+    // ★ ইউজার লগইন না করলেও চেষ্টা করবে, তবে currentUser না থাকলে অ্যাপ ক্র্যাশ করবে না
+    if (!window.fbDB) return; 
+    
     try {
         const { doc, getDoc } = window.fbFuncs;
         const ref = doc(window.fbDB, 'config', 'academicYears');
+        
+        console.log('⏳ Firestore থেকে শিক্ষাবর্ষ লোড হচ্ছে...');
         const snap = await getDoc(ref);
         
         if (snap.exists()) {
             const data = snap.data();
+            // ডাটাবেসে years অ্যারে আছে কি না চেক
             if (data.years && Array.isArray(data.years) && data.years.length > 0) {
-                academicYears = data.years;
-                localStorage.setItem('madrasa_academic_years', JSON.stringify(academicYears));
-                renderYearMasterList();
-                populateYearDropdowns();
-                console.log('☁️ Academic years synced from Firestore:', academicYears.length);
+                
+                // ★ চেক করা হচ্ছে লোকালস্টোরেজে থাকা ডাটার সাথে ডাটাবেসের ডাটা মিলছে কি না
+                const localStr = JSON.stringify(academicYears);
+                const firestoreStr = JSON.stringify(data.years);
+
+                if (localStr !== firestoreStr) {
+                    // ডাটা না মিললে ডাটাবেসের ডাটা দিয়ে লোকাল আপডেট করি
+                    academicYears = data.years;
+                    localStorage.setItem('madrasa_academic_years', JSON.stringify(academicYears));
+                    
+                    // UI রিফ্রেশ
+                    renderYearMasterList();
+                    populateYearDropdowns();
+                    console.log('✅ নতুন ডাটা পাওয়া গেছে! মোট শিক্ষাবর্ষ:', academicYears.length);
+                } else {
+                    console.log('ℹ️ ডাটাবেসে থাকা ডাটা লোকালের সমান, রিফ্রেশ লাগবে না।');
+                }
+                return; // সফলভাবে ডাটা পাওয়া গেলে ফাংশন শেষ
             }
+        } 
+        
+        // ★ যদি ডাটাবেসে ডাটা না থাকে, তবে লোকালস্টোরেজের ডাটাই Firestore-এ সেভ করে দিই (Backup)
+        console.log('⚠️ Firestore-এ কোনো শিক্ষাবর্ষ পাওয়া যায়নি। লোকাল ডাটা সেভ করা হচ্ছে...');
+        if (academicYears.length > 0) {
+            const { setDoc, serverTimestamp } = window.fbFuncs;
+            await setDoc(ref, {
+                years: academicYears,
+                updatedAt: serverTimestamp(),
+                updatedBy: currentUser?.uid || 'admin'
+            }, { merge: true });
+            console.log('✅ লোকাল ডাটা Firestore-এ ব্যাকআপ করা হয়েছে।');
         }
+        
     } catch (err) {
         console.error('❌ syncYearsFromFirestore error:', err);
+        // এরর খেলেও অ্যাপ চলবে, লোকাল ডাটা দিয়েই
     }
 }
 
@@ -32127,6 +32160,21 @@ function showApp() {
 
     // ★★★ হোম পেইজ দেখাই (ডিফল্ট) ★★★
     setTimeout(() => switchTab('home'), 100);
+
+        // ★★★ Firestore থেকে শিক্ষাবর্ষ ও অন্যান্য ডাটা লোড করা ★★★
+    setTimeout(async () => {
+        try {
+            if (typeof loadAcademicYears === 'function') {
+                await loadAcademicYears(); 
+                console.log("✅ Academic Years লোড হয়েছে");
+            }
+            if (typeof syncYearsFromFirestore === 'function') {
+                await syncYearsFromFirestore();
+            }
+        } catch (e) {
+            console.error("❌ ডাটা লোডে সমস্যা:", e);
+        }
+    }, 500);
 
     // শিক্ষক হলে restriction
     if (isTeacher) {
