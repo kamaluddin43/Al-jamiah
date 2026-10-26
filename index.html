@@ -920,6 +920,56 @@ body { font-family: 'Hind Siliguri', 'Amiri', sans-serif; background-color: #f8f
     /* সিগনেচার বা ফুটারের নিচে যেন পেইজ না কাটে */
     .ms-signatures, .ms-footer { page-break-inside: avoid; }
 }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* ★★★ গ্লোবাল বাটন সাইজ কমানোর (Scale) CSS ★★★ */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* মেইন বাটনগুলোর প্যাডিং এবং ফন্ট সাইজ ছোট করা হলো */
+button, 
+.tab-btn, 
+.btn, 
+.adm-sub-btn, 
+.exam-sub-btn, 
+.student-class-tab, 
+.acct-menu-btn,
+.exam-sub-btn {
+    padding: 0.35rem 0.6rem !important; /* প্যাডিং ৪৩% কমানো হয়েছে */
+    font-size: 0.75rem !important;      /* ফন্ট সাইজ ছোট করা হয়েছে */
+    line-height: 1.2 !important;
+    border-radius: 0.375rem !important; /* কর্নার কিছুটা ছোট */
+}
+
+/* আইকনগুলোও যাতে বাটনের সাথে খাপ খায় */
+button i, 
+.tab-btn i, 
+.btn i {
+    font-size: 0.85rem !important;
+}
+
+/* হোম পেইজের বড় কার্ড বাটনগুলো (ট্যাব) আগের মতোই থাকবে, শুধু ভেতরের লেখা ছোট হবে */
+.tab-btn span {
+    font-size: 0.75rem !important;
+}
+
+/* মোবাইলে আরও একটু ছোট */
+@media (max-width: 640px) {
+    button, .tab-btn, .btn {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.7rem !important;
+    }
+    button i, .tab-btn i {
+        font-size: 0.75rem !important;
+    }
+}
+
+/* হেডারের লগআউট বাটন আগের সাইজেই থাকবে */
+header button {
+    padding: 0 !important;
+    font-size: inherit !important;
+    border-radius: 9999px !important;
+}
+/* ═══════════════════════════════════════════════════════════════ */
 </style>
 </head>
 <body class="min-h-screen text-slate-800 flex flex-col">
