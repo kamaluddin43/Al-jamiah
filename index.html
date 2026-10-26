@@ -1763,32 +1763,41 @@ body { font-family: 'Hind Siliguri', 'Amiri', sans-serif; background-color: #f8f
 
 <!-- ═══════════════════ HEADER ═══════════════════ -->
 <header class="bg-emerald-900 text-white shadow-md no-print sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
-        <div class="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity"
+    <!-- flex-col md:flex-row সরিয়ে শুধু flex-row দেওয়া হলো -->
+    <div class="max-w-7xl mx-auto px-3 md:px-4 py-3 flex flex-row justify-between items-center gap-2">
+        
+        <!-- বাম পাশ: লোগো ও নাম -->
+        <div class="flex items-center gap-2 md:gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0"
              onclick="switchTab('home')"
              title="হোম পেইজে ফিরে যান">
-            <div class="w-12 h-12 bg-amber-500/20 rounded-xl border border-amber-400/40 flex items-center justify-center text-amber-400 text-2xl shadow-inner">
+            
+            <!-- মোবাইলে আইকন কিছুটা ছোট (w-10), ডেক্সটপে বড় (md:w-12) -->
+            <div class="w-10 h-10 md:w-12 md:h-12 bg-amber-500/20 rounded-xl border border-amber-400/40 flex items-center justify-center text-amber-400 text-xl md:text-2xl shadow-inner flex-shrink-0">
                 <i class="fa-solid fa-book-open-reader"></i>
             </div>
-            <div>
-                <h1 class="text-lg md:text-xl font-bold font-arabic leading-tight flex items-center gap-2">
+            
+            <!-- min-w-0 ও truncate দেওয়া হলো যাতে লেখা বড় হলে ... হয়ে যায় -->
+            <div class="min-w-0">
+                <h1 class="text-base md:text-xl font-bold font-arabic leading-tight flex items-center gap-2 truncate">
                     <span>আল-জামিয়া</span>
                 </h1>
-                <p id="header-madrasa-name" class="text-xs text-emerald-200 mt-0.5"></p>
+                <p id="header-madrasa-name" class="text-[10px] md:text-xs text-emerald-200 mt-0.5 truncate max-w-[130px] md:max-w-xs"></p>
             </div>
         </div>
 
-        <!-- ★ nav সরিয়ে হোম সেকশনে নেওয়া হয়েছে (tab-home) -->
-
-        <div class="flex items-center gap-3">
+        <!-- ডান পাশ: ইউজার নাম ও লগআউট বাটন -->
+        <div class="flex items-center gap-2 md:gap-3 flex-shrink-0">
             <div class="text-right">
-                <p id="header-user-name" class="text-xs font-bold text-white leading-tight">---</p>
-                <p id="header-user-role" class="text-[10px] text-amber-400 leading-tight">---</p>
+                <p id="header-user-name" class="text-[11px] md:text-xs font-bold text-white leading-tight truncate max-w-[70px] md:max-w-none">---</p>
+                <p id="header-user-role" class="text-[9px] md:text-[10px] text-amber-400 leading-tight">---</p>
             </div>
-            <button onclick="doLogout()" class="w-9 h-9 bg-red-600/80 hover:bg-red-700 text-white rounded-full flex items-center justify-center transition shadow-md hover:shadow-lg" title="লগআউট">
-                <i class="fa-solid fa-right-from-bracket text-sm"></i>
+            
+            <!-- মোবাইলে বাটন কিছুটা ছোট করা হলো -->
+            <button onclick="doLogout()" class="w-8 h-8 md:w-9 md:h-9 bg-red-600/80 hover:bg-red-700 text-white rounded-full flex items-center justify-center transition shadow-md hover:shadow-lg flex-shrink-0" title="লগআউট">
+                <i class="fa-solid fa-right-from-bracket text-xs md:text-sm"></i>
             </button>
         </div>
+        
     </div>
 </header>
 
