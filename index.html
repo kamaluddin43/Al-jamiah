@@ -51113,25 +51113,15 @@ window.verifyGuardianLogin = async function() {
     btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> যাচাই হচ্ছে...';
 
     try {
-        // ১. ডাটা লোড করা (যদি আগে থেকে লোড না হয়ে থাকে)
-        if (!studentsLoaded || (typeof studentsCache !== 'undefined' && studentsCache.length === 0)) {
-            await loadStudentsFromFirestore();
-        }
-
-        // ★★★ নতুন ফিক্স: +880 মুছে ফেলা এবং নম্বরকে 01... ফরম্যাটে আনা ★★★
+        const { collection, getDocs, doc, getDoc } = window.fbFuncs;
+        
+        // ★★★ নতুন ফিক্স: মোবাইল নম্বর ক্লিন করার সঠিক ফাংশন ★★★
         const cleanNum = (str) => {
             if (!str) return '';
-            // বাংলা সংখ্যাকে ইংরেজিতে রূপান্তর
             const bnToEn = { '০':'0', '১':'1', '২':'2', '৩':'3', '৪':'4', '৫':'5', '৬':'6', '৭':'7', '৮':'8', '৯':'9' };
             let converted = String(str).replace(/[০-৯]/g, d => bnToEn[d]);
-            
-            // +880 বা 880 বাদ দিয়ে 0 বসানো (যেমন: +880 18... -> 018...)
-            converted = converted.replace(/\+?880/g, '0');
-            
-            // শুধুমাত্র ইংরেজি সংখ্যা রাখা
-            converted = converted.replace(/[^0-9]/g, '');
-
-            // যদি 10 ডিজিটের হয় (যেমন: 1838431700), তবে শুরুতে 0 যোগ করা
+            converted = converted.replace(/\+?880/g, '0'); // +880 বা 880 কে 0 করা
+            converted = converted.replace(/[^0-9]/g, '');  // অক্ষর বাদ দেওয়া
             if (converted.length === 10 && converted.startsWith('1')) {
                 converted = '0' + converted;
             }
@@ -51141,24 +51131,72 @@ window.verifyGuardianLogin = async function() {
         const cleanInputId = cleanNum(studentId);
         const cleanInputMobile = cleanNum(mobile);
 
-        // ২. ছাত্র খোঁজা
-        const foundStudent = studentsCache.find(s => {
+        let foundStudent = null;
+        let debugInfo = [];
+
+        // ১. ম্যানুয়াল ছাত্রদের খোঁজা (students কালেকশন)
+        const sSnap = await getDocs(collection(window.fbDB, 'students'));
+        sSnap.forEach(d => {
+            const s = { id: d.id, ...d.data() };
             const sId = cleanNum(s.studentId);
             const sMobile1 = cleanNum(s.mobile1);
             const sMobile2 = cleanNum(s.mobile2);
             
-            // আইডি এবং মোবাইল (১ বা ২) দুটোই মিলতে হবে
-            return sId === cleanInputId && (sMobile1 === cleanInputMobile || sMobile2 === cleanInputMobile);
+            debugInfo.push(`ম্যানুয়াল: ${s.name} | আইডি: ${sId} | মোবাইল: ${sMobile1}`);
+            
+            if (sId === cleanInputId && (sMobile1 === cleanInputMobile || sMobile2 === cleanInputMobile)) {
+                foundStudent = s;
+            }
         });
 
-        // ★★★ ডিবাগ করার জন্য কনসোল লগ ★★★
-        console.log("🔍 আপনি যা লিখেছেন → আইডি:", cleanInputId, "| মোবাইল:", cleanInputMobile);
-        console.log("📦 ফায়ারবেস থেকে লোড হওয়া ডাটা:", studentsCache.map(s => ({ 
-            আইডি: cleanNum(s.studentId), 
-            মোবাইল১: cleanNum(s.mobile1), 
-            মোবাইল২: cleanNum(s.mobile2),
-            নাম: s.name
-        })));
+        // ২. ভর্তি ফরমের ছাত্রদের খোঁজা (admissionForms কালেকশন)
+        if (!foundStudent) {
+            const fSnap = await getDocs(collection(window.fbDB, 'admissionForms'));
+            fSnap.forEach(d => {
+                const form = { id: d.id, ...d.data() };
+                
+                // ফরম থেকে ডাটা বের করা
+                const formId = form.studentId || form.data?.primary?.studentId || '';
+                const formMobile = form.data?.guardian?.mobile1 || form.data?.guardian?.mobile2 || '';
+                const formName = form.data?.personal?.name || 'Unknown';
+                
+                const sId = cleanNum(formId);
+                const sMobile = cleanNum(formMobile);
+                
+                debugInfo.push(`ভর্তি ফরম: ${formName} | আইডি: ${sId} | মোবাইল: ${sMobile}`);
+                
+                if (sId === cleanInputId && sMobile === cleanInputMobile) {
+                    const fd = flattenAdmFormData(form);
+                    foundStudent = {
+                        id: 'admission_' + form.id,
+                        name: fd.name,
+                        guardian: fd.guardianName || fd.fatherName,
+                        studentId: fd.studentId,
+                        dob: fd.dob,
+                        mobile1: fd.mobile1,
+                        mobile2: fd.mobile2,
+                        address: fd.currentAddress,
+                        dept: fd.dept,
+                        className: fd.nextClass,
+                        admissionFee: fd.admissionFee,
+                        firstMonthFood: fd.firstMonthFood,
+                        sessionFee: 0,
+                        monthlyFood: fd.monthlyFood,
+                        hostelFee: fd.monthlyHostel,
+                        monthlySalary: fd.monthlySalary,
+                        remark: null,
+                        photo: fd.studentPhoto || '',
+                        source: 'admission',
+                        admissionFormId: form.id,
+                        approvedAt: fd.approvedAt
+                    };
+                }
+            });
+        }
+
+        // ডিবাগ লগ (এটি আপনাকে বলবে ডাটা ঠিকমতো মিলছে কি না)
+        console.log("🔍 আপনি লিখেছেন → আইডি:", cleanInputId, "| মোবাইল:", cleanInputMobile);
+        console.log("📦 চেক করা ডাটা:", debugInfo);
 
         if (!foundStudent) {
             errEl.textContent = '❌ তথ্য মেলেনি। সঠিক আইডি ও মোবাইল নম্বর দিন।';
@@ -51166,6 +51204,11 @@ window.verifyGuardianLogin = async function() {
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-sign-in-alt"></i> প্রবেশ করুন';
             return;
+        }
+
+        // ক্যাশে আপডেট (যাতে পরবর্তী পেজগুলোতে কাজ করে)
+        if (!studentsCache.find(s => s.id === foundStudent.id)) {
+            studentsCache.push(foundStudent);
         }
 
         _guardianSession = foundStudent;
