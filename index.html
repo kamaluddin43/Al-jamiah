@@ -7242,31 +7242,31 @@ window.onload = function() {
 };
 
 async function loadSettings() {
-    // ১. প্রথমে লোকাল স্টোরেজ থেকে লোড করি
+    // ১. প্রথমে লোকাল স্টোরেজ থেকে লোড করি (দ্রুত রেন্ডারের জন্য)
     const saved = localStorage.getItem(SETTINGS_KEY);
     if (saved) {
         try { settings = JSON.parse(saved); } catch(e) {}
     }
     
-    // ২. তারপর ফায়ারবেস থেকে ফ্রেশ ডাটা আনি
+    // ২. তারপর ফায়ারবেস থেকে ফ্রেশ ডাটা আনি (সব ডিভাইসে সিঙ্ক হওয়ার জন্য)
     if (currentUser) {
         try {
             const { doc, getDoc } = window.fbFuncs;
             const snap = await getDoc(doc(window.fbDB, 'config', 'main'));
             if (snap.exists()) {
                 const fbData = snap.data();
-                // ফায়ারবেসে ডাটা থাকলে সেটাই সবচেয়ে নির্ভরযোগ্য
-                if (fbData.madrasaName !== undefined) {
-                    settings.madrasaName = fbData.madrasaName || '';
-                    settings.madrasaNameAr = fbData.madrasaNameAr || '';
-                    settings.address = fbData.address || '';
-                    settings.year = fbData.year || '২০২৪-২০২৫';
-                    settings.logo = fbData.logo || settings.logo;
-                    settings.signature = fbData.signature || settings.signature;
-                    
-                    // লোকাল স্টোরেজ আপডেট করি
-                    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-                }
+                
+                // ফায়ারবেসে ডাটা থাকলে সরাসরি আপডেট করুন (কন্ডিশন ছাড়াই)
+                settings.madrasaName = fbData.madrasaName || '';
+                settings.madrasaNameAr = fbData.madrasaNameAr || '';
+                settings.address = fbData.address || '';
+                settings.year = fbData.year || '২০২৪-২০২৫';
+                settings.logo = fbData.logo || '';
+                settings.signature = fbData.signature || '';
+                
+                // লোকাল স্টোরেজ আপডেট করি
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+                console.log('☁️ Settings loaded from Firestore successfully');
             }
         } catch (err) {
             console.error('❌ Firebase settings load failed:', err);
@@ -32259,6 +32259,7 @@ async function handleUserLogin(user) {
             await loadConfigFromFirestore();
             await loadRecordsFromFirestore();
             await syncYearsFromFirestore();
+            await loadSettings();
         } catch (err) {
             console.error('❌ Load error:', err);
         }
