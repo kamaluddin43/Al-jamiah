@@ -48010,78 +48010,6 @@ function getAdmFormDept(form) {
     return form.dept || form.data?.primary?.dept || '';
 }
 
-// ★★★ Helper: ফরমের সব ফিল্ড flatten করে একটা object ★★★
-function flattenAdmFormData(form) {
-    const d = form.data || {};
-    return {
-        // প্রাথমিক
-        formNumber: form.formNumber || d.primary?.formNumber || '',
-        studentId: form.studentId || d.primary?.studentId || '',
-        dept: getAdmFormDept(form),
-        studentPhoto: d.primary?.studentPhoto || '',
-        guardianPhoto: d.primary?.guardianPhoto || '',
-        
-        // ব্যক্তিগত
-        name: d.personal?.name || '',
-        dob: d.personal?.dob || '',
-        age: d.personal?.age || '',
-        fatherName: d.personal?.fatherName || '',
-        fatherOccupation: d.personal?.fatherOccupation || '',
-        motherName: d.personal?.motherName || '',
-        motherOccupation: d.personal?.motherOccupation || '',
-        currentAddress: d.personal?.currentAddress || '',
-        permanentAddress: d.personal?.permanentAddress || '',
-        previousInstitution: d.personal?.previousInstitution || '',
-        prevClass: d.personal?.prevClass || '',
-        leaveReason: d.personal?.leaveReason || '',
-        tc: d.personal?.tc || '',
-        nextClass: d.personal?.nextClass || '',
-        
-        // অভিভাবক
-        guardianName: d.guardian?.guardianName || '',
-        guardianOccupation: d.guardian?.guardianOccupation || '',
-        mobile1: d.guardian?.mobile1 || '',
-        mobile1Relation: d.guardian?.mobile1Relation || '',
-        mobile2: d.guardian?.mobile2 || '',
-        mobile2Relation: d.guardian?.mobile2Relation || '',
-        relation: d.guardian?.relation || '',
-        contactAddress: d.guardian?.contactAddress || '',
-        referredBy: d.guardian?.referredBy || '',
-        referralMobile: d.guardian?.referralMobile || '',
-        referralRelation: d.guardian?.referralRelation || '',
-        referralAddress: d.guardian?.referralAddress || '',
-        
-        // পরীক্ষা
-        examMarks: form.examMarks || d.exam?.marks || {},
-        examTotal: d.exam?.totalMarks || 0,
-        examiner: d.exam?.examiner || '',
-        examComment: d.exam?.comment || '',
-        eligibility: form.eligibility || d.exam?.eligibility || {},
-        
-        // ফি
-        admissionFee: d.admissionFees?.admissionFee || form.admissionFees?.admissionFee || 0,
-        firstMonthFood: d.admissionFees?.firstMonthFood || form.admissionFees?.firstMonthFood || 0,
-        admissionHostel: d.admissionFees?.hostelFee || form.admissionFees?.hostelFee || 0,
-        monthlyFood: d.monthlyFees?.monthlyFood || form.monthlyFees?.monthlyFood || 0,
-        monthlySalary: d.monthlyFees?.monthlySalary || form.monthlyFees?.monthlySalary || 0,
-        monthlyHostel: d.monthlyFees?.hostelFee || form.monthlyFees?.hostelFee || 0,
-        
-        // স্বাক্ষর ও মন্তব্য
-        eduSecName: d.eduSec?.name || '',
-        eduSecComment: d.eduSec?.comment || '',
-        principalName: d.principal?.name || '',
-        principalComment: d.principal?.comment || '',
-        principalDate: d.principal?.date || '',
-        
-        // টাইমস্ট্যাম্প
-        approvedAt: form.updatedAt?.seconds 
-            ? new Date(form.updatedAt.seconds * 1000).toISOString().split('T')[0]
-            : (form.createdAt?.seconds 
-                ? new Date(form.createdAt.seconds * 1000).toISOString().split('T')[0] 
-                : '')
-    };
-}
-
 // ═══════════════════════════════════════════════════════════════
 // ★★★ এডমিন — ভর্তি ফরম ডাটা তালিকা (এডিট/রিওপেন) ★★★
 // ═══════════════════════════════════════════════════════════════
@@ -51185,17 +51113,29 @@ window.verifyGuardianLogin = async function() {
     btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> যাচাই হচ্ছে...';
 
     try {
-        // ১. ডাটা লোড করা
-        await loadStudentsFromFirestore();
+        // ১. ডাটা লোড করা (যদি আগে থেকে লোড না হয়ে থাকে)
+        if (!studentsLoaded || (typeof studentsCache !== 'undefined' && studentsCache.length === 0)) {
+            await loadStudentsFromFirestore();
+        }
 
-        // ★★★ এখানে ফাংশনটি ঠিক করা হয়েছে ★★★
+        // ★★★ নতুন ফিক্স: +880 মুছে ফেলা এবং নম্বরকে 01... ফরম্যাটে আনা ★★★
         const cleanNum = (str) => {
             if (!str) return '';
             // বাংলা সংখ্যাকে ইংরেজিতে রূপান্তর
             const bnToEn = { '০':'0', '১':'1', '২':'2', '৩':'3', '৪':'4', '৫':'5', '৬':'6', '৭':'7', '৮':'8', '৯':'9' };
             let converted = String(str).replace(/[০-৯]/g, d => bnToEn[d]);
+            
+            // +880 বা 880 বাদ দিয়ে 0 বসানো (যেমন: +880 18... -> 018...)
+            converted = converted.replace(/\+?880/g, '0');
+            
             // শুধুমাত্র ইংরেজি সংখ্যা রাখা
-            return converted.replace(/[^0-9]/g, '');
+            converted = converted.replace(/[^0-9]/g, '');
+
+            // যদি 10 ডিজিটের হয় (যেমন: 1838431700), তবে শুরুতে 0 যোগ করা
+            if (converted.length === 10 && converted.startsWith('1')) {
+                converted = '0' + converted;
+            }
+            return converted;
         };
         
         const cleanInputId = cleanNum(studentId);
@@ -51207,11 +51147,11 @@ window.verifyGuardianLogin = async function() {
             const sMobile1 = cleanNum(s.mobile1);
             const sMobile2 = cleanNum(s.mobile2);
             
-            // দুইটা নাম্বারই মিলতে হবে
+            // আইডি এবং মোবাইল (১ বা ২) দুটোই মিলতে হবে
             return sId === cleanInputId && (sMobile1 === cleanInputMobile || sMobile2 === cleanInputMobile);
         });
 
-        // ★★★ ডিবাগ করার জন্য কনসোল লগ (দেখতে পাবেন মিলছে কিনা) ★★★
+        // ★★★ ডিবাগ করার জন্য কনসোল লগ ★★★
         console.log("🔍 আপনি যা লিখেছেন → আইডি:", cleanInputId, "| মোবাইল:", cleanInputMobile);
         console.log("📦 ফায়ারবেস থেকে লোড হওয়া ডাটা:", studentsCache.map(s => ({ 
             আইডি: cleanNum(s.studentId), 
