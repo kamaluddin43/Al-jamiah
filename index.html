@@ -51185,31 +51185,32 @@ window.verifyGuardianLogin = async function() {
     btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> যাচাই হচ্ছে...';
 
     try {
-        // ফায়ারবেস থেকে ডাটা লোড
+        // ১. ডাটা লোড করা
         await loadStudentsFromFirestore();
 
-        // বাংলা ও ইংরেজি সংখ্যা ক্লিন করার ফাংশন (ড্যাশ ও স্পেস বাদ দেবে)
-        const cleanNum = (str) => {
-            if (!str) return '';
-            let s = String(str).replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)); // বাংলা টু ইংলিশ
-            return s.replace(/[^0-9]/g, ''); // শুধু নাম্বার রাখবে
-        };
+        const cleanNum = (str) => String(str || '').replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)).replace(/[^0-9]/g, '');
         
         const cleanInputId = cleanNum(studentId);
         const cleanInputMobile = cleanNum(mobile);
 
-        // ছাত্র খোঁজা
+        // ২. ছাত্র খোঁজা
         const foundStudent = studentsCache.find(s => {
             const sId = cleanNum(s.studentId);
             const sMobile1 = cleanNum(s.mobile1);
             const sMobile2 = cleanNum(s.mobile2);
             
+            // দুইটা নাম্বারই মিলতে হবে
             return sId === cleanInputId && (sMobile1 === cleanInputMobile || sMobile2 === cleanInputMobile);
         });
 
-        // ডিবাগ করার জন্য কনসোলে দেখুন কি আসছে
-        console.log("Input ID:", cleanInputId, "Input Mobile:", cleanInputMobile);
-        console.log("Available Students:", studentsCache.map(s => ({ id: cleanNum(s.studentId), m1: cleanNum(s.mobile1), m2: cleanNum(s.mobile2) })));
+        // ★★★ ডিবাগ করার জন্য কনসোল লগ ★★★
+        console.log("🔍 আপনি যা লিখেছেন → আইডি:", cleanInputId, "| মোবাইল:", cleanInputMobile);
+        console.log("📦 ফায়ারবেস থেকে লোড হওয়া ডাটা:", studentsCache.map(s => ({ 
+            আইডি: cleanNum(s.studentId), 
+            মোবাইল১: cleanNum(s.mobile1), 
+            মোবাইল২: cleanNum(s.mobile2),
+            নাম: s.name
+        })));
 
         if (!foundStudent) {
             errEl.textContent = '❌ তথ্য মেলেনি। সঠিক আইডি ও মোবাইল নম্বর দিন।';
@@ -51224,7 +51225,7 @@ window.verifyGuardianLogin = async function() {
         showGuardianPortal();
 
     } catch (err) {
-        console.error(err);
+        console.error("লগইন এরর:", err);
         errEl.textContent = 'সিস্টেম ত্রুটি: ' + err.message;
         errEl.classList.remove('hidden');
         btn.disabled = false;
