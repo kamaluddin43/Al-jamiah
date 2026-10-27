@@ -51361,7 +51361,13 @@ window.verifyGuardianLogin = async function() {
 window.showGuardianPortal = function() {
     // মূল অ্যাপ হাইড করে গার্ডিয়ান পোর্টাল দেখানো
     document.querySelectorAll('header, main, footer').forEach(el => el.style.display = 'none');
-    
+    // ★★★ ২. এখানে লগইন স্ক্রিন লুকানোর ৩টি লাইন যোগ করুন ★★★
+    const loginScreen = document.getElementById('login-screen');
+    if (loginScreen) {
+        loginScreen.classList.add('hidden');
+        loginScreen.classList.remove('flex');
+        loginScreen.style.display = 'none'; // <--- এটাই লগইন স্ক্রিনকে হারিয়ে দেবে
+    }
     // পুরনো পোর্টাল থাকলে মুছে ফেলা
     document.getElementById('guardian-portal-view')?.remove();
 
@@ -51370,21 +51376,48 @@ window.showGuardianPortal = function() {
     // গার্ডিয়ান পোর্টালের মূল HTML (ট্যাব মেনু সহ)
     const portalHTML = `
         <div id="guardian-portal-view" class="min-h-screen bg-slate-100 pb-20">
-            <!-- গার্ডিয়ান হেডার -->
-            <header class="bg-violet-800 text-white p-4 sticky top-0 z-50 shadow-lg">
+            <!-- গার্ডিয়ান হেডার (মূল অ্যাপের কালার) -->
+            <header class="bg-emerald-900 text-white p-3 sticky top-0 z-50 shadow-lg border-b border-emerald-700">
                 <div class="max-w-4xl mx-auto flex justify-between items-center">
+                    
+                    <!-- বাম দিক: লোগো ও মাদরাসার নাম -->
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-user-shield"></i>
+                        <div class="w-10 h-10 bg-amber-500/20 rounded-xl border border-amber-400/40 flex items-center justify-center text-amber-400 text-xl overflow-hidden flex-shrink-0">
+                            ${settings.logo 
+                                ? `<img src="${settings.logo}" alt="Logo" class="w-full h-full object-contain p-1 bg-white">` 
+                                : `<i class="fa-solid fa-book-open-reader"></i>`
+                            }
                         </div>
                         <div>
-                            <h1 class="text-lg font-bold leading-tight">${settings.madrasaName || 'আল-জামিয়া'}</h1>
-                            <p class="text-[10px] text-violet-200">অভিভাবক পোর্টাল</p>
+                            <h1 class="text-sm md:text-base font-bold leading-tight">${settings.madrasaName || 'আল-জামিয়া'}</h1>
+                            <p class="text-[10px] text-emerald-200">অভিভাবক পোর্টাল</p>
                         </div>
                     </div>
-                    <button onclick="logoutGuardian()" class="text-white/80 hover:text-white text-sm font-semibold bg-white/10 px-3 py-1.5 rounded-lg">
-                        <i class="fa-solid fa-sign-out-alt"></i> লগআউট
-                    </button>
+
+                    <!-- ডান দিক: অভিভাবকের নাম ও থ্রি-ডট মেনু -->
+                    <div class="flex items-center gap-3">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-[10px] text-emerald-200 leading-tight">স্বাগতম,</p>
+                            <p class="text-xs font-bold text-white leading-tight">
+                                ${student.guardian || student.guardianName || student.fatherName || 'অভিভাবক'}
+                            </p>
+                        </div>
+                        
+                        <!-- থ্রি ডট বাটন (ক্লিক করলে লগআউট অপশন আসবে) -->
+                        <div class="relative">
+                            <button onclick="document.getElementById('guardian-dropdown').classList.toggle('hidden')" class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition focus:outline-none">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                            </button>
+                            
+                            <!-- ড্রপডাউন মেনু -->
+                            <div id="guardian-dropdown" class="hidden absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-xl py-1 z-50 border border-slate-200">
+                                <button onclick="logoutGuardian()" class="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition flex items-center gap-2">
+                                    <i class="fa-solid fa-sign-out-alt"></i> লগআউট
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </header>
 
@@ -51392,10 +51425,16 @@ window.showGuardianPortal = function() {
             <div class="max-w-4xl mx-auto px-4 pt-6">
                 <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 flex items-center gap-4 relative overflow-hidden">
                     <div class="absolute top-0 right-0 w-24 h-24 bg-violet-50 rounded-bl-full -z-0"></div>
-                    <div class="w-16 h-16 bg-violet-100 text-violet-600 rounded-full flex items-center justify-center text-3xl flex-shrink-0 z-10">
-                        <i class="fa-solid fa-user-graduate"></i>
+                    
+                    <!-- ★ ছবি দেখানোর নতুন লজিক -->
+                    <div class="w-16 h-16 bg-violet-100 text-violet-600 rounded-full flex items-center justify-center text-3xl flex-shrink-0 z-10 overflow-hidden border-2 border-violet-300">
+                        ${student.photo ? 
+                            `<img src="${student.photo}" alt="${student.name}" class="w-full h-full object-cover">` : 
+                            `<i class="fa-solid fa-user-graduate"></i>`
+                        }
                     </div>
-                    <div class="z-10">
+
+                    <div class="z-10 flex-1">
                         <h2 class="text-xl font-bold text-slate-800">${student.name}</h2>
                         <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-slate-600 font-semibold">
                             <span><i class="fa-solid fa-id-card"></i> ${student.studentId || '—'}</span>
@@ -51407,34 +51446,22 @@ window.showGuardianPortal = function() {
 
             <!-- ট্যাব কন্টেন্ট এরিয়া -->
             <div class="max-w-4xl mx-auto px-4 mt-6">
+                
+                <!-- ★★★ কমন মেনু বাটন ★★★ -->
+                <button id="gp-common-menu-btn" onclick="switchGpTab('dashboard')" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-violet-700 transition bg-slate-100 hover:bg-violet-50 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm" style="display: none;">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+
+                <!-- পেজের কনটেন্ট এখানে লোড হবে -->
                 <div id="gp-tab-content"></div>
+
             </div>
 
-            <!-- নিচের নেভিগেশন বার (মোবাইলের জন্য) -->
-            <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50">
-                <div class="max-w-4xl mx-auto flex justify-between overflow-x-auto px-2 py-2 gap-1">
-                    <button onclick="switchGpTab('home')" id="gp-nav-home" class="gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-violet-700 bg-violet-50 transition">
-                        <i class="fa-solid fa-house text-lg mb-1"></i><span class="text-[9px] font-bold">হোম</span>
-                    </button>
-                    <button onclick="switchGpTab('fees')" id="gp-nav-fees" class="gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-slate-400 hover:bg-slate-50 transition">
-                        <i class="fa-solid fa-money-bill-wave text-lg mb-1"></i><span class="text-[9px] font-bold">ফি</span>
-                    </button>
-                    <button onclick="switchGpTab('result')" id="gp-nav-result" class="gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-slate-400 hover:bg-slate-50 transition">
-                        <i class="fa-solid fa-file-invoice text-lg mb-1"></i><span class="text-[9px] font-bold">রেজাল্ট</span>
-                    </button>
-                    <button onclick="switchGpTab('routine')" id="gp-nav-routine" class="gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-slate-400 hover:bg-slate-50 transition">
-                        <i class="fa-solid fa-calendar-days text-lg mb-1"></i><span class="text-[9px] font-bold">রুটিন</span>
-                    </button>
-                    <button onclick="switchGpTab('contact')" id="gp-nav-contact" class="gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-slate-400 hover:bg-slate-50 transition">
-                        <i class="fa-solid fa-address-book text-lg mb-1"></i><span class="text-[9px] font-bold">যোগাযোগ</span>
-                    </button>
-                </div>
-            </nav>
         </div>
     `;
 
     document.body.insertAdjacentHTML('beforeend', portalHTML);
-    switchGpTab('home'); // ডিফল্টভাবে হোম ট্যাব খুলবে
+    switchGpTab('dashboard'); // ★ ডিফল্টভাবে মেইন ড্যাশবোর্ড খুলবে
 };
 
 window.logoutGuardian = function() {
@@ -51451,24 +51478,50 @@ window.logoutGuardian = function() {
     showLogin();
 };
 
-window.switchGpTab = function(tab) {
-    // নেভিগেশন বাটন স্টাইল আপডেট
-    document.querySelectorAll('.gp-nav-btn').forEach(btn => {
-        btn.className = 'gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-slate-400 hover:bg-slate-50 transition';
-    });
-    const activeBtn = document.getElementById(`gp-nav-${tab}`);
-    if (activeBtn) {
-        activeBtn.className = 'gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-violet-700 bg-violet-50 transition';
-    }
-
+window.switchGpTab = async function(tab) {
     const content = document.getElementById('gp-tab-content');
     if (!content) return;
 
-    if (tab === 'home') renderGpHome(content);
-    else if (tab === 'fees') renderGpFees(content);
-    else if (tab === 'result') renderGpResults(content);
-    else if (tab === 'routine') renderGpRoutine(content);
-    else if (tab === 'contact') renderGpContact(content);
+    // ★★★ ১. মেইন মেনু বাটন তৈরি ★★★
+    let menuBtnHTML = '';
+    if (tab !== 'dashboard') {
+        menuBtnHTML = `
+            <button onclick="switchGpTab('dashboard')" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-violet-700 transition bg-slate-100 hover:bg-violet-50 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm">
+                <i class="fa-solid fa-arrow-left"></i> মেনু
+            </button>
+        `;
+    }
+
+    // ★★★ ২. কনটেন্ট রেন্ডার (বাটন + মূল পেজ) ★★★
+    // পেজ লোড হওয়ার আগে শুধু লোডিং স্পিনার দেখাই, যাতে বাটনটা সাথে সাথে দেখা যায়
+    content.innerHTML = `
+        <div id="gp-inner-content">
+            ${menuBtnHTML}
+            <div id="gp-page-body"><div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div></div>
+        </div>
+    `;
+    
+    const pageBody = document.getElementById('gp-page-body');
+
+    // ★★★ ৩. ট্যাব অনুযায়ী ফাংশন কল ★★★
+    if (tab === 'dashboard') {
+        renderGpDashboard(pageBody); 
+    } 
+    else if (tab === 'home') {
+        await renderGpHome(pageBody);
+    }
+    else if (tab === 'fees') {
+        await renderGpFees(pageBody);
+    }
+    else if (tab === 'result') {
+        await renderGpResults(pageBody);
+    }
+    else if (tab === 'routine') {
+        await renderGpRoutine(pageBody);
+    }
+    else if (tab === 'contact') {
+        await renderGpContact(pageBody);
+    }
 };
 
 // ═══════════════════ ১. হোম ট্যাব (নোটিশ, টাইমার, নিয়মাবলী, মন্তব্য) ═══════════════════
@@ -51490,7 +51543,6 @@ async function renderGpHome(container) {
             noticesSnap = await getDocs(qNotices);
         } catch (e) {
             console.warn("নোটিশ লোড করতে সমস্যা (হয়তো ইনডেক্স নেই):", e);
-            // ব্যাকআপ হিসেবে সরাসরি কল করা হলো
             noticesSnap = await getDocs(collection(window.fbDB, 'notices'));
         }
         if (!noticesSnap.empty) {
@@ -51512,7 +51564,7 @@ async function renderGpHome(container) {
             });
         }
 
-        // ২. ছাত্রের লাইভ টাইম ও ক্লাস শুরুর কাউন্টডাউন (মক ডাটা)
+        // ২. ছাত্রের লাইভ টাইম ও ক্লাস শুরুর কাউন্টডাউন
         const d = new Date();
         const timeStr = d.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
         
@@ -51551,8 +51603,10 @@ async function renderGpHome(container) {
         console.error(err);
     }
 
+    // ★★★ ফাইনাল রেন্ডার (শুধু মেইন মেনু বাটন ও নোটিশ) ★★★
     container.innerHTML = `
-        <div class="space-y-4">
+        <div class="space-y-4 pb-10">
+
             ${countdownHTML}
             
             <!-- নোটিশ বোর্ড -->
@@ -51591,6 +51645,61 @@ async function renderGpHome(container) {
                     </ul>
                     <p class="mt-2 text-[10px] text-red-500 italic"><i class="fa-solid fa-triangle-exclamation"></i> নিয়ম ভঙ্গ করলে মাদরাসা কর্তৃপক্ষ যেকোনো সিদ্ধান্ত নিতে পারে।</p>
                 </div>
+            </div>
+        </div>
+    `;
+}
+
+// ═══════════════════ মেইন ড্যাশবোর্ড (৫টি বাটন) ═══════════════════
+function renderGpDashboard(container) {
+    container.innerHTML = `
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6 mt-2">
+            <!-- ১. হোম / নোটিশ -->
+            <button onclick="switchGpTab('home')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-violet-300 transition text-violet-700">
+                <div class="w-12 h-12 bg-violet-50 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-house"></i>
+                </div>
+                <span class="text-sm font-bold">হোম / নোটিশ</span>
+            </button>
+
+            <!-- ২. ফি -->
+            <button onclick="switchGpTab('fees')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-emerald-300 transition text-emerald-600">
+                <div class="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-money-bill-wave"></i>
+                </div>
+                <span class="text-sm font-bold">ফি ও পেমেন্ট</span>
+            </button>
+
+            <!-- ৩. রেজাল্ট -->
+            <button onclick="switchGpTab('result')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-blue-300 transition text-blue-600">
+                <div class="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-file-invoice"></i>
+                </div>
+                <span class="text-sm font-bold">পরীক্ষার ফলাফল</span>
+            </button>
+
+            <!-- ৪. রুটিন -->
+            <button onclick="switchGpTab('routine')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-amber-300 transition text-amber-600">
+                <div class="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </div>
+                <span class="text-sm font-bold">ক্লাস রুটিন</span>
+            </button>
+
+            <!-- ৫. যোগাযোগ -->
+            <button onclick="switchGpTab('contact')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-rose-300 transition text-rose-600">
+                <div class="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-address-book"></i>
+                </div>
+                <span class="text-sm font-bold">যোগাযোগ</span>
+            </button>
+            
+            <!-- ★ বাকি ৭টি বাটনের জায়গা -->
+            <div class="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-4 flex flex-col items-center justify-center gap-2 text-slate-400">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-ellipsis"></i>
+                </div>
+                <span class="text-xs font-bold text-center">আরও ৭টি অপশন<br>শীঘ্রই আসছে</span>
             </div>
         </div>
     `;
