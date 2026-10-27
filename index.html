@@ -17,7 +17,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp, onSnapshot, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp, onSnapshot, deleteField, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCGZM2C4J5L7g1soLweHFvAH9erGVdOodY",
@@ -35,7 +35,7 @@ const firebaseConfig = {
   // Global expose (script নিচে ব্যবহার করবে)
   window.fbAuth = fbAuth;
   window.fbDB = fbDB;
-  window.fbFuncs = { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp, onSnapshot, deleteField };
+  window.fbFuncs = { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp, onSnapshot, deleteField, orderBy, limit };
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1267,7 +1267,7 @@ header button {
 </div>
 
 <!-- ═══════════════════ GUARDIAN LOGIN MODAL ═══════════════════ -->
-<div id="guardian-login-modal" class="fixed inset-0 modal-backdrop z-[250] items-center justify-center p-4 hidden" style="width:100vw; height:100vh; top:0; left:0;">
+<div id="guardian-login-modal" class="fixed inset-0 modal-backdrop z-[250] items-center justify-center p-4 hidden" style="width:100vw; height:100vh;">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-enter">
         <div class="bg-violet-700 text-white p-4 text-center">
             <i class="fa-solid fa-user-shield text-3xl mb-2"></i>
@@ -51484,8 +51484,15 @@ async function renderGpHome(container) {
         const { collection, getDocs, query, orderBy, limit } = window.fbFuncs;
 
         // ১. লেটেস্ট ৩টি নোটিশ লোড করা
-        const qNotices = query(collection(window.fbDB, 'notices'), orderBy('createdAt', 'desc'), limit(3));
-        const noticesSnap = await getDocs(qNotices);
+        let noticesSnap;
+        try {
+            const qNotices = query(collection(window.fbDB, 'notices'), orderBy('createdAt', 'desc'), limit(3));
+            noticesSnap = await getDocs(qNotices);
+        } catch (e) {
+            console.warn("নোটিশ লোড করতে সমস্যা (হয়তো ইনডেক্স নেই):", e);
+            // ব্যাকআপ হিসেবে সরাসরি কল করা হলো
+            noticesSnap = await getDocs(collection(window.fbDB, 'notices'));
+        }
         if (!noticesSnap.empty) {
             noticesHTML = '';
             noticesSnap.forEach(d => {
