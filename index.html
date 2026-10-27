@@ -1183,6 +1183,11 @@ header button {
                 <span>Google দিয়ে সাইন-ইন করুন</span>
             </button>
 
+            <!-- গার্ডিয়ান লগইন বাটন -->
+            <button onclick="showGuardianLogin()" class="w-full py-3 bg-violet-700 hover:bg-violet-800 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 shadow-md">
+                <i class="fa-solid fa-user-shield"></i> <span>গার্ডিয়ান লগইন</span>
+            </button>
+
             <div class="flex items-center gap-3 my-3">
                 <div class="flex-1 h-px bg-slate-200"></div>
                 <span class="text-xs text-slate-500 font-semibold">অথবা</span>
@@ -1256,6 +1261,36 @@ header button {
             </button>
             <button onclick="confirmApprove()" class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold rounded-lg transition flex items-center gap-2">
                 <i class="fa-solid fa-check-double"></i> অনুমোদন দিন
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ GUARDIAN LOGIN MODAL ═══════════════════ -->
+<div id="guardian-login-modal" class="fixed inset-0 modal-backdrop z-[250] items-center justify-center p-4 hidden" style="width:100vw; height:100vh; top:0; left:0;">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-enter">
+        <div class="bg-violet-700 text-white p-4 text-center">
+            <i class="fa-solid fa-user-shield text-3xl mb-2"></i>
+            <h3 class="text-lg font-bold">গার্ডিয়ান লগইন</h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <p class="text-sm text-slate-700 text-center">
+                আপনার সন্তানের <strong>আইডি</strong> এবং আপনার <strong>মোবাইল নম্বর</strong> দিন। সঠিক তথ্য দিলে সরাসরি প্রবেশ করতে পারবেন।
+            </p>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">ছাত্রের আইডি</label>
+                <input type="text" id="gl-student-id" placeholder="যেমন: ১০১" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">অভিভাবকের মোবাইল নম্বর</label>
+                <input type="tel" id="gl-mobile" placeholder="যেমন: 017XXXXXXXX" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm">
+            </div>
+            <p id="gl-error" class="text-xs text-red-600 text-center hidden"></p>
+            <button onclick="verifyGuardianLogin()" id="gl-verify-btn" class="w-full py-3 bg-violet-700 hover:bg-violet-800 text-white font-bold rounded-lg transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-sign-in-alt"></i> প্রবেশ করুন
+            </button>
+            <button onclick="closeGuardianLogin()" class="w-full py-2 text-slate-500 hover:text-slate-700 text-sm font-semibold">
+                বাতিল
             </button>
         </div>
     </div>
@@ -42807,6 +42842,7 @@ window.uploadStudentPhoto = async function(studentDbId, file) {
 };
 
 console.log('✅ হল ম্যানেজমেন্ট, প্রবেশপত্র ও টেবিল নম্বর সিস্টেম লোড হয়েছে');
+
 // ═══════════════════════════════════════════════════════════════
 // ★★★ গার্ডিয়ান মডিউল — মূল ডিসপ্যাচার ★★★
 // ═══════════════════════════════════════════════════════════════
@@ -51115,7 +51151,599 @@ window.saveTeacherRemark = async function() {
         deferredPrompt = null;
       }
     });
-  });
+});
+// ═══════════════════ গার্ডিয়ান লগইন লজিক ═══════════════════
+window._guardianSession = null; // গার্ডিয়ানের ডাটা জমা রাখার জন্য
+
+window.showGuardianLogin = function() {
+    document.getElementById('guardian-login-modal').classList.remove('hidden');
+    document.getElementById('guardian-login-modal').classList.add('flex');
+    document.getElementById('gl-student-id').value = '';
+    document.getElementById('gl-mobile').value = '';
+    document.getElementById('gl-error').classList.add('hidden');
+};
+
+window.closeGuardianLogin = function() {
+    document.getElementById('guardian-login-modal').classList.add('hidden');
+    document.getElementById('guardian-login-modal').classList.remove('flex');
+};
+
+window.verifyGuardianLogin = async function() {
+    const studentId = document.getElementById('gl-student-id').value.trim();
+    const mobile = document.getElementById('gl-mobile').value.trim();
+    const errEl = document.getElementById('gl-error');
+    const btn = document.getElementById('gl-verify-btn');
+
+    if (!studentId || !mobile) {
+        errEl.textContent = 'আইডি এবং মোবাইল নম্বর দুটোই দিন';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    errEl.classList.add('hidden');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> যাচাই হচ্ছে...';
+
+    try {
+        // ১. ছাত্র ডাটা লোড করা
+        await loadStudentsFromFirestore();
+
+        // ২. আইডি এবং মোবাইল ম্যাচ করা (বাংলা ও ইংরেজি সংখ্যা দুটোই চেক করা হবে)
+        const cleanNum = (str) => String(str || '').replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)).replace(/[^0-9]/g, '');
+        
+        const cleanInputId = cleanNum(studentId);
+        const cleanInputMobile = cleanNum(mobile);
+
+        const foundStudent = studentsCache.find(s => {
+            const sId = cleanNum(s.studentId);
+            const sMobile1 = cleanNum(s.mobile1);
+            const sMobile2 = cleanNum(s.mobile2);
+            
+            return sId === cleanInputId && (sMobile1 === cleanInputMobile || sMobile2 === cleanInputMobile);
+        });
+
+        if (!foundStudent) {
+            errEl.textContent = '❌ তথ্য মেলেনি। সঠিক আইডি ও মোবাইল নম্বর দিন।';
+            errEl.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-sign-in-alt"></i> প্রবেশ করুন';
+            return;
+        }
+
+        // ৩. সেশন তৈরি
+        _guardianSession = foundStudent;
+        closeGuardianLogin();
+        showGuardianPortal();
+
+    } catch (err) {
+        console.error(err);
+        errEl.textContent = 'সিস্টেম ত্রুটি: ' + err.message;
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-sign-in-alt"></i> প্রবেশ করুন';
+    }
+};
+
+window.showGuardianPortal = function() {
+    // মূল অ্যাপ হাইড করে গার্ডিয়ান পোর্টাল দেখানো
+    document.querySelectorAll('header, main, footer').forEach(el => el.style.display = 'none');
+    
+    // পুরনো পোর্টাল থাকলে মুছে ফেলা
+    document.getElementById('guardian-portal-view')?.remove();
+
+    const student = _guardianSession;
+    
+    // গার্ডিয়ান পোর্টালের মূল HTML (ট্যাব মেনু সহ)
+    const portalHTML = `
+        <div id="guardian-portal-view" class="min-h-screen bg-slate-100 pb-20">
+            <!-- গার্ডিয়ান হেডার -->
+            <header class="bg-violet-800 text-white p-4 sticky top-0 z-50 shadow-lg">
+                <div class="max-w-4xl mx-auto flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-user-shield"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-lg font-bold leading-tight">${settings.madrasaName || 'আল-জামিয়া'}</h1>
+                            <p class="text-[10px] text-violet-200">অভিভাবক পোর্টাল</p>
+                        </div>
+                    </div>
+                    <button onclick="logoutGuardian()" class="text-white/80 hover:text-white text-sm font-semibold bg-white/10 px-3 py-1.5 rounded-lg">
+                        <i class="fa-solid fa-sign-out-alt"></i> লগআউট
+                    </button>
+                </div>
+            </header>
+
+            <!-- ছাত্রের প্রোফাইল কার্ড -->
+            <div class="max-w-4xl mx-auto px-4 pt-6">
+                <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 flex items-center gap-4 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-violet-50 rounded-bl-full -z-0"></div>
+                    <div class="w-16 h-16 bg-violet-100 text-violet-600 rounded-full flex items-center justify-center text-3xl flex-shrink-0 z-10">
+                        <i class="fa-solid fa-user-graduate"></i>
+                    </div>
+                    <div class="z-10">
+                        <h2 class="text-xl font-bold text-slate-800">${student.name}</h2>
+                        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-slate-600 font-semibold">
+                            <span><i class="fa-solid fa-id-card"></i> ${student.studentId || '—'}</span>
+                            <span class="font-arabic"><i class="fa-solid fa-school"></i> ${student.className || '—'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ট্যাব কন্টেন্ট এরিয়া -->
+            <div class="max-w-4xl mx-auto px-4 mt-6">
+                <div id="gp-tab-content"></div>
+            </div>
+
+            <!-- নিচের নেভিগেশন বার (মোবাইলের জন্য) -->
+            <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50">
+                <div class="max-w-4xl mx-auto flex justify-between overflow-x-auto px-2 py-2 gap-1">
+                    <button onclick="switchGpTab('home')" id="gp-nav-home" class="gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-violet-700 bg-violet-50 transition">
+                        <i class="fa-solid fa-house text-lg mb-1"></i><span class="text-[9px] font-bold">হোম</span>
+                    </button>
+                    <button onclick="switchGpTab('fees')" id="gp-nav-fees" class="gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-slate-400 hover:bg-slate-50 transition">
+                        <i class="fa-solid fa-money-bill-wave text-lg mb-1"></i><span class="text-[9px] font-bold">ফি</span>
+                    </button>
+                    <button onclick="switchGpTab('result')" id="gp-nav-result" class="gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-slate-400 hover:bg-slate-50 transition">
+                        <i class="fa-solid fa-file-invoice text-lg mb-1"></i><span class="text-[9px] font-bold">রেজাল্ট</span>
+                    </button>
+                    <button onclick="switchGpTab('routine')" id="gp-nav-routine" class="gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-slate-400 hover:bg-slate-50 transition">
+                        <i class="fa-solid fa-calendar-days text-lg mb-1"></i><span class="text-[9px] font-bold">রুটিন</span>
+                    </button>
+                    <button onclick="switchGpTab('contact')" id="gp-nav-contact" class="gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-slate-400 hover:bg-slate-50 transition">
+                        <i class="fa-solid fa-address-book text-lg mb-1"></i><span class="text-[9px] font-bold">যোগাযোগ</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', portalHTML);
+    switchGpTab('home'); // ডিফল্টভাবে হোম ট্যাব খুলবে
+};
+
+window.logoutGuardian = function() {
+    if (!confirm('লগআউট করতে চান?')) return;
+    _guardianSession = null;
+    document.getElementById('guardian-portal-view').remove();
+    document.querySelectorAll('header, main, footer').forEach(el => el.style.display = '');
+    
+    // মূল অ্যাপের হেডার/ফুটার আগের অবস্থায় ফিরিয়ে আনা
+    document.querySelector('header').style.display = 'block';
+    document.querySelector('main').style.display = 'block';
+    document.querySelector('footer').style.display = 'block';
+
+    showLogin();
+};
+
+window.switchGpTab = function(tab) {
+    // নেভিগেশন বাটন স্টাইল আপডেট
+    document.querySelectorAll('.gp-nav-btn').forEach(btn => {
+        btn.className = 'gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-slate-400 hover:bg-slate-50 transition';
+    });
+    const activeBtn = document.getElementById(`gp-nav-${tab}`);
+    if (activeBtn) {
+        activeBtn.className = 'gp-nav-btn flex flex-col items-center justify-center w-16 h-14 rounded-xl text-violet-700 bg-violet-50 transition';
+    }
+
+    const content = document.getElementById('gp-tab-content');
+    if (!content) return;
+
+    if (tab === 'home') renderGpHome(content);
+    else if (tab === 'fees') renderGpFees(content);
+    else if (tab === 'result') renderGpResults(content);
+    else if (tab === 'routine') renderGpRoutine(content);
+    else if (tab === 'contact') renderGpContact(content);
+};
+
+// ═══════════════════ ১. হোম ট্যাব (নোটিশ, টাইমার, নিয়মাবলী, মন্তব্য) ═══════════════════
+async function renderGpHome(container) {
+    const student = _guardianSession;
+    container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>`;
+
+    let noticesHTML = '<p class="text-sm text-slate-500 text-center py-4">কোন নোটিশ নেই</p>';
+    let countdownHTML = '';
+    let remarksHTML = '';
+
+    try {
+        const { collection, getDocs, query, orderBy, limit } = window.fbFuncs;
+
+        // ১. লেটেস্ট ৩টি নোটিশ লোড করা
+        const qNotices = query(collection(window.fbDB, 'notices'), orderBy('createdAt', 'desc'), limit(3));
+        const noticesSnap = await getDocs(qNotices);
+        if (!noticesSnap.empty) {
+            noticesHTML = '';
+            noticesSnap.forEach(d => {
+                const data = d.data();
+                const dateStr = data.createdAt?.seconds 
+                    ? new Date(data.createdAt.seconds * 1000).toLocaleDateString('bn-BD') 
+                    : '';
+                noticesHTML += `
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-2">
+                        <div class="flex justify-between items-start">
+                            <h4 class="text-sm font-bold text-amber-900"><i class="fa-solid fa-bullhorn text-amber-600"></i> ${data.title}</h4>
+                            <span class="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">${dateStr}</span>
+                        </div>
+                        <p class="text-xs text-amber-800 mt-1">${data.body}</p>
+                    </div>
+                `;
+            });
+        }
+
+        // ২. ছাত্রের লাইভ টাইম ও ক্লাস শুরুর কাউন্টডাউন (মক ডাটা)
+        const d = new Date();
+        const timeStr = d.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
+        
+        countdownHTML = `
+            <div class="bg-gradient-to-r from-violet-600 to-indigo-700 rounded-xl p-4 text-white shadow-md relative overflow-hidden">
+                <i class="fa-solid fa-clock absolute -right-4 -bottom-4 text-6xl opacity-20"></i>
+                <div class="relative z-10">
+                    <p class="text-xs text-violet-200 font-bold mb-1">বর্তমান সময়</p>
+                    <h3 class="text-3xl font-mono font-bold tracking-wider">${timeStr}</h3>
+                    <div class="mt-3 bg-black/20 rounded-lg p-2 text-xs flex items-center justify-between">
+                        <span><i class="fa-solid fa-door-open"></i> দারুল ইকামাহ খুলবে</span>
+                        <span class="font-bold text-amber-300">০০ দিন : ০৫ ঘণ্টা</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // ৩. মন্তব্যের তালিকা
+        const sData = studentsCache.find(s => s.id === student.id);
+        const remarks = sData?.remarksList || [];
+        if (remarks.length === 0) {
+            remarksHTML = '<p class="text-xs text-slate-400 text-center italic py-3">কোন মন্তব্য নেই</p>';
+        } else {
+            remarksHTML = remarks.map(r => `
+                <div class="border-l-4 border-amber-400 bg-amber-50 p-2 mb-2 rounded-r-lg text-xs">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-amber-800">${r.type}</span>
+                        <span class="text-[10px] text-slate-500">${new Date(r.date).toLocaleDateString('bn-BD')}</span>
+                    </div>
+                    <p class="text-slate-700">${r.reason}</p>
+                </div>
+            `).join('');
+        }
+
+    } catch (err) {
+        console.error(err);
+    }
+
+    container.innerHTML = `
+        <div class="space-y-4">
+            ${countdownHTML}
+            
+            <!-- নোটিশ বোর্ড -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-bullhorn text-rose-500"></i> সাম্প্রতিক বিজ্ঞপ্তি
+                </h3>
+                ${noticesHTML}
+            </div>
+
+            <!-- শিক্ষকের মন্তব্য -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-comment-dots text-blue-500"></i> শিক্ষকের মন্তব্য
+                    </h3>
+                    <button onclick="openGuardianRemarkModal('${student.id}')" class="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded font-bold">
+                        <i class="fa-solid fa-plus"></i> নতুন মন্তব্য
+                    </button>
+                </div>
+                ${remarksHTML}
+            </div>
+            
+            <!-- নিয়মকানুন (দারুল ইকামাহ) -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-scroll text-emerald-500"></i> দারুল ইকামাহ ও তালিমাতের নিয়মাবলী
+                </h3>
+                <div class="bg-slate-50 border border-slate-200 p-3 rounded-lg text-xs text-slate-600 leading-relaxed">
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>নিয়ম ১: প্রতিদিনের ৫ ওয়াক্ত নামাজ জামাতের সাথে আদায় করতে হবে।</li>
+                        <li>নিয়ম ২: সকাল ৬টায় ঘুম থেকে উঠে তাহাজ্জুদ ও ফজরের প্রস্তুতি নিতে হবে।</li>
+                        <li>নিয়ম ৩: মোবাইল ফোন বা কোনো ইলেকট্রনিক ডিভাইস আনা সম্পূর্ণ নিষিদ্ধ।</li>
+                        <li>নিয়ম ৪: সাপ্তাহিক ছুটির দিন ছাড়া কোনো ছাত্রকে বাইরে যেতে দেওয়া হবে না।</li>
+                        <li>নিয়ম ৫: অসুস্থ হলে সাথে সাথে শিক্ষকের কাছে জানাতে হবে।</li>
+                    </ul>
+                    <p class="mt-2 text-[10px] text-red-500 italic"><i class="fa-solid fa-triangle-exclamation"></i> নিয়ম ভঙ্গ করলে মাদরাসা কর্তৃপক্ষ যেকোনো সিদ্ধান্ত নিতে পারে।</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ═══════════════════ ২. ফি ট্যাব (জমা বাকি) ═══════════════════
+async function renderGpFees(container) {
+    const student = _guardianSession;
+    container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>`;
+
+    try {
+        if (typeof loadFeeStructure === 'function') await loadFeeStructure();
+        if (typeof loadFeePayments === 'function') await loadFeePayments();
+        
+        const fee = typeof getClassFeeStructure === 'function' ? getClassFeeStructure(student.dept, student.className) : {};
+        const monthlyTotal = (Number(fee.monthlyFee)||0) + (Number(fee.monthlyFood)||0) + (Number(fee.hostelFee)||0);
+        
+        const paidTotal = typeof getStudentTotalPaid === 'function' ? getStudentTotalPaid(student.id) : 0;
+        
+        // এই মাসের পেমেন্ট বের করা
+        const curMonth = new Date().getMonth() + 1;
+        const curYear = new Date().getFullYear();
+        const paidThisMonth = (_feePaymentsCache || []).filter(p => 
+            p.studentDbId === student.id && p.month === curMonth && p.year === curYear
+        ).reduce((a, p) => a + Number(p.amount||0), 0);
+        
+        const dueThisMonth = Math.max(0, monthlyTotal - paidThisMonth);
+
+        container.innerHTML = `
+            <div class="space-y-4">
+                <!-- সারসংক্ষেপ -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-4 text-center">
+                        <p class="text-[10px] font-bold text-rose-800">মোট বকেয়া</p>
+                        <h3 class="text-2xl font-bold text-rose-900">৳ ${dueThisMonth}</h3>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+                        <p class="text-[10px] font-bold text-emerald-800">মোট পরিশোধিত</p>
+                        <h3 class="text-2xl font-bold text-emerald-900">৳ ${paidTotal}</h3>
+                    </div>
+                </div>
+
+                <!-- ফি বিবরণ -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <h3 class="text-sm font-bold text-slate-800 mb-3">মাসিক ফি বিবরণ</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between border-b pb-1">
+                            <span class="text-slate-600">মাসিক বেতন</span>
+                            <span class="font-bold">৳ ${fee.monthlyFee || 0}</span>
+                        </div>
+                        <div class="flex justify-between border-b pb-1">
+                            <span class="text-slate-600">খোরাকি</span>
+                            <span class="font-bold">৳ ${fee.monthlyFood || 0}</span>
+                        </div>
+                        <div class="flex justify-between border-b pb-1">
+                            <span class="text-slate-600">আবাসন ফি</span>
+                            <span class="font-bold">৳ ${fee.hostelFee || 0}</span>
+                        </div>
+                        <div class="flex justify-between pt-1 font-bold text-violet-700 text-base">
+                            <span>মোট</span>
+                            <span>৳ ${monthlyTotal}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+                    <i class="fa-solid fa-info-circle"></i> ফি পরিশোধের জন্য সরাসরি মাদরাসার অফিসে যোগাযোগ করুন অথবা শিক্ষাসচিবের সাথে কথা বলুন।
+                </div>
+            </div>
+        `;
+
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = `<p class="text-center text-red-500">ফি ডাটা লোড ব্যর্থ</p>`;
+    }
+}
+
+// ═══════════════════ ৩. রেজাল্ট ট্যাব ═══════════════════
+async function renderGpResults(container) {
+    const student = _guardianSession;
+    
+    // মার্কশীট রেন্ডার করে দেখানো
+    try {
+        // মার্কশীট প্রিভিউ দেখানোর জন্য ফাংশনটি কল করা হচ্ছে
+        // (এখানে একটি কাস্টম UI তৈরি করা হলো)
+        const data = getStudentMarksheetData(student);
+        
+        let marksRows = '';
+        data.rows.forEach((r, idx) => {
+            let gradeColor = r.grade.includes('রাসিব') || r.grade === 'F' ? 'text-red-600' : 'text-emerald-600';
+            marksRows += `
+                <tr class="border-b text-xs">
+                    <td class="py-2 px-1 font-arabic font-bold">${r.label}</td>
+                    <td class="py-2 px-1 text-center">${r.obtained !== null ? r.obtained : '-'}</td>
+                    <td class="py-2 px-1 text-center font-bold ${gradeColor}">${r.grade || '-'}</td>
+                </tr>
+            `;
+        });
+
+        container.innerHTML = `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-emerald-600 to-teal-600 p-3 text-white text-center">
+                    <h3 class="font-bold"><i class="fa-solid fa-award"></i> সাম্প্রতিক পরীক্ষার ফলাফল</h3>
+                    <p class="text-[10px] opacity-80">${settings.year || '২০২৬-২০২৭'}</p>
+                </div>
+                
+                <div class="p-4">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 text-[10px]">
+                                <th class="p-2">বিষয়</th>
+                                <th class="p-2 text-center">প্রাপ্ত</th>
+                                <th class="p-2 text-center">গ্রেড</th>
+                            </tr>
+                        </thead>
+                        <tbody>${marksRows || '<tr><td colspan="3" class="text-center py-4 text-slate-400">কোন মার্কস এন্ট্রি নেই</td></tr>'}</tbody>
+                    </table>
+                    
+                    <div class="mt-4 bg-slate-50 p-3 rounded-lg flex justify-between items-center">
+                        <div>
+                            <p class="text-[10px] text-slate-500">মোট নম্বর</p>
+                            <p class="font-bold text-lg text-slate-800">${data.totalObtained} / ${data.totalFullMarks}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-500">চূড়ান্ত গ্রেড</p>
+                            <p class="font-bold text-lg text-emerald-600">${data.finalGrade || '—'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        container.innerHTML = `<p class="text-center text-red-500">রেজাল্ট লোড ব্যর্থ</p>`;
+    }
+}
+
+// ═══════════════════ ৪. রুটিন ট্যাব ═══════════════════
+async function renderGpRoutine(container) {
+    const student = _guardianSession;
+    container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>`;
+
+    try {
+        // রুটিন লোড করা
+        const { doc, getDoc } = window.fbFuncs;
+        // রুটিন ডাটা (সরলীকৃত)
+        container.innerHTML = `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <h3 class="text-sm font-bold text-slate-800 mb-3 text-center"><i class="fa-solid fa-calendar-check text-teal-500"></i> ক্লাস রুটিন (${student.className})</h3>
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+                    <i class="fa-solid fa-clock text-4xl text-amber-400 mb-2"></i>
+                    <p class="text-sm font-bold text-amber-900">শীতকালীন রুটিন লোড হচ্ছে</p>
+                    <p class="text-xs text-amber-700 mt-1">রুটিন দেখতে শিক্ষকের দেওয়া সময়সূচি অনুসরণ করুন</p>
+                </div>
+            </div>
+        `;
+    } catch (err) {}
+}
+
+// ═══════════════════ ৫. যোগাযোগ ট্যাব (দায়িত্বশীল, মুহতামিম) ═══════════════════
+async function renderGpContact(container) {
+    const student = _guardianSession;
+    
+    // জামাতের দায়িত্বশীল শিক্ষক খোঁজা
+    let inchargeName = '—';
+    let inchargeMobile = '—';
+    
+    try {
+        if (configData && configData.assignments) {
+            const classKey = `${student.dept}::${student.className}`;
+            const assignedTeachers = configData.assignments[classKey] || [];
+            if (assignedTeachers.length > 0) {
+                inchargeName = assignedTeachers.join(', ');
+                const firstTeacher = findTeacherByName(assignedTeachers[0]);
+                if (firstTeacher && firstTeacher.mobile) {
+                    inchargeMobile = firstTeacher.mobile;
+                }
+            }
+        }
+    } catch (e) {}
+
+    // মুহতামিম ও শিক্ষাসচিব (মক ডাটা - এডমিন থেকে সেট করা যেতে পারে)
+    const muhtamimName = 'মাওলানা আহমাদুল্লাহ';
+    const muhtamimMobile = '০১৭xxxxxxxx';
+    const eduSecName = 'মাওলানা হাবিবুর রহমান';
+    const eduSecMobile = '০১৮xxxxxxxx';
+
+    container.innerHTML = `
+        <div class="space-y-3">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <h3 class="text-sm font-bold text-slate-800 mb-3">যোগাযোগের মাধ্যম</h3>
+                
+                <div class="flex items-center gap-4 p-3 border border-slate-100 rounded-lg mb-2 bg-slate-50">
+                    <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-lg"><i class="fa-solid fa-chalkboard-user"></i></div>
+                    <div class="flex-1">
+                        <p class="text-xs text-slate-500 font-semibold">শ্রেণি শিক্ষক (দায়িত্বশীল)</p>
+                        <p class="text-sm font-bold text-slate-800">${inchargeName}</p>
+                        <p class="text-xs text-slate-600 font-mono mt-0.5">${inchargeMobile}</p>
+                    </div>
+                    ${inchargeMobile !== '—' ? `<a href="tel:${inchargeMobile}" class="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center"><i class="fa-solid fa-phone text-xs"></i></a>` : ''}
+                </div>
+
+                <div class="flex items-center gap-4 p-3 border border-slate-100 rounded-lg mb-2">
+                    <div class="w-10 h-10 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-lg"><i class="fa-solid fa-user-tie"></i></div>
+                    <div class="flex-1">
+                        <p class="text-xs text-slate-500 font-semibold">মুহতামিম</p>
+                        <p class="text-sm font-bold text-slate-800">${muhtamimName}</p>
+                        <p class="text-xs text-slate-600 font-mono mt-0.5">${muhtamimMobile}</p>
+                    </div>
+                    <a href="tel:${muhtamimMobile}" class="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center"><i class="fa-solid fa-phone text-xs"></i></a>
+                </div>
+
+                <div class="flex items-center gap-4 p-3 border border-slate-100 rounded-lg">
+                    <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-lg"><i class="fa-solid fa-user-shield"></i></div>
+                    <div class="flex-1">
+                        <p class="text-xs text-slate-500 font-semibold">শিক্ষাসচিব</p>
+                        <p class="text-sm font-bold text-slate-800">${eduSecName}</p>
+                        <p class="text-xs text-slate-600 font-mono mt-0.5">${eduSecMobile}</p>
+                    </div>
+                    <a href="tel:${eduSecMobile}" class="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center"><i class="fa-solid fa-phone text-xs"></i></a>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ═══════════════════ গার্ডিয়ানদের জন্য মন্তব্য যোগ করার মডাল ═══════════════════
+window.openGuardianRemarkModal = function(studentId) {
+    const modal = document.createElement('div');
+    modal.id = 'guardian-remark-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.8);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="bg-blue-600 p-4 text-white">
+                <h3 class="font-bold"><i class="fa-solid fa-comment"></i> নতুন মন্তব্য যোগ করুন</h3>
+            </div>
+            <div class="p-4 space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">মন্তব্যের ধরন</label>
+                    <select id="grm-type" class="w-full rounded border border-slate-300 p-2 text-sm">
+                        <option value="সাধারণ মন্তব্য">সাধারণ মন্তব্য</option>
+                        <option value="অভিভাবকের অনুরোধ">অভিভাবকের অনুরোধ</option>
+                        <option value="জরুরি বার্তা">জরুরি বার্তা</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">বিস্তারিত</label>
+                    <textarea id="grm-reason" rows="3" class="w-full rounded border border-slate-300 p-2 text-sm" placeholder="আপনার মন্তব্য লিখুন..."></textarea>
+                </div>
+            </div>
+            <div class="p-3 bg-slate-50 flex justify-end gap-2">
+                <button onclick="document.getElementById('guardian-remark-modal').remove()" class="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded">বাতিল</button>
+                <button onclick="saveGuardianRemark('${studentId}')" class="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded">সংরক্ষণ</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+
+window.saveGuardianRemark = async function(studentId) {
+    const type = document.getElementById('grm-type').value;
+    const reason = document.getElementById('grm-reason').value.trim();
+    if (!reason) { showToast('⚠️ মন্তব্য লিখুন', 'warn'); return; }
+
+    try {
+        const { doc, updateDoc, arrayUnion, serverTimestamp } = window.fbFuncs;
+        
+        // remarksList অ্যারেতে নতুন মন্তব্য যোগ করা
+        await updateDoc(doc(window.fbDB, 'students', studentId), {
+            remarksList: arrayUnion({
+                type: type,
+                reason: reason,
+                date: new Date().toISOString(),
+                addedBy: 'guardian',
+                addedAt: serverTimestamp()
+            })
+        });
+        
+        document.getElementById('guardian-remark-modal').remove();
+        showToast('✅ মন্তব্য যোগ হয়েছে', 'success');
+        
+        // UI রিফ্রেশ করা
+        if (_guardianSession && _guardianSession.id === studentId) {
+            const s = studentsCache.find(x => x.id === studentId);
+            if (s && s.remarksList) {
+                s.remarksList.push({ type, reason, date: new Date().toISOString() });
+            }
+            switchGpTab('home');
+        }
+
+    } catch (err) {
+        console.error(err);
+        showToast('❌ সংরক্ষণ ব্যর্থ: ' + err.message, 'error');
+    }
+};
 </script>
 </body>
 </html>
