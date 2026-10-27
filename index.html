@@ -51188,7 +51188,15 @@ window.verifyGuardianLogin = async function() {
         // ১. ডাটা লোড করা
         await loadStudentsFromFirestore();
 
-        const cleanNum = (str) => String(str || '').replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)).replace(/[^0-9]/g, '');
+        // ★★★ এখানে ফাংশনটি ঠিক করা হয়েছে ★★★
+        const cleanNum = (str) => {
+            if (!str) return '';
+            // বাংলা সংখ্যাকে ইংরেজিতে রূপান্তর
+            const bnToEn = { '০':'0', '১':'1', '২':'2', '৩':'3', '৪':'4', '৫':'5', '৬':'6', '৭':'7', '৮':'8', '৯':'9' };
+            let converted = String(str).replace(/[০-৯]/g, d => bnToEn[d]);
+            // শুধুমাত্র ইংরেজি সংখ্যা রাখা
+            return converted.replace(/[^0-9]/g, '');
+        };
         
         const cleanInputId = cleanNum(studentId);
         const cleanInputMobile = cleanNum(mobile);
@@ -51203,7 +51211,7 @@ window.verifyGuardianLogin = async function() {
             return sId === cleanInputId && (sMobile1 === cleanInputMobile || sMobile2 === cleanInputMobile);
         });
 
-        // ★★★ ডিবাগ করার জন্য কনসোল লগ ★★★
+        // ★★★ ডিবাগ করার জন্য কনসোল লগ (দেখতে পাবেন মিলছে কিনা) ★★★
         console.log("🔍 আপনি যা লিখেছেন → আইডি:", cleanInputId, "| মোবাইল:", cleanInputMobile);
         console.log("📦 ফায়ারবেস থেকে লোড হওয়া ডাটা:", studentsCache.map(s => ({ 
             আইডি: cleanNum(s.studentId), 
