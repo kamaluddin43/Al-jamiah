@@ -51185,15 +51185,20 @@ window.verifyGuardianLogin = async function() {
     btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> যাচাই হচ্ছে...';
 
     try {
-        // ১. ছাত্র ডাটা লোড করা
+        // ফায়ারবেস থেকে ডাটা লোড
         await loadStudentsFromFirestore();
 
-        // ২. আইডি এবং মোবাইল ম্যাচ করা (বাংলা ও ইংরেজি সংখ্যা দুটোই চেক করা হবে)
-        const cleanNum = (str) => String(str || '').replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)).replace(/[^0-9]/g, '');
+        // বাংলা ও ইংরেজি সংখ্যা ক্লিন করার ফাংশন (ড্যাশ ও স্পেস বাদ দেবে)
+        const cleanNum = (str) => {
+            if (!str) return '';
+            let s = String(str).replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)); // বাংলা টু ইংলিশ
+            return s.replace(/[^0-9]/g, ''); // শুধু নাম্বার রাখবে
+        };
         
         const cleanInputId = cleanNum(studentId);
         const cleanInputMobile = cleanNum(mobile);
 
+        // ছাত্র খোঁজা
         const foundStudent = studentsCache.find(s => {
             const sId = cleanNum(s.studentId);
             const sMobile1 = cleanNum(s.mobile1);
@@ -51201,6 +51206,10 @@ window.verifyGuardianLogin = async function() {
             
             return sId === cleanInputId && (sMobile1 === cleanInputMobile || sMobile2 === cleanInputMobile);
         });
+
+        // ডিবাগ করার জন্য কনসোলে দেখুন কি আসছে
+        console.log("Input ID:", cleanInputId, "Input Mobile:", cleanInputMobile);
+        console.log("Available Students:", studentsCache.map(s => ({ id: cleanNum(s.studentId), m1: cleanNum(s.mobile1), m2: cleanNum(s.mobile2) })));
 
         if (!foundStudent) {
             errEl.textContent = '❌ তথ্য মেলেনি। সঠিক আইডি ও মোবাইল নম্বর দিন।';
@@ -51210,7 +51219,6 @@ window.verifyGuardianLogin = async function() {
             return;
         }
 
-        // ৩. সেশন তৈরি
         _guardianSession = foundStudent;
         closeGuardianLogin();
         showGuardianPortal();
