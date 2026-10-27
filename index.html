@@ -1160,7 +1160,7 @@ header button {
         <i class="fa-solid fa-circle-notch fa-spin text-amber-400 text-2xl"></i>
     </div>
 </div>
-<div id="login-screen" class="fixed inset-0 bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-900 z-[200] items-center justify-center p-4" style="display:flex; width:100vw; height:100vh; top:0; left:0;">
+<div id="login-screen" class="hidden fixed inset-0 bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-900 z-[200] items-center justify-center p-4" style="width:100vw; height:100vh; top:0; left:0;">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         <div class="bg-emerald-900 text-white p-6 text-center">
             <div class="w-16 h-16 mx-auto bg-amber-500/20 rounded-2xl border-2 border-amber-400/40 flex items-center justify-center text-amber-400 text-3xl mb-3">
@@ -51084,25 +51084,54 @@ window.saveTeacherRemark = async function() {
 window._guardianSession = null; // গার্ডিয়ানের ডাটা জমা রাখার জন্য
 
 window.showGuardianLogin = function() {
-    document.getElementById('guardian-login-modal').classList.remove('hidden');
-    document.getElementById('guardian-login-modal').classList.add('flex');
+    const modal = document.getElementById('guardian-login-modal');
+    if (!modal) {
+        console.error('❌ guardian-login-modal পাওয়া যায়নি!');
+        return;
+    }
+    
+    // ★ মডাল দেখাই
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.style.display = 'flex';
+    
+    // ★ ফিল্ড খালি করি
     document.getElementById('gl-student-id').value = '';
     document.getElementById('gl-mobile').value = '';
     document.getElementById('gl-error').classList.add('hidden');
+    document.getElementById('gl-error').textContent = '';
+    
+    // ★ বাটন রিসেট
+    const btn = document.getElementById('gl-verify-btn');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-sign-in-alt"></i> প্রবেশ করুন';
+    }
+    
+    // ★ প্রথম ফিল্ডে focus
+    setTimeout(() => {
+        document.getElementById('gl-student-id')?.focus();
+    }, 200);
 };
 
 window.closeGuardianLogin = function() {
-    document.getElementById('guardian-login-modal').classList.add('hidden');
-    document.getElementById('guardian-login-modal').classList.remove('flex');
+    const modal = document.getElementById('guardian-login-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modal.style.display = 'none';   // ★ এটা যোগ করুন
+    }
 };
 
+// ═══════════════════ গার্ডিয়ান লগইন — সম্পূর্ণ নতুন (বাগ-ফিক্সড) ═══════════════════
 window.verifyGuardianLogin = async function() {
-    const studentId = document.getElementById('gl-student-id').value.trim();
-    const mobile = document.getElementById('gl-mobile').value.trim();
+    const studentIdInput = document.getElementById('gl-student-id').value.trim();
+    const mobileInput = document.getElementById('gl-mobile').value.trim();
     const errEl = document.getElementById('gl-error');
     const btn = document.getElementById('gl-verify-btn');
 
-    if (!studentId || !mobile) {
+    // ─── ধাপ ১: ফিল্ড খালি কিনা ───
+    if (!studentIdInput || !mobileInput) {
         errEl.textContent = 'আইডি এবং মোবাইল নম্বর দুটোই দিন';
         errEl.classList.remove('hidden');
         return;
@@ -51113,110 +51142,215 @@ window.verifyGuardianLogin = async function() {
     btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> যাচাই হচ্ছে...';
 
     try {
-        const { collection, getDocs, doc, getDoc } = window.fbFuncs;
-        
-        // ★★★ নতুন ফিক্স: মোবাইল নম্বর ক্লিন করার সঠিক ফাংশন ★★★
-        const cleanNum = (str) => {
-            if (!str) return '';
-            const bnToEn = { '০':'0', '১':'1', '২':'2', '৩':'3', '৪':'4', '৫':'5', '৬':'6', '৭':'7', '৮':'8', '৯':'9' };
-            let converted = String(str).replace(/[০-৯]/g, d => bnToEn[d]);
-            converted = converted.replace(/\+?880/g, '0'); // +880 বা 880 কে 0 করা
-            converted = converted.replace(/[^0-9]/g, '');  // অক্ষর বাদ দেওয়া
-            if (converted.length === 10 && converted.startsWith('1')) {
-                converted = '0' + converted;
-            }
-            return converted;
+        const { collection, getDocs } = window.fbFuncs;
+
+        // ══════════════════════════════════════════════════════════
+        // 🔧 হেল্পার ১: একটি মোবাইল নম্বরকে normalise করা
+        //    - বাংলা ডিজিট → ইংরেজি
+        //    - +880, 880, 01 ভিন্নতা হ্যান্ডেল
+        //    - শুধু শেষ ১১ ডিজিট রাখা (বাংলাদেশি)
+        // ══════════════════════════════════════════════════════════
+        const normaliseMobile = (raw) => {
+            if (!raw) return '';
+            const bnToEn = {
+                '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9',
+                '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'
+            };
+            let s = String(raw).replace(/[০-৯٠-٩]/g, d => bnToEn[d] || d);
+            s = s.replace(/[^0-9]/g, '');   // সব অক্ষর বাদ
+            if (!s) return '';
+            // +880 বা 880 দিয়ে শুরু হলে সরাই
+            if (s.startsWith('880')) s = '0' + s.substring(3);
+            else if (s.startsWith('1') && s.length === 10) s = '0' + s;
+            // শেষ ১১ ডিজিট নিই
+            if (s.length >= 11) s = s.slice(-11);
+            return s;
         };
-        
-        const cleanInputId = cleanNum(studentId);
-        const cleanInputMobile = cleanNum(mobile);
 
-        let foundStudent = null;
-        let debugInfo = [];
-
-        // ১. ম্যানুয়াল ছাত্রদের খোঁজা (students কালেকশন)
-        const sSnap = await getDocs(collection(window.fbDB, 'students'));
-        sSnap.forEach(d => {
-            const s = { id: d.id, ...d.data() };
-            const sId = cleanNum(s.studentId);
-            const sMobile1 = cleanNum(s.mobile1);
-            const sMobile2 = cleanNum(s.mobile2);
-            
-            debugInfo.push(`ম্যানুয়াল: ${s.name} | আইডি: ${sId} | মোবাইল: ${sMobile1}`);
-            
-            if (sId === cleanInputId && (sMobile1 === cleanInputMobile || sMobile2 === cleanInputMobile)) {
-                foundStudent = s;
-            }
-        });
-
-        // ২. ভর্তি ফরমের ছাত্রদের খোঁজা (admissionForms কালেকশন)
-        if (!foundStudent) {
-            const fSnap = await getDocs(collection(window.fbDB, 'admissionForms'));
-            fSnap.forEach(d => {
-                const form = { id: d.id, ...d.data() };
-                
-                // ফরম থেকে ডাটা বের করা
-                const formId = form.studentId || form.data?.primary?.studentId || '';
-                const formMobile = form.data?.guardian?.mobile1 || form.data?.guardian?.mobile2 || '';
-                const formName = form.data?.personal?.name || 'Unknown';
-                
-                const sId = cleanNum(formId);
-                const sMobile = cleanNum(formMobile);
-                
-                debugInfo.push(`ভর্তি ফরম: ${formName} | আইডি: ${sId} | মোবাইল: ${sMobile}`);
-                
-                if (sId === cleanInputId && sMobile === cleanInputMobile) {
-                    const fd = flattenAdmFormData(form);
-                    foundStudent = {
-                        id: 'admission_' + form.id,
-                        name: fd.name,
-                        guardian: fd.guardianName || fd.fatherName,
-                        studentId: fd.studentId,
-                        dob: fd.dob,
-                        mobile1: fd.mobile1,
-                        mobile2: fd.mobile2,
-                        address: fd.currentAddress,
-                        dept: fd.dept,
-                        className: fd.nextClass,
-                        admissionFee: fd.admissionFee,
-                        firstMonthFood: fd.firstMonthFood,
-                        sessionFee: 0,
-                        monthlyFood: fd.monthlyFood,
-                        hostelFee: fd.monthlyHostel,
-                        monthlySalary: fd.monthlySalary,
-                        remark: null,
-                        photo: fd.studentPhoto || '',
-                        source: 'admission',
-                        admissionFormId: form.id,
-                        approvedAt: fd.approvedAt
-                    };
-                }
+        // ══════════════════════════════════════════════════════════
+        // 🔧 হেল্পার ২: একটি ফিল্ডে একাধিক নম্বর থাকলে সবগুলো array তে
+        //    যেমন: "01712345678, 01898765432" → ['01712345678','01898765432']
+        // ══════════════════════════════════════════════════════════
+        const extractMobiles = (raw) => {
+            if (!raw) return [];
+            const parts = String(raw).split(/[,\s\n;|\/]+/).filter(Boolean);
+            const result = [];
+            parts.forEach(p => {
+                const n = normaliseMobile(p);
+                if (n && n.length === 11) result.push(n);
             });
-        }
+            return result;
+        };
 
-        // ডিবাগ লগ (এটি আপনাকে বলবে ডাটা ঠিকমতো মিলছে কি না)
-        console.log("🔍 আপনি লিখেছেন → আইডি:", cleanInputId, "| মোবাইল:", cleanInputMobile);
-        console.log("📦 চেক করা ডাটা:", debugInfo);
+        // ══════════════════════════════════════════════════════════
+        // 🔧 হেল্পার ৩: আইডিকে normalise করা
+        //    - বাংলা/আরবি ডিজিট → ইংরেজি
+        //    - trim + lowercase
+        //    - "00101" → "00101" (শূন্য থাক, মুছি না)
+        // ══════════════════════════════════════════════════════════
+        const normaliseId = (raw) => {
+            if (!raw) return '';
+            const bnToEn = {
+                '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9',
+                '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'
+            };
+            return String(raw)
+                .replace(/[০-৯٠-٩]/g, d => bnToEn[d] || d)
+                .trim()
+                .toLowerCase();
+        };
 
-        if (!foundStudent) {
-            errEl.textContent = '❌ তথ্য মেলেনি। সঠিক আইডি ও মোবাইল নম্বর দিন।';
+        const inputId = normaliseId(studentIdInput);
+        const inputMobiles = extractMobiles(mobileInput);
+
+        // ─── ধাপ ২: মোবাইল ভ্যালিডেশন ───
+        if (inputMobiles.length === 0) {
+            errEl.innerHTML = '❌ মোবাইল নম্বর সঠিক নয়।<br><span style="font-size:10px;">১১ ডিজিটের নম্বর দিন (যেমন: 01712345678)</span>';
             errEl.classList.remove('hidden');
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-sign-in-alt"></i> প্রবেশ করুন';
             return;
         }
 
-        // ক্যাশে আপডেট (যাতে পরবর্তী পেজগুলোতে কাজ করে)
+        let foundStudent = null;
+        let allCandidates = [];   // ডিবাগের জন্য সব ম্যাচিং ক্যান্ডিডেট
+
+        // ═══════════════════════════════════════════════════════
+        // 🔍 ধাপ ৩: students কালেকশনে খুঁজি
+        // ═══════════════════════════════════════════════════════
+        const sSnap = await getDocs(collection(window.fbDB, 'students'));
+        sSnap.forEach(d => {
+            if (foundStudent) return;   // আগেই পেয়ে গেলে skip
+            const s = { id: d.id, ...d.data() };
+            
+            const sIdNorm = normaliseId(s.studentId);
+            if (sIdNorm !== inputId) return;   // আইডি মেলেনি
+
+            // সব মোবাইল নম্বর একসাথে
+            const dbMobiles = [
+                ...extractMobiles(s.mobile1),
+                ...extractMobiles(s.mobile2)
+            ];
+            allCandidates.push({ source: 'students', name: s.name, id: sIdNorm, mobiles: dbMobiles });
+
+            // ইনপুটের যেকোনো নম্বর ডাটাবেসে থাকলে ম্যাচ
+            if (inputMobiles.some(m => dbMobiles.includes(m))) {
+                foundStudent = s;
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════
+        // 🔍 ধাপ ৪: admissionForms কালেকশনে খুঁজি (students-এ না পেলে)
+        // ═══════════════════════════════════════════════════════
+        if (!foundStudent) {
+            const fSnap = await getDocs(collection(window.fbDB, 'admissionForms'));
+            fSnap.forEach(d => {
+                if (foundStudent) return;
+                const form = { id: d.id, ...d.data() };
+                
+                // আইডি বের করি (বিভিন্ন ফিল্ডে থাকতে পারে)
+                const formIdRaw = form.studentId || form.data?.primary?.studentId || '';
+                if (normaliseId(formIdRaw) !== inputId) return;
+
+                // মোবাইল বের করি
+                const dbMobiles = [
+                    ...extractMobiles(form.data?.guardian?.mobile1),
+                    ...extractMobiles(form.data?.guardian?.mobile2)
+                ];
+                allCandidates.push({ source: 'admissionForms', name: form.data?.personal?.name || '?', id: normaliseId(formIdRaw), mobiles: dbMobiles });
+
+                if (!inputMobiles.some(m => dbMobiles.includes(m))) return;
+
+                // ✅ ম্যাচ হয়েছে — ছাত্র অবজেক্ট বানাই
+                let fd;
+                if (typeof flattenAdmFormData === 'function') {
+                    fd = flattenAdmFormData(form);
+                } else {
+                    // fallback: ম্যানুয়ালি ফিল্ড ম্যাপ
+                    fd = {
+                        name: form.data?.personal?.name || '',
+                        guardianName: form.data?.guardian?.guardianName || form.data?.personal?.fatherName || '',
+                        studentId: formIdRaw,
+                        dob: form.data?.personal?.dob || '',
+                        mobile1: form.data?.guardian?.mobile1 || '',
+                        mobile2: form.data?.guardian?.mobile2 || '',
+                        currentAddress: form.data?.personal?.currentAddress || '',
+                        dept: form.dept || '',
+                        nextClass: form.data?.personal?.nextClass || '',
+                        admissionFee: form.data?.admissionFees?.admissionFee || 0,
+                        firstMonthFood: form.data?.admissionFees?.firstMonthFood || 0,
+                        monthlyFood: form.data?.monthlyFees?.monthlyFood || 0,
+                        monthlyHostel: form.data?.monthlyFees?.hostelFee || 0,
+                        monthlySalary: form.data?.monthlyFees?.monthlySalary || 0,
+                        studentPhoto: form.data?.primary?.studentPhoto || ''
+                    };
+                }
+
+                foundStudent = {
+                    id: 'admission_' + form.id,
+                    name: fd.name,
+                    guardian: fd.guardianName,
+                    studentId: fd.studentId,
+                    dob: fd.dob,
+                    mobile1: fd.mobile1,
+                    mobile2: fd.mobile2,
+                    address: fd.currentAddress,
+                    dept: fd.dept,
+                    className: fd.nextClass,
+                    admissionFee: fd.admissionFee,
+                    firstMonthFood: fd.firstMonthFood,
+                    sessionFee: 0,
+                    monthlyFood: fd.monthlyFood,
+                    hostelFee: fd.monthlyHostel,
+                    monthlySalary: fd.monthlySalary,
+                    remark: null,
+                    photo: fd.studentPhoto || '',
+                    source: 'admission',
+                    admissionFormId: form.id
+                };
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // 🐛 ডিবাগ লগ — Console-এ দেখুন কী হচ্ছে
+        // ═══════════════════════════════════════════════════════
+        console.log('═══════════════════════════════');
+        console.log('🔍 গার্ডিয়ান লগইন ডিবাগ');
+        console.log('═══════════════════════════════');
+        console.log('📝 আপনি দিয়েছেন:');
+        console.log('   আইডি (normalised):', inputId);
+        console.log('   মোবাইল (normalised):', inputMobiles);
+        console.log('📦 একই আইডির ক্যান্ডিডেট:', allCandidates);
+        console.log('✅ ছাত্র পাওয়া গেছে?', !!foundStudent, foundStudent?.name || '');
+        console.log('═══════════════════════════════');
+
+        // ─── ধাপ ৫: পাওয়া যায়নি ───
+        if (!foundStudent) {
+            errEl.innerHTML = `❌ তথ্য মেলেনি।<br>
+                <span style="font-size:10px;opacity:0.8;">
+                আইডি: "${studentIdInput}" | মোবাইল: "${mobileInput}" দিয়ে কোনো রেকর্ড পাওয়া যায়নি।<br>
+                সঠিক আইডি ও অভিভাবকের মোবাইল নম্বর দিন।
+                </span>`;
+            errEl.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-sign-in-alt"></i> প্রবেশ করুন';
+            return;
+        }
+
+        // ─── ধাপ ৬: পাওয়া গেছে — ক্যাশে যোগ করি ───
+        if (!Array.isArray(studentsCache)) studentsCache = [];
         if (!studentsCache.find(s => s.id === foundStudent.id)) {
             studentsCache.push(foundStudent);
         }
 
+        // ─── ধাপ ৭: সেশন সেভ ও পোর্টাল দেখাই ───
         _guardianSession = foundStudent;
         closeGuardianLogin();
         showGuardianPortal();
+        showToast('✅ সফলভাবে লগইন হয়েছে', 'success');
 
     } catch (err) {
-        console.error("লগইন এরর:", err);
+        console.error('❌ গার্ডিয়ান লগইন এরর:', err);
         errEl.textContent = 'সিস্টেম ত্রুটি: ' + err.message;
         errEl.classList.remove('hidden');
         btn.disabled = false;
