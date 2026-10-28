@@ -3465,6 +3465,9 @@ header button {
             <button onclick="switchAdminSub('admission')" id="adm-sub-admission" class="adm-sub-btn px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100">
                 <i class="fa-solid fa-user-plus"></i> ভর্তি ব্যবস্থাপনা
             </button>
+            <button onclick="switchAdminSub('notice')" id="adm-sub-notice" class="adm-sub-btn px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                <i class="fa-solid fa-bullhorn"></i> নোটিশ বোর্ড
+            </button>
         </div>
 
         <!-- কনটেন্ট এলাকা — পরে পূরণ হবে -->
@@ -11593,31 +11596,48 @@ window.switchCalView = function(view) {
 };
 
 // ═══════════════════ ক্যালেন্ডার ডেটা লোড (v3 — fresh mode) ═══════════════════
-async function loadCalendarEvents(session, dept) {
+async function loadCalendarEvents(session, dept, forceFirestore = false) {
     const cacheKey = CALENDAR_STORAGE_KEY;
     let allEvents = null;
     let source = 'none';
 
-    // ★★★ সব ভিউতে fresh data আনি — cache skip ★★★
-    //     এডমিন নতুন ইভেন্ট যোগ করলে সাথে সাথে সব ভিউতে দেখাবে
-    const skipCache = true;
+    const skipCache = forceFirestore || true;  // ★ গার্ডিয়ানদের জন্য সবসময় Firestore
     
-    console.log('📅 Calendar: forcing fresh data from Firestore (skipping cache)');
-
-    // ★ ধাপ ১: LocalStorage cache থেকে দ্রুত লোড — শুধু non-calgrid মোডে
-    if (!skipCache) {
+    // ★★★ ফিক্স: currentUser না থাকলেও Firestore পড়ার চেষ্টা করি ★★★
+    //   Rules-এ allow read: if true আছে, তাই কাজ করবে
+    if (skipCache || !allEvents) {
         try {
-            const cached = localStorage.getItem(cacheKey);
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    allEvents = parsed;
-                    source = 'cache';
+            const { doc, getDoc } = window.fbFuncs;
+            const ref = doc(window.fbDB, 'calendars', 'main');
+            const snap = await getDoc(ref);
+            
+            if (snap.exists()) {
+                const data = snap.data();
+                if (data.events && Array.isArray(data.events) && data.events.length > 0) {
+                    allEvents = data.events;
+                    try {
+                        localStorage.setItem(cacheKey, JSON.stringify(allEvents));
+                    } catch(e) {}
+                    source = 'firestore';
+                    console.log(`☁️ [${currentUser ? 'লগইন' : 'গার্ডিয়ান'}] Firestore থেকে ${allEvents.length}টি ইভেন্ট লোড`);
                 }
             }
-        } catch(e) {
-            allEvents = null;
+        } catch (err) {
+            console.warn('⚠️ Firestore calendar load failed:', err.message);
+            // fallback: cache
+            try {
+                const cached = localStorage.getItem(cacheKey);
+                if (cached) {
+                    allEvents = JSON.parse(cached);
+                    source = 'cache-fallback';
+                    console.log(`📦 Cache fallback থেকে ${allEvents.length}টি ইভেন্ট লোড`);
+                }
+            } catch(e) {}
         }
+    }
+    
+    if (!allEvents || allEvents.length === 0) {
+        allEvents = [];
     }
 
     // ★ ধাপ ২: Firestore থেকে sync — calgrid মোডে সবসময়, অন্য মোডে উপরের cache খালি হলে
@@ -32765,6 +32785,7 @@ window.switchAdminSub = function(sub) {
     else if (sub === 'students') renderAdminStudents();
     else if (sub === 'hifz-groups') renderAdminHifzGroups();
     else if (sub === 'admission') renderAdminAdmission();
+    else if (sub === 'notice') renderAdminNotice();
     else {
         const content = document.getElementById('adm-content');
         content.innerHTML = `<div class="text-center py-16 text-slate-400"><i class="fa-solid fa-screwdriver-wrench text-4xl mb-3"></i><p class="text-sm">"${sub}" সেকশন পরের ধাপে যোগ হবে</p></div>`;
@@ -51761,7 +51782,7 @@ window.switchGpTab = async function(tab) {
         pageBody.innerHTML = comingSoonHTML;
     }
     else if (tab === 'notices') {
-        pageBody.innerHTML = comingSoonHTML;
+        await renderGpNotices(pageBody);
     }
     else if (tab === 'rules') {
         pageBody.innerHTML = comingSoonHTML;
@@ -51771,128 +51792,461 @@ window.switchGpTab = async function(tab) {
     }
 };
 
+// ═══════════════════════════════════════════════════════════
+// ★★★ Guardian Dept Normalize Helper ★★★
+// ═══════════════════════════════════════════════════════════
+function normalizeGpDept(dept) {
+    if (!dept) return '';
+    const d = String(dept).trim().toLowerCase();
+    if (d === 'non_res' || d === 'non-res' || d === 'nonres') return 'non_res';
+    if (d.includes('অনাবাসিক') || d.includes('non')) return 'non_res';
+    if (d === 'hifz' || d.includes('হিফয') || d.includes('হিফজ')) return 'hifz';
+    if (d === 'noorani' || d.includes('নূরানী')) return 'noorani';
+    if (d === 'shariah' || d.includes('শরীয়াহ') || d.includes('শরীয়া')) return 'shariah';
+    return d;
+}
+
 // ═══════════════════ ১. হোম ট্যাব (নোটিশ, টাইমার, নিয়মাবলী, মন্তব্য) ═══════════════════
+// ═══════════════════ গার্ডিয়ান হোম — সম্পূর্ণ ফিক্সড ভার্সন ═══════════════════
 async function renderGpHome(container) {
     const student = _guardianSession;
+    if (!student) {
+        container.innerHTML = `<p class="text-center text-red-500 py-6">সেশন এক্সপায়ার — আবার লগইন করুন</p>`;
+        return;
+    }
+    
     container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>`;
 
-    let noticesHTML = '<p class="text-sm text-slate-500 text-center py-4">কোন নোটিশ নেই</p>';
-    let countdownHTML = '';
-    let remarksHTML = '';
-
     try {
-        const { collection, getDocs, query, orderBy, limit } = window.fbFuncs;
-
-        // ১. লেটেস্ট ৩টি নোটিশ লোড করা
-        let noticesSnap;
+        // ═══════════════════════════════════════════════════════════
+        // ১. ইভেন্ট লোড — Firestore থেকে সরাসরি (গার্ডিয়ানের জন্য currentUser নেই)
+        // ═══════════════════════════════════════════════════════════
+        let allEvents = [];
+        
         try {
-            const qNotices = query(collection(window.fbDB, 'notices'), orderBy('createdAt', 'desc'), limit(3));
-            noticesSnap = await getDocs(qNotices);
-        } catch (e) {
-            console.warn("নোটিশ লোড করতে সমস্যা (হয়তো ইনডেক্স নেই):", e);
-            noticesSnap = await getDocs(collection(window.fbDB, 'notices'));
+            const { doc, getDoc } = window.fbFuncs;
+            const ref = doc(window.fbDB, 'calendars', 'main');
+            const snap = await getDoc(ref);
+            
+            if (snap.exists()) {
+                const data = snap.data();
+                allEvents = data.events || [];
+                console.log(`📅 গার্ডিয়ান হোম: Firestore থেকে ${allEvents.length}টি ইভেন্ট লোড`);
+            } else {
+                console.warn('⚠️ calendars/main ডকুমেন্ট নেই');
+            }
+        } catch (fbErr) {
+            console.error('❌ Firestore events load error:', fbErr);
+            // fallback: LocalStorage cache থেকে চেষ্টা
+            try {
+                const cached = localStorage.getItem('madrasa_calendar_events_v1');
+                if (cached) {
+                    allEvents = JSON.parse(cached) || [];
+                    console.log(`📦 Cache থেকে ${allEvents.length}টি ইভেন্ট লোড`);
+                }
+            } catch (e) {}
         }
-        if (!noticesSnap.empty) {
-            noticesHTML = '';
-            noticesSnap.forEach(d => {
-                const data = d.data();
-                const dateStr = data.createdAt?.seconds 
-                    ? new Date(data.createdAt.seconds * 1000).toLocaleDateString('bn-BD') 
-                    : '';
-                noticesHTML += `
-                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-2">
-                        <div class="flex justify-between items-start">
-                            <h4 class="text-sm font-bold text-amber-900"><i class="fa-solid fa-bullhorn text-amber-600"></i> ${data.title}</h4>
-                            <span class="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">${dateStr}</span>
+
+        // ═══════════════════════════════════════════════════════════
+        // ২. সেশন ও ডিপার্টমেন্ট ফিল্টার
+        // ═══════════════════════════════════════════════════════════
+        const currentSession = settings.year || getCurrentYear();
+        const cleanSession = String(currentSession).replace(/\s*\(.*?\)\s*/g, '').trim();
+        
+        console.log('🔍 DEBUG - student.dept:', JSON.stringify(student.dept));
+
+        // ★★★ FIX: dept নরমালাইজ করে সঠিক calendarDept নির্ধারণ ★★★
+        const studentDeptNorm = normalizeGpDept(student.dept);
+
+        let calendarDept;
+        if (studentDeptNorm === 'non_res') {
+            calendarDept = 'non_res';
+        } else {
+            calendarDept = 'shariah_noorani';
+        }
+
+        console.log(`🔍 Dept: "${student.dept}" → "${studentDeptNorm}" → calendar: "${calendarDept}"`);
+
+        // ★★★ ফিল্টার: session + dept উভয়ই মেলাতে হবে
+        const filteredEvents = allEvents.filter(e => {
+            // Session check
+            if (e.session && e.session !== 'all') {
+                const eSess = String(e.session).replace(/\s*\(.*?\)\s*/g, '').trim();
+                if (eSess !== cleanSession) return false;
+            }
+            
+            // ★ Dept check — নরমালাইজ করে তুলনা
+            const eDept = String(e.dept || '').trim();
+            if (!eDept || eDept === 'all') return true;
+            
+            const eDeptNorm = normalizeGpDept(eDept);
+            return eDeptNorm === calendarDept;
+        });
+
+        console.log(`✅ ফিল্টারের পর: ${filteredEvents.length}টি ইভেন্ট`);
+
+        // ═══════════════════════════════════════════════════════════
+        // ৩. প্রতিটি ইভেন্টের জন্য প্রকৃত Gregorian Date বের করা
+        // ═══════════════════════════════════════════════════════════
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const threeMonthsLater = new Date(today);
+        threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
+
+        // হিজরি → গ্রেগ কনভার্শনের জন্য রেফারেন্স টেবিল (আপনার একাডেমিক ক্যালেন্ডার যেভাবে কাজ করে)
+        const HIJRI_REF_DEFAULTS = {
+            '2026-2027': {
+                shawwal: '2026-03-21', zilqad: '2026-04-20', zilhajj: '2026-05-19',
+                muharram: '2026-06-17', safar: '2026-07-16', rabiul_awwal: '2026-08-15',
+                rabiul_akhir: '2026-09-14', jumadal_ula: '2026-10-13', jumadal_akhirah: '2026-11-12',
+                rajab: '2026-12-11', shaban: '2027-01-10', ramadan: '2027-02-08'
+            },
+            '2027-2028': {
+                shawwal: '2027-03-10', zilqad: '2027-04-09', zilhajj: '2027-05-08',
+                muharram: '2027-06-06', safar: '2027-07-05', rabiul_awwal: '2027-08-04',
+                rabiul_akhir: '2027-09-02', jumadal_ula: '2027-10-02', jumadal_akhirah: '2027-10-31',
+                rajab: '2027-11-30', shaban: '2027-12-29', ramadan: '2028-01-28'
+            }
+        };
+
+        // ★ সংখ্যা কনভার্শন helper
+        const convertToEng = (str) => {
+            if (!str) return '';
+            const map = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9',
+                          '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9' };
+            return String(str).replace(/[০-৯٠-٩]/g, d => map[d] || d);
+        };
+
+        // ★★ প্রতিটি ইভেন্টের eventDate বের করি
+        const eventsWithDate = filteredEvents.map(e => {
+            let eventDate = null;
+            let dateSource = 'none';
+
+            // ─── ১. gregorianDate প্রথমে চেষ্টা করি (সবচেয়ে নির্ভরযোগ্য) ───
+            if (e.gregorianDate) {
+                const gStr = convertToEng(e.gregorianDate).replace(/,/g, '').trim();
+                
+                // Pattern A: "15 July 2026" বা "১৫ জুলাই ২০২৬"
+                const engMonths = { january:0, february:1, march:2, april:3, may:4, june:5,
+                                    july:6, august:7, september:8, october:9, november:10, december:11 };
+                const bnMonths = { 'জানুয়ারি':0, 'ফেব্রুয়ারি':1, 'মার্চ':2, 'এপ্রিল':3, 'মে':4, 'জুন':5,
+                                   'জুলাই':6, 'আগস্ট':7, 'সেপ্টেম্বর':8, 'অক্টোবর':9, 'নভেম্বর':10, 'ডিসেম্বর':11 };
+                
+                // রেঞ্জ: "15-20 July 2026"
+                const rangeMatch = gStr.match(/(\d+)\s*[-–]\s*(\d+)\s*([a-zA-Z\u0980-\u09FF]+)\s*(\d{4})/);
+                if (rangeMatch) {
+                    const day = parseInt(rangeMatch[1]);
+                    const monthName = rangeMatch[3].toLowerCase();
+                    const year = parseInt(rangeMatch[4]);
+                    let monthIdx = engMonths[monthName] !== undefined ? engMonths[monthName] : bnMonths[monthName];
+                    if (monthIdx !== undefined) {
+                        eventDate = new Date(year, monthIdx, day);
+                        dateSource = 'gregorian-range';
+                    }
+                }
+                
+                // একক: "15 July 2026"
+                if (!eventDate) {
+                    const singleMatch = gStr.match(/(\d+)\s*([a-zA-Z\u0980-\u09FF]+)\s*(\d{4})/);
+                    if (singleMatch) {
+                        const day = parseInt(singleMatch[1]);
+                        const monthName = singleMatch[2].toLowerCase();
+                        const year = parseInt(singleMatch[3]);
+                        let monthIdx = engMonths[monthName] !== undefined ? engMonths[monthName] : bnMonths[monthName];
+                        if (monthIdx !== undefined) {
+                            eventDate = new Date(year, monthIdx, day);
+                            dateSource = 'gregorian-single';
+                        }
+                    }
+                }
+                
+                // ISO ফরম্যাট: "2026-07-15"
+                if (!eventDate) {
+                    const isoMatch = gStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+                    if (isoMatch) {
+                        eventDate = new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2])-1, parseInt(isoMatch[3]));
+                        dateSource = 'gregorian-iso';
+                    }
+                }
+            }
+
+            // ─── ২. gregorianDate না পেলে হিজরি থেকে কনভার্ট করি ───
+            if (!eventDate && e.hijriMonth && e.hijriDate) {
+                const yearDefaults = HIJRI_REF_DEFAULTS[cleanSession] || HIJRI_REF_DEFAULTS['2026-2027'];
+                const monthStartStr = yearDefaults[e.hijriMonth];
+                
+                if (monthStartStr) {
+                    const hijriStr = convertToEng(e.hijriDate);
+                    const dayMatch = hijriStr.match(/(\d+)/);
+                    if (dayMatch) {
+                        const dayNum = parseInt(dayMatch[1]);
+                        const monthStart = new Date(monthStartStr + 'T00:00:00');
+                        if (!isNaN(monthStart.getTime())) {
+                            const realDate = new Date(monthStart);
+                            realDate.setDate(monthStart.getDate() + (dayNum - 1));
+                            eventDate = realDate;
+                            dateSource = 'hijri-convert';
+                        }
+                    }
+                }
+            }
+
+            return { ...e, _eventDate: eventDate, _dateSource: dateSource };
+        });
+
+        // ★ ডিবাগ লগ
+        console.log('📋 ইভেন্টের তারিখ বিশ্লেষণ:');
+        eventsWithDate.forEach((e, i) => {
+            if (i < 10) {
+                console.log(`  ${i+1}. "${e.title}" → ${e._eventDate ? e._eventDate.toDateString() : '❌ পাওয়া যায়নি'} (${e._dateSource})`);
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════════
+        // ৪. আজ থেকে ৩ মাসের মধ্যে যেগুলো আছে সেগুলো বের করি
+        // ═══════════════════════════════════════════════════════════
+        const upcomingEvents = eventsWithDate
+            .filter(e => e._eventDate && !isNaN(e._eventDate.getTime()) 
+                         && e._eventDate >= today 
+                         && e._eventDate <= threeMonthsLater)
+            .sort((a, b) => a._eventDate - b._eventDate);
+
+        console.log(`🎯 আগামী ৩ মাসের ইভেন্ট: ${upcomingEvents.length}টি`);
+
+        // ═══════════════════════════════════════════════════════════
+        // ৫. UI রেন্ডার
+        // ═══════════════════════════════════════════════════════════
+        let eventsHTML = '';
+        
+        if (upcomingEvents.length > 0) {
+            const categoryColors = {
+                start:       { bg: 'from-blue-500 to-blue-700',    icon: 'fa-play-circle',    label: 'শুরু' },
+                exam:        { bg: 'from-red-500 to-red-700',      icon: 'fa-file-pen',       label: 'পরীক্ষা' },
+                holiday:     { bg: 'from-emerald-500 to-emerald-700', icon: 'fa-mug-hot',    label: 'ছুটি' },
+                mahfil:      { bg: 'from-amber-500 to-amber-700',  icon: 'fa-bullhorn',       label: 'মাহফিল' },
+                result:      { bg: 'from-indigo-500 to-indigo-700', icon: 'fa-award',         label: 'ফলাফল' },
+                course:      { bg: 'from-pink-500 to-pink-700',    icon: 'fa-graduation-cap', label: 'কোর্স' },
+                competition: { bg: 'from-orange-500 to-orange-700', icon: 'fa-trophy',       label: 'প্রতিযোগিতা' },
+                admin:       { bg: 'from-slate-500 to-slate-700',  icon: 'fa-clipboard-list', label: 'প্রশাসনিক' }
+            };
+
+            eventsHTML = upcomingEvents.map((ev, i) => {
+                const cat = categoryColors[ev.category] || categoryColors.admin;
+                const dateBn = ev._eventDate.toLocaleDateString('bn-BD', { 
+                    day: 'numeric', month: 'long', year: 'numeric' 
+                });
+                const dayName = ev._eventDate.toLocaleDateString('bn-BD', { weekday: 'long' });
+                
+                return `
+                    <div class="bg-gradient-to-r ${cat.bg} rounded-xl p-4 text-white shadow-md mb-3 relative overflow-hidden">
+                        <i class="fa-solid ${cat.icon} absolute -right-4 -bottom-4 text-6xl opacity-10"></i>
+                        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                        ${cat.label}
+                                    </span>
+                                    <span class="text-[10px] opacity-90">${dayName}</span>
+                                </div>
+                                <h3 class="text-sm md:text-base font-bold leading-tight">${ev.title}</h3>
+                                ${ev.details ? `<p class="text-[11px] opacity-90 mt-1">${ev.details}</p>` : ''}
+                                <p class="text-[11px] opacity-80 mt-2">
+                                    <i class="fa-regular fa-calendar"></i> ${dateBn}
+                                    ${ev.time ? ` • <i class="fa-regular fa-clock"></i> ${ev.time}` : ''}
+                                    ${ev.location ? ` • <i class="fa-solid fa-location-dot"></i> ${ev.location}` : ''}
+                                </p>
+                            </div>
+                            <div class="text-center md:text-right bg-black/20 px-3 py-2 rounded-lg border border-white/20 countdown-box flex-shrink-0" id="gp-countdown-${i}">
+                                <span class="text-[9px] opacity-80 block mb-1">বাকী আছে</span>
+                                <div class="text-sm font-bold text-amber-200">হিসাব হচ্ছে...</div>
+                            </div>
                         </div>
-                        <p class="text-xs text-amber-800 mt-1">${data.body}</p>
                     </div>
                 `;
-            });
+            }).join('');
         }
 
-        // ২. ছাত্রের লাইভ টাইম ও ক্লাস শুরুর কাউন্টডাউন
-        const d = new Date();
-        const timeStr = d.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
-        
-        countdownHTML = `
-            <div class="bg-gradient-to-r from-violet-600 to-indigo-700 rounded-xl p-4 text-white shadow-md relative overflow-hidden">
-                <i class="fa-solid fa-clock absolute -right-4 -bottom-4 text-6xl opacity-20"></i>
-                <div class="relative z-10">
-                    <p class="text-xs text-violet-200 font-bold mb-1">বর্তমান সময়</p>
-                    <h3 class="text-3xl font-mono font-bold tracking-wider">${timeStr}</h3>
-                    <div class="mt-3 bg-black/20 rounded-lg p-2 text-xs flex items-center justify-between">
-                        <span><i class="fa-solid fa-door-open"></i> দারুল ইকামাহ খুলবে</span>
-                        <span class="font-bold text-amber-300">০০ দিন : ০৫ ঘণ্টা</span>
-                    </div>
+        // ═══════════════════════════════════════════════════════════
+        // ৬. মূল UI সাজাই
+        // ═══════════════════════════════════════════════════════════
+        container.innerHTML = `
+            <div class="space-y-4 pb-10">
+                <div id="gp-live-events-wrapper">
+                    ${eventsHTML ? `
+                        <div class="mb-2 flex items-center gap-2">
+                            <h3 class="text-sm font-bold text-slate-700">
+                                <i class="fa-solid fa-calendar-star text-indigo-600"></i> আসন্ন ইভেন্টসমূহ
+                            </h3>
+                            <span class="badge bg-indigo-100 text-indigo-800 text-[10px]">${upcomingEvents.length} টি</span>
+                        </div>
+                        ${eventsHTML}
+                    ` : `
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center">
+                            <i class="fa-regular fa-calendar-xmark text-4xl text-slate-300 mb-2"></i>
+                            <p class="text-sm font-bold text-slate-600">আগামী ৩ মাসে কোনো ইভেন্ট নেই</p>
+                            <p class="text-xs text-slate-400 mt-1">
+                                ${filteredEvents.length > 0 
+                                    ? `মোট ${filteredEvents.length}টি ইভেন্ট পাওয়া গেছে, তবে সেগুলোর তারিখ নির্ধারিত হয়নি বা অতীতে আছে।`
+                                    : 'এই শিক্ষাবর্ষে আপনার বিভাগের জন্য কোন ইভেন্ট যোগ করা হয়নি।'}
+                            </p>
+                        </div>
+                    `}
                 </div>
+                ${buildGpRemarkSection(student)}
             </div>
         `;
 
-        // ৩. মন্তব্যের তালিকা
-        const sData = studentsCache.find(s => s.id === student.id);
-        const remarks = sData?.remarksList || [];
-        if (remarks.length === 0) {
-            remarksHTML = '<p class="text-xs text-slate-400 text-center italic py-3">কোন মন্তব্য নেই</p>';
-        } else {
-            remarksHTML = remarks.map(r => `
-                <div class="border-l-4 border-amber-400 bg-amber-50 p-2 mb-2 rounded-r-lg text-xs">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="font-bold text-amber-800">${r.type}</span>
-                        <span class="text-[10px] text-slate-500">${new Date(r.date).toLocaleDateString('bn-BD')}</span>
-                    </div>
-                    <p class="text-slate-700">${r.reason}</p>
-                </div>
-            `).join('');
+        // ═══════════════════════════════════════════════════════════
+        // ৭. লাইভ কাউন্টডাউন আপডেট (প্রতি সেকেন্ডে)
+        // ═══════════════════════════════════════════════════════════
+        if (upcomingEvents.length > 0) {
+            if (window._gpHomeTimer) clearInterval(window._gpHomeTimer);
+            
+            const updateCountdowns = () => {
+                let allFinished = true;
+                upcomingEvents.forEach((ev, i) => {
+                    const el = document.querySelector(`#gp-countdown-${i} div.text-sm`);
+                    if (!el) return;
+                    
+                    const diff = ev._eventDate.getTime() - Date.now();
+                    if (diff <= 0) {
+                        el.innerHTML = `<span class="text-emerald-300">শুরু হয়েছে</span>`;
+                    } else {
+                        allFinished = false;
+                        const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                        const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                        const s = Math.floor((diff % (1000 * 60)) / 1000);
+                        
+                        let timeStr = '';
+                        if (d > 0) timeStr += `${toBanglaNumber(d)}দিন `;
+                        if (h > 0 || d > 0) timeStr += `${toBanglaNumber(h)}ঘ `;
+                        if (m > 0 || h > 0 || d > 0) timeStr += `${toBanglaNumber(m)}মি `;
+                        timeStr += `${toBanglaNumber(s)}সে`;
+                        
+                        el.innerHTML = timeStr;
+                    }
+                });
+                if (allFinished) clearInterval(window._gpHomeTimer);
+            };
+            
+            updateCountdowns();
+            window._gpHomeTimer = setInterval(updateCountdowns, 1000);
         }
 
     } catch (err) {
-        console.error(err);
+        console.error('❌ renderGpHome error:', err);
+        container.innerHTML = `
+            <div class="space-y-4 pb-10">
+                <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center text-red-600 text-sm font-bold">
+                    <i class="fa-solid fa-triangle-exclamation"></i> টাইম লোড করতে সমস্যা হয়েছে
+                    <p class="text-xs mt-1 font-normal">${err.message}</p>
+                </div>
+                ${buildGpRemarkSection(student)}
+            </div>
+        `;
+    }
+}
+
+// ★★★ শিক্ষকের মন্তব্য সেকশন (আলাদা ফাংশন, যা আপনার আগের কোডেই ছিল) ★★★
+function buildGpRemarkSection(student) {
+    const sData = (studentsCache || []).find(s => s.id === student.id);
+    const remarks = sData?.remarksList || [];
+    
+    let remarksHTML = '<p class="text-xs text-slate-400 text-center italic py-3">কোন মন্তব্য নেই</p>';
+    
+    if (remarks.length > 0) {
+        remarksHTML = remarks.slice(-3).reverse().map(r => `
+            <div class="border-l-4 border-amber-400 bg-amber-50 p-2 mb-2 rounded-r-lg text-xs">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-bold text-amber-800">${r.type}</span>
+                    <span class="text-[10px] text-slate-500">${new Date(r.date).toLocaleDateString('bn-BD')}</span>
+                </div>
+                <p class="text-slate-700">${r.reason}</p>
+            </div>
+        `).join('');
     }
 
-    // ★★★ ফাইনাল রেন্ডার (শুধু মেইন মেনু বাটন ও নোটিশ) ★★★
-    container.innerHTML = `
-        <div class="space-y-4 pb-10">
-
-            ${countdownHTML}
-            
-            <!-- নোটিশ বোর্ড -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-bullhorn text-rose-500"></i> সাম্প্রতিক বিজ্ঞপ্তি
+    return `
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-comment-dots text-blue-500"></i> শিক্ষকের মন্তব্য
                 </h3>
-                ${noticesHTML}
+                <button onclick="openGuardianRemarkModal('${student.id}')" class="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded font-bold transition">
+                    <i class="fa-solid fa-plus"></i> নতুন
+                </button>
             </div>
+            ${remarksHTML}
+        </div>
+    `;
+}
 
-            <!-- শিক্ষকের মন্তব্য -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-comment-dots text-blue-500"></i> শিক্ষকের মন্তব্য
-                    </h3>
-                    <button onclick="openGuardianRemarkModal('${student.id}')" class="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded font-bold">
-                        <i class="fa-solid fa-plus"></i> নতুন মন্তব্য
-                    </button>
+// শিক্ষকের মন্তব্য সেকশনটি আলাদা ফাংশন হিসেবে
+function buildGpRemarkSection(student) {
+    const sData = (studentsCache || []).find(s => s.id === student.id);
+    const remarks = sData?.remarksList || [];
+    
+    let remarksHTML = '<p class="text-xs text-slate-400 text-center italic py-3">কোন মন্তব্য নেই</p>';
+    
+    if (remarks.length > 0) {
+        remarksHTML = remarks.slice(-3).reverse().map(r => `
+            <div class="border-l-4 border-amber-400 bg-amber-50 p-2 mb-2 rounded-r-lg text-xs">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-bold text-amber-800">${r.type}</span>
+                    <span class="text-[10px] text-slate-500">${new Date(r.date).toLocaleDateString('bn-BD')}</span>
                 </div>
-                ${remarksHTML}
+                <p class="text-slate-700">${r.reason}</p>
             </div>
-            
-            <!-- নিয়মকানুন (দারুল ইকামাহ) -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-scroll text-emerald-500"></i> দারুল ইকামাহ ও তালিমাতের নিয়মাবলী
+        `).join('');
+    }
+
+    return `
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-comment-dots text-blue-500"></i> শিক্ষকের মন্তব্য
                 </h3>
-                <div class="bg-slate-50 border border-slate-200 p-3 rounded-lg text-xs text-slate-600 leading-relaxed">
-                    <ul class="list-disc list-inside space-y-1">
-                        <li>নিয়ম ১: প্রতিদিনের ৫ ওয়াক্ত নামাজ জামাতের সাথে আদায় করতে হবে।</li>
-                        <li>নিয়ম ২: সকাল ৬টায় ঘুম থেকে উঠে তাহাজ্জুদ ও ফজরের প্রস্তুতি নিতে হবে।</li>
-                        <li>নিয়ম ৩: মোবাইল ফোন বা কোনো ইলেকট্রনিক ডিভাইস আনা সম্পূর্ণ নিষিদ্ধ।</li>
-                        <li>নিয়ম ৪: সাপ্তাহিক ছুটির দিন ছাড়া কোনো ছাত্রকে বাইরে যেতে দেওয়া হবে না।</li>
-                        <li>নিয়ম ৫: অসুস্থ হলে সাথে সাথে শিক্ষকের কাছে জানাতে হবে।</li>
-                    </ul>
-                    <p class="mt-2 text-[10px] text-red-500 italic"><i class="fa-solid fa-triangle-exclamation"></i> নিয়ম ভঙ্গ করলে মাদরাসা কর্তৃপক্ষ যেকোনো সিদ্ধান্ত নিতে পারে।</p>
-                </div>
+                <button onclick="openGuardianRemarkModal('${student.id}')" class="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded font-bold transition">
+                    <i class="fa-solid fa-plus"></i> নতুন
+                </button>
             </div>
+            ${remarksHTML}
+        </div>
+    `;
+}
+
+// ★★★ ৪. শিক্ষকের মন্তব্য সেকশনটি আলাদা ফাংশন হিসেবে নিচে রাখা হলো ★★★
+function buildGpRemarkSection(student) {
+    const sData = (studentsCache || []).find(s => s.id === student.id);
+    const remarks = sData?.remarksList || [];
+    
+    let remarksHTML = '<p class="text-xs text-slate-400 text-center italic py-3">কোন মন্তব্য নেই</p>';
+    
+    if (remarks.length > 0) {
+        remarksHTML = remarks.slice(-3).reverse().map(r => `
+            <div class="border-l-4 border-amber-400 bg-amber-50 p-2 mb-2 rounded-r-lg text-xs">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-bold text-amber-800">${r.type}</span>
+                    <span class="text-[10px] text-slate-500">${new Date(r.date).toLocaleDateString('bn-BD')}</span>
+                </div>
+                <p class="text-slate-700">${r.reason}</p>
+            </div>
+        `).join('');
+    }
+
+    return `
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-comment-dots text-blue-500"></i> শিক্ষকের মন্তব্য
+                </h3>
+                <button onclick="openGuardianRemarkModal('${student.id}')" class="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded font-bold transition">
+                    <i class="fa-solid fa-plus"></i> নতুন
+                </button>
+            </div>
+            ${remarksHTML}
         </div>
     `;
 }
@@ -52072,28 +52426,161 @@ async function renderGpFees(container) {
     }
 }
 
-// ═══════════════════ ৩. রেজাল্ট ট্যাব ═══════════════════
-
 // ═══════════════════ ৪. রুটিন ট্যাব ═══════════════════
+// ═══════════════════ ৪. রুটিন ট্যাব (শীত ও গ্রীষ্ম উভয় রুটিন) ═══════════════════
 async function renderGpRoutine(container) {
     const student = _guardianSession;
     container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>`;
 
     try {
-        // রুটিন লোড করা
-        const { doc, getDoc } = window.fbFuncs;
-        // রুটিন ডাটা (সরলীকৃত)
+        const { collection, getDocs } = window.fbFuncs;
+
+        // ★ ১. এই ছাত্রের ক্লাসের রুটিন ডাটাবেস থেকে খুঁজে বের করা
+        // রুটিনে সাধারণত শিক্ষকের নামে ডাটা সেভ থাকে, তাই সব রুটিন এনে ফিল্টার করব
+        const routinesSnap = await getDocs(collection(window.fbDB, 'routines'));
+        const allRoutines = [];
+        routinesSnap.forEach(d => allRoutines.push({ id: d.id, ...d.data() }));
+
+        // ছাত্রের ক্লাসের রুটিন ফিল্টার (className বা class মিলিয়ে)
+        const myClassRoutines = allRoutines.filter(r => 
+            r.className === student.className || 
+            String(r.className).includes(String(student.className)) ||
+            String(student.className).includes(String(r.className))
+        );
+
+        // ★ ২. রুটিন পিরিয়ড কনফিগ লোড (শীত ও গ্রীষ্মের সময়সূচি)
+        const deptInfo = configData?.routinePeriods?.[student.dept] || DEFAULT_ROUTINE_PERIODS[student.dept];
+        
+        if (!deptInfo) {
+            container.innerHTML = `<p class="text-center text-red-500 py-6 font-bold">রুটিন কনফিগারেশন পাওয়া যায়নি</p>`;
+            return;
+        }
+
+        // ★ ৩. রেন্ডার ফাংশন তৈরি
+        const buildRoutineTable = (seasonKey, seasonLabel) => {
+            const seasonData = deptInfo[seasonKey];
+            if (!seasonData || !seasonData.rows) return '<p class="text-center py-4 text-slate-400">এই মৌসুমের রুটিন নেই</p>';
+
+            const isArabic = seasonData.lang === 'ar';
+            const dir = isArabic ? 'rtl' : 'ltr';
+            const fontClass = isArabic ? 'font-arabic' : '';
+            const showTeacher = student.dept !== 'shariah'; // শরীয়াহ ছাড়া বাকিদের শিক্ষকের নাম দেখাবে
+
+            let rowsHTML = '';
+            
+            // প্রতিটি পিরিয়ড লুপ
+            seasonData.rows.forEach(p => {
+                if (p.isBreak) {
+                    rowsHTML += `
+                        <tr class="bg-amber-50">
+                            <td colspan="3" class="p-2 text-center text-xs font-bold text-amber-800 border-b">
+                                <i class="fa-solid fa-mug-hot"></i> ${p.label} — ${p.time}
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                // এই ক্লাসের এই পিরিয়ডের রুটিন বের করা
+                const entries = myClassRoutines.filter(r => 
+                    r.season === seasonKey && 
+                    r.periodKey === p.key
+                );
+
+                if (entries.length === 0) {
+                    rowsHTML += `
+                        <tr class="border-b">
+                            <td class="p-2 text-xs font-bold text-slate-700 bg-slate-50 border-r" dir="${dir}">${p.label}<br><span class="text-[9px] font-normal text-slate-500">${p.time}</span></td>
+                            <td class="p-2 text-center text-slate-300">—</td>
+                            <td class="p-2 text-center text-slate-300">—</td>
+                        </tr>
+                    `;
+                } else {
+                    // একই পিরিয়ডে একাধিক কিতাব থাকলে সাজিয়ে দেখাবে
+                    const cellContent = entries.map(e => {
+                        const teacherLine = showTeacher ? `<br><span class="text-[10px] text-indigo-600"><i class="fa-solid fa-user-tie"></i> ${e.teacherName}</span>` : '';
+                        return `<div class="mb-1 leading-tight"><span class="font-arabic font-bold text-sm text-slate-800">${e.bookName}</span>${teacherLine}</div>`;
+                    }).join('');
+
+                    rowsHTML += `
+                        <tr class="border-b hover:bg-slate-50 transition">
+                            <td class="p-2 text-xs font-bold text-slate-700 bg-slate-50 border-r" dir="${dir}">${p.label}<br><span class="text-[9px] font-normal text-slate-500">${p.time}</span></td>
+                            <td class="p-2 text-center" colspan="${showTeacher ? 2 : 1}">${cellContent}</td>
+                        </tr>
+                    `;
+                }
+            });
+
+            return `
+                <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-4">
+                    <div class="bg-emerald-700 text-white p-2 text-center text-sm font-bold">
+                        <i class="fa-solid fa-calendar-week"></i> ${seasonLabel}
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse" dir="${dir}">
+                            <thead class="bg-slate-100 text-xs text-slate-600 border-b">
+                                <tr>
+                                    <th class="p-2 border-r w-24">${isArabic ? 'الحصة' : 'ঘণ্টা'}</th>
+                                    <th class="p-2">${isArabic ? 'الكتاب' : 'কিতাব'}</th>
+                                    ${showTeacher ? `<th class="p-2 w-32">${isArabic ? 'الأستاذ' : 'শিক্ষক'}</th>` : ''}
+                                </tr>
+                            </thead>
+                            <tbody>${rowsHTML}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        };
+
+        // ★ ৪. UI রেন্ডার (ট্যাব আকারে)
         container.innerHTML = `
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                <h3 class="text-sm font-bold text-slate-800 mb-3 text-center"><i class="fa-solid fa-calendar-check text-teal-500"></i> ক্লাস রুটিন (${student.className})</h3>
-                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
-                    <i class="fa-solid fa-clock text-4xl text-amber-400 mb-2"></i>
-                    <p class="text-sm font-bold text-amber-900">শীতকালীন রুটিন লোড হচ্ছে</p>
-                    <p class="text-xs text-amber-700 mt-1">রুটিন দেখতে শিক্ষকের দেওয়া সময়সূচি অনুসরণ করুন</p>
+            <div class="space-y-4 pb-10">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-check text-teal-500"></i> ক্লাস রুটিন — <span class="font-arabic text-emerald-700">${student.className}</span>
+                    </h3>
+
+                    <!-- ট্যাব বাটন -->
+                    <div class="flex gap-2 mb-4">
+                        <button onclick="switchGpRoutineTab('winter')" id="gp-rt-winter" 
+                                class="flex-1 py-2 rounded-lg text-sm font-bold transition bg-teal-700 text-white shadow">
+                            🌸 শীতকালীন
+                        </button>
+                        <button onclick="switchGpRoutineTab('summer')" id="gp-rt-summer" 
+                                class="flex-1 py-2 rounded-lg text-sm font-bold transition bg-white text-slate-600 border border-slate-300">
+                            ☀️ গ্রীষ্মকালীন
+                        </button>
+                    </div>
+
+                    <!-- রুটিন কনটেন্ট এরিয়া -->
+                    <div id="gp-routine-content">
+                        ${buildRoutineTable('winter', 'শীতকালীন রুটিন')}
+                    </div>
                 </div>
             </div>
         `;
-    } catch (err) {}
+
+        // ★ ৫. ট্যাব পরিবর্তন করার ফাংশন (গ্লোবালি সেট করা হলো যাতে onclick কাজ করে)
+        window.switchGpRoutineTab = function(season) {
+            const winterBtn = document.getElementById('gp-rt-winter');
+            const summerBtn = document.getElementById('gp-rt-summer');
+            const content = document.getElementById('gp-routine-content');
+
+            if (season === 'winter') {
+                winterBtn.className = 'flex-1 py-2 rounded-lg text-sm font-bold transition bg-teal-700 text-white shadow';
+                summerBtn.className = 'flex-1 py-2 rounded-lg text-sm font-bold transition bg-white text-slate-600 border border-slate-300';
+                content.innerHTML = buildRoutineTable('winter', 'শীতকালীন রুটিন');
+            } else {
+                summerBtn.className = 'flex-1 py-2 rounded-lg text-sm font-bold transition bg-teal-700 text-white shadow';
+                winterBtn.className = 'flex-1 py-2 rounded-lg text-sm font-bold transition bg-white text-slate-600 border border-slate-300';
+                content.innerHTML = buildRoutineTable('summer', 'গ্রীষ্মকালীন রুটিন');
+            }
+        };
+
+    } catch (err) {
+        console.error('❌ renderGpRoutine error:', err);
+        container.innerHTML = `<p class="text-center text-red-500 py-6 font-bold">রুটিন লোড করতে সমস্যা হয়েছে</p>`;
+    }
 }
 
 // ═══════════════════ ৫. যোগাযোগ ট্যাব (দায়িত্বশীল, মুহতামিম) ═══════════════════
@@ -54072,6 +54559,406 @@ window.gpShareClassResultPDFExact = function() {
 };
 
 console.log('✅ গার্ডিয়ান রেজাল্ট মডিউল (সম্পূর্ণ নতুন) লোড হয়েছে');
+// ═══════════════════ নোটিশ বোর্ড ট্যাব (সম্পূর্ণ) ═══════════════════
+async function renderGpNotices(container) {
+    container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>`;
+
+    try {
+        const { collection, getDocs, query, orderBy } = window.fbFuncs;
+
+        // সব নোটিশ লোড করা
+        const qNotices = query(collection(window.fbDB, 'notices'), orderBy('createdAt', 'desc'));
+        const noticesSnap = await getDocs(qNotices);
+
+        let noticesHTML = '';
+        
+        if (!noticesSnap.empty) {
+            // ★ আপডেট নোটিশ ও অতীতের নোটিশ আলাদা করা
+            const recentNotices = [];
+            const pastNotices = [];
+            const now = new Date().getTime();
+
+            noticesSnap.forEach(d => {
+                const data = d.data();
+                const createdTime = data.createdAt?.seconds ? data.createdAt.seconds * 1000 : 0;
+                
+                // ৭ দিনের ভেতরের নোটিশ = আপডেট, বাকিগুলো = অতীত
+                if (now - createdTime < 7 * 24 * 60 * 60 * 1000) {
+                    recentNotices.push(data);
+                } else {
+                    pastNotices.push(data);
+                }
+            });
+
+            // ★ আপডেট নোটিশ রেন্ডার
+            if (recentNotices.length > 0) {
+                noticesHTML += `
+                    <h3 class="text-sm font-bold text-emerald-800 mb-2 border-b border-emerald-200 pb-1">
+                        <i class="fa-solid fa-bell text-emerald-600"></i> আপডেট নোটিশ
+                    </h3>
+                    ${recentNotices.map(data => buildNoticeCardHTML(data, true)).join('')}
+                `;
+            }
+
+            // ★ অতীতের নোটিশ রেন্ডার
+            if (pastNotices.length > 0) {
+                noticesHTML += `
+                    <h3 class="text-sm font-bold text-slate-600 mb-2 mt-6 border-b border-slate-200 pb-1">
+                        <i class="fa-solid fa-clock-rotate-left text-slate-400"></i> অতীতের নোটিশ
+                    </h3>
+                    ${pastNotices.map(data => buildNoticeCardHTML(data, false)).join('')}
+                `;
+            }
+
+            if (recentNotices.length === 0 && pastNotices.length === 0) {
+                noticesHTML = `<p class="text-center text-slate-400 py-6 italic">কোনো নোটিশ নেই</p>`;
+            }
+
+        } else {
+            noticesHTML = `<p class="text-center text-slate-400 py-6 italic">কোনো নোটিশ নেই</p>`;
+        }
+
+        container.innerHTML = `
+            <div class="space-y-4">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    ${noticesHTML}
+                </div>
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('❌ renderGpNotices:', err);
+        container.innerHTML = `<p class="text-center text-red-500 py-6">নোটিশ লোড ব্যর্থ হয়েছে</p>`;
+    }
+}
+
+// নোটিশ কার্ড বানানোর হেল্পার ফাংশন (গার্ডিয়ান পোর্টালের জন্য)
+function buildNoticeCardHTML(data, isRecent) {
+    const dateStr = data.createdAt?.seconds 
+        ? new Date(data.createdAt.seconds * 1000).toLocaleDateString('bn-BD') 
+        : '---';
+    
+    return `
+        <div class="rounded-lg p-3 mb-3 border-l-4 ${isRecent ? 'bg-emerald-50 border-emerald-500' : 'bg-slate-50 border-slate-400'} shadow-sm">
+            <div class="flex justify-between items-start mb-2 pb-2 border-b ${isRecent ? 'border-emerald-200' : 'border-slate-200'}">
+                <h4 class="text-sm font-bold ${isRecent ? 'text-emerald-900' : 'text-slate-800'}">
+                    <i class="fa-solid fa-circle-info text-[10px]"></i> ${data.title}
+                </h4>
+                <span class="text-[9px] px-2 py-0.5 rounded-full ${isRecent ? 'bg-emerald-200 text-emerald-800' : 'bg-slate-200 text-slate-600'} font-bold">
+                    ${dateStr}
+                </span>
+            </div>
+            <div class="text-xs ${isRecent ? 'text-emerald-900' : 'text-slate-700'} leading-relaxed" style="white-space: pre-wrap; text-align: justify;">
+                ${data.body}
+            </div>
+        </div>
+    `;
+}
+
+// ═══════════════════ এডমিন — নোটিশ বোর্ড মেকার ═══════════════════
+
+const NOTICE_COMMON_TITLES = [
+    'পরীক্ষা সংক্রান্ত নোটিশ',
+    'ছুটি সংক্রান্ত নোটিশ',
+    'মাহফিল/উৎসব সংক্রান্ত নোটিশ',
+    'শিক্ষাবর্ষ শুরু/সমাপ্তি নোটিশ',
+    'অভিভাবক সমাবেশ সংক্রান্ত নোটিশ',
+    'ফি পরিশোধ সংক্রান্ত নোটিশ',
+    'ভর্তি কার্যক্রম সংক্রান্ত নোটিশ',
+    'শৃঙ্খলা ও নিয়মাবলী নোটিশ',
+    'সাপ্তাহিক ছুটির নোটিশ',
+    'জরুরি সাধারণ নোটিশ'
+];
+
+const NOTICE_COMMON_REQUESTS = [
+    'নিয়ম মেনে চলার',
+    'সময়মতো উপস্থিত থাকার',
+    'ফি পরিশোধ করার',
+    'নোটিশটি গুরুত্বের সাথে পড়ার',
+    'প্রয়োজনীয় প্রস্তুতি নেওয়ার',
+    'সহযোগিতা করার'
+];
+
+function renderAdminNotice() {
+    const content = document.getElementById('adm-content');
+    
+    // ★ প্রিন্সিপালের নাম ও স্বাক্ষর লোড করা (সেটিংস বা ভর্তি ফরমের লেটেস্ট প্রিন্সিপাল থেকে)
+    let principalName = settings.principalName || 'মুহতামিম'; 
+    let principalSignature = settings.signature || '';
+
+    // ড্রপডাউন তৈরি
+    const titlesOptions = NOTICE_COMMON_TITLES.map(t => `<option value="${t}">${t}</option>`).join('');
+    const requestsOptions = NOTICE_COMMON_REQUESTS.map(r => `<option value="${r}">${r}</option>`).join('');
+
+    content.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6 overflow-hidden">
+            <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-file-signature text-rose-500"></i> নতুন নোটিশ তৈরি করুন
+            </h3>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- বাম দিক: ফরম (ইনপুট) -->
+                <div class="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    
+                    <!-- ১. শিরোনাম (Dropdown + Edit) -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">শিরোনাম *</label>
+                        <select id="adm-notice-title-sel" onchange="syncTitleToInput()" class="w-full rounded border border-slate-300 p-2 text-sm mb-1">
+                            <option value="">-- কমন শিরোনাম বাছুন --</option>
+                            ${titlesOptions}
+                        </select>
+                        <input type="text" id="adm-notice-title-manual" class="w-full rounded border border-blue-300 p-2 text-sm bg-blue-50" placeholder="অথবা এখানে লিখে এডিট করুন..." oninput="updateNoticePreview()">
+                    </div>
+
+                    <!-- ২. তারিখ (Date Picker + Edit) -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">শুরু তারিখ *</label>
+                            <input type="date" id="adm-notice-date-start" class="w-full rounded border border-slate-300 p-2 text-sm mb-1" onchange="updateNoticePreview()">
+                            <input type="text" id="adm-notice-date-start-manual" class="w-full rounded border border-blue-300 p-2 text-xs bg-blue-50" placeholder="যেমন: ১৫ জুলাই" oninput="updateNoticePreview()">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">শেষ তারিখ (ঐচ্ছিক)</label>
+                            <input type="date" id="adm-notice-date-end" class="w-full rounded border border-slate-300 p-2 text-sm mb-1" onchange="updateNoticePreview()">
+                            <input type="text" id="adm-notice-date-end-manual" class="w-full rounded border border-blue-300 p-2 text-xs bg-blue-50" placeholder="যেমন: ২০ জুলাই" oninput="updateNoticePreview()">
+                        </div>
+                    </div>
+
+                    <!-- ৩. উদ্দেশ্য (Dropdown + Edit) -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">উদ্দেশ্য / কী হবে? *</label>
+                        <select id="adm-notice-purpose" onchange="syncPurposeToInput()" class="w-full rounded border border-slate-300 p-2 text-sm mb-1">
+                            <option value="ছুটি থাকবে">ছুটি থাকবে</option>
+                            <option value="পরীক্ষা চলবে">পরীক্ষা চলবে</option>
+                            <option value="মাহফিল অনুষ্ঠিত হবে">মাহফিল অনুষ্ঠিত হবে</option>
+                            <option value="ভর্তি চলবে">ভর্তি চলবে</option>
+                            <option value="ক্লাস বন্ধ থাকবে">ক্লাস বন্ধ থাকবে</option>
+                        </select>
+                        <input type="text" id="adm-notice-purpose-manual" class="w-full rounded border border-blue-300 p-2 text-sm bg-blue-50" placeholder="অথবা এখানে লিখে এডিট করুন..." oninput="updateNoticePreview()">
+                    </div>
+
+                    <!-- ৪. অনুরোধ (Dropdown + Edit) -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">অনুরোধ</label>
+                        <select id="adm-notice-request" onchange="syncRequestToInput()" class="w-full rounded border border-slate-300 p-2 text-sm mb-1">
+                            ${requestsOptions}
+                        </select>
+                        <input type="text" id="adm-notice-request-manual" class="w-full rounded border border-blue-300 p-2 text-sm bg-blue-50" placeholder="অথবা এখানে লিখে এডিট করুন..." oninput="updateNoticePreview()">
+                    </div>
+
+                    <!-- ৫. প্রিন্সিপাল (অটো লোড, তবে এডিটেবল) -->
+                    <div class="pt-2 border-t border-slate-200">
+                        <p class="text-[10px] text-slate-500 mb-2"><i class="fa-solid fa-info-circle"></i> প্রিন্সিপালের নাম ও স্বাক্ষর অটো লোড হয়েছে। প্রয়োজনে এডিট করুন।</p>
+                        <input type="text" id="adm-notice-principal" value="${principalName}" class="w-full rounded border border-slate-300 p-2 text-sm mb-2" placeholder="প্রিন্সিপালের নাম" oninput="updateNoticePreview()">
+                        <input type="text" id="adm-notice-signature" value="${principalSignature}" class="w-full rounded border border-slate-300 p-2 text-sm" placeholder="স্বাক্ষরের ইমেজ লিংক (URL)" oninput="updateNoticePreview()">
+                    </div>
+
+                    <button onclick="publishAdminNotice()" class="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-lg shadow-md transition flex justify-center items-center gap-2 mt-4">
+                        <i class="fa-solid fa-paper-plane"></i> নোটিশ প্রকাশ করুন
+                    </button>
+                </div>
+
+                <!-- ডান দিক: লাইভ প্রিভিউ -->
+                <div class="bg-white p-4 rounded-xl border-2 border-dashed border-slate-300 overflow-y-auto" style="max-height: 600px;">
+                    <div class="flex justify-between items-center mb-2 border-b pb-2">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-1 rounded">লাইভ প্রিভিউ</span>
+                    </div>
+                    <div id="adm-notice-preview-area" class="text-xs">
+                        <!-- প্রিভিউ এখানে আসবে -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // আজকের তারিখ ডিফল্ট সেট
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('adm-notice-date-start').value = today;
+
+    // প্রথমবার প্রিভিউ আপডেট
+    setTimeout(updateNoticePreview, 100);
+}
+
+
+// তারিখ ফরম্যাট হেল্পার (বাংলা)
+function getBanglaDateStr(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    
+    const days = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+    const months = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+    
+    const dayName = days[d.getDay()];
+    const dateNum = toBanglaNumber(d.getDate());
+    const monthName = months[d.getMonth()];
+    const year = toBanglaNumber(d.getFullYear());
+    
+    return `${dateNum} ${monthName} ${year} (${dayName})`;
+}
+
+// ★★★ লাইভ প্রিভিউ আপডেট ★★★
+// ড্রপডাউন থেকে সিলেক্ট করলে নিচের ইনপুটে বসবে (এডিট করার জন্য)
+window.syncTitleToInput = function() {
+    document.getElementById('adm-notice-title-manual').value = document.getElementById('adm-notice-title-sel').value;
+    updateNoticePreview();
+};
+window.syncPurposeToInput = function() {
+    document.getElementById('adm-notice-purpose-manual').value = document.getElementById('adm-notice-purpose').value;
+    updateNoticePreview();
+};
+window.syncRequestToInput = function() {
+    document.getElementById('adm-notice-request-manual').value = document.getElementById('adm-notice-request').value;
+    updateNoticePreview();
+};
+
+// তারিখ অটো-সিঙ্ক (ডেট পিকার থেকে ম্যানুয়াল ইনপুটে)
+document.addEventListener('change', function(e) {
+    if (e.target.id === 'adm-notice-date-start') {
+        const manual = document.getElementById('adm-notice-date-start-manual');
+        if (e.target.value) manual.value = getBanglaDateStr(e.target.value);
+        updateNoticePreview();
+    }
+    if (e.target.id === 'adm-notice-date-end') {
+        const manual = document.getElementById('adm-notice-date-end-manual');
+        if (e.target.value) manual.value = getBanglaDateStr(e.target.value);
+        else manual.value = '';
+        updateNoticePreview();
+    }
+});
+
+// লাইভ প্রিভিউ আপডেট (এখন ম্যানুয়াল ইনপুট থেকে ডাটা নেবে)
+window.updateNoticePreview = function() {
+    const title = document.getElementById('adm-notice-title-manual').value;
+    
+    // তারিখ (ম্যানুয়াল ইনপুট থাকলে সেটা, না থাকলে পিকার থেকে)
+    const startManual = document.getElementById('adm-notice-date-start-manual').value;
+    const endManual = document.getElementById('adm-notice-date-end-manual').value;
+    
+    const purpose = document.getElementById('adm-notice-purpose-manual').value;
+    const request = document.getElementById('adm-notice-request-manual').value;
+    
+    const principalName = document.getElementById('adm-notice-principal').value;
+    const signatureUrl = document.getElementById('adm-notice-signature').value;
+
+    const previewArea = document.getElementById('adm-notice-preview-area');
+    
+    let dateText = '';
+    if (startManual && endManual) {
+        dateText = `আগামী <b>${startManual}</b> থেকে <b>${endManual}</b> পর্যন্ত`;
+    } else if (startManual) {
+        dateText = `আগামী <b>${startManual}</b> তারিখে`;
+    } else {
+        dateText = `[তারিখ লিখুন বা নির্বাচন করুন]`;
+    }
+
+    const madrasaName = settings.madrasaName || 'মাদরাসার নাম';
+    const todayStr = new Date().toLocaleDateString('bn-BD');
+
+    previewArea.innerHTML = `
+        <div class="p-4 bg-white border-2 border-emerald-600 rounded-lg relative overflow-hidden" style="font-family: 'Hind Siliguri', sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <div class="text-center border-b-2 border-emerald-600 pb-2 mb-3">
+                ${settings.logo ? `<img src="${settings.logo}" class="h-10 mx-auto mb-1">` : '<i class="fa-solid fa-mosque text-emerald-600 text-2xl mb-1"></i>'}
+                <h2 class="text-base font-bold text-emerald-900">${madrasaName}</h2>
+                <p class="text-[9px] text-slate-600">${settings.address || ''}</p>
+            </div>
+
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1"></div>
+                <div class="text-right text-[10px] text-slate-600">
+                    <p>তারিখ: ${todayStr}</p>
+                    <p class="font-mono">সূত্র নং: ০১/২৬</p>
+                </div>
+            </div>
+            
+            <div class="text-center mb-4">
+                <h3 class="inline-block border-b-2 border-slate-800 pb-1 text-sm font-bold text-slate-900 ${!title ? 'text-red-400 border-red-400' : ''}">
+                    ${title || 'শিরোনাম নির্বাচন করুন'}
+                </h3>
+            </div>
+
+            <div class="text-slate-800 leading-relaxed text-justify space-y-3" style="font-size: 12px;">
+                <p>
+                    এতদ্বারা <b>${madrasaName}</b>-এর সকল শিক্ষার্থী ও অভিভাবকবৃন্দের অবগতির জন্য জানানো যাচ্ছে যে, 
+                    ${dateText} <b>${purpose || '[উদ্দেশ্য]'}</b>।
+                </p>
+                <p>
+                    অতএব, সংশ্লিষ্ট সকলকে <b>${request || '[অনুরোধ]'}</b> জন্য অনুরোধ করা হলো।
+                </p>
+            </div>
+
+            <div class="mt-8 flex justify-between items-end">
+                <div class="text-[9px] text-slate-500 italic">
+                    <p>এই নোটিশটি মাদরাসার অফিসিয়াল নোটিশ বোর্ডে প্রদর্শিত হবে।</p>
+                </div>
+                <div class="text-center">
+                    <p class="font-bold text-slate-800 text-xs mb-1">আদেশক্রমে</p>
+                    ${signatureUrl ? `<img src="${signatureUrl}" class="h-8 mx-auto mb-1 object-contain">` : '<div class="h-8 mb-1"></div>'}
+                    <div class="border-t border-slate-800 w-32 mx-auto pt-1">
+                        <p class="font-bold text-xs">${principalName || 'প্রিন্সিপাল'}</p>
+                        <p class="text-[9px] text-slate-600">প্রিন্সিপাল, ${madrasaName}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
+// ★★★ প্রকাশ করুন (Firestore-এ সেভ) ★★★
+window.publishAdminNotice = async function() {
+    const title = document.getElementById('adm-notice-title-manual').value;
+    const startManual = document.getElementById('adm-notice-date-start-manual').value;
+    const endManual = document.getElementById('adm-notice-date-end-manual').value;
+    const purpose = document.getElementById('adm-notice-purpose-manual').value;
+    const request = document.getElementById('adm-notice-request-manual').value;
+    const principalName = document.getElementById('adm-notice-principal').value;
+
+    if (!title) return showToast('⚠️ নোটিশের শিরোনাম দিন', 'warn');
+    if (!startManual) return showToast('⚠️ শুরু তারিখ দিন', 'warn');
+
+    let dateText = '';
+    if (startManual && endManual) dateText = `আগামী <b>${startManual}</b> থেকে <b>${endManual}</b> পর্যন্ত`;
+    else if (startManual) dateText = `আগামী <b>${startManual}</b> তারিখে`;
+
+    const madrasaName = settings.madrasaName || 'মাদরাসার নাম';
+    
+    const fullBody = `
+এতদ্বারা ${madrasaName}-এর সকল শিক্ষার্থী ও অভিভাবকবৃন্দের অবগতির জন্য জানানো যাচ্ছে যে, 
+${dateText} ${purpose}।
+
+অতএব, সংশ্লিষ্ট সকলকে ${request} জন্য অনুরোধ করা হলো।
+
+আদেশক্রমে
+${principalName}
+প্রিন্সিপাল, ${madrasaName}
+    `.trim();
+
+    try {
+        const { addDoc, collection, serverTimestamp } = window.fbFuncs;
+        await addDoc(collection(window.fbDB, 'notices'), {
+            title: title,
+            body: fullBody,
+            principalName: principalName,
+            createdAt: serverTimestamp(),
+            createdBy: currentUser?.uid || 'admin'
+        });
+        
+        showToast('✅ নোটিশ প্রকাশিত হয়েছে', 'success');
+        
+        // ফরম রিসেট
+        document.getElementById('adm-notice-title-sel').value = '';
+        document.getElementById('adm-notice-title-manual').value = '';
+        document.getElementById('adm-notice-date-start').value = new Date().toISOString().split('T')[0];
+        document.getElementById('adm-notice-date-start-manual').value = getBanglaDateStr(new Date().toISOString().split('T')[0]);
+        document.getElementById('adm-notice-date-end').value = '';
+        document.getElementById('adm-notice-date-end-manual').value = '';
+        updateNoticePreview();
+        
+    } catch (err) {
+        console.error('❌ publishAdminNotice:', err);
+        showToast('❌ প্রকাশ ব্যর্থ: ' + err.message, 'error');
+    }
+};
 </script>
 </body>
 </html>
