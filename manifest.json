@@ -1,6 +1,6 @@
 {
-  "name": "আল-জামিয়াহ সিস্টেম",
-  "short_name": "আল-জামিয়াহ",
+  "name": "তাহযীবুল উম্মাহ ইসলামিয়া মাদরাসা",
+  "short_name": "তাহযীবুল উম্মাহ",
   "description": "কওমী মাদরাসার জন্য সম্পূর্ণ ব্যবস্থাপনা সিস্টেম",
   "start_url": "index.html",
   "display": "standalone",
@@ -11,13 +11,13 @@
   "dir": "ltr",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2232/2232688.png",
+      "src": "https://raw.githubusercontent.com/kamaluddin43/Al-jamiah/c5630f58c5f79d6063a18becbe3d6a0e59c27fee/logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2232/2232688.png",
+      "src": "https://raw.githubusercontent.com/kamaluddin43/Al-jamiah/c5630f58c5f79d6063a18becbe3d6a0e59c27fee/logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
