@@ -48234,7 +48234,7 @@ function flattenAdmFormData(form) {
         referralRelation: d.guardian?.referralRelation || '',
         referralAddress: d.guardian?.referralAddress || '',
 
-        examMarks: form.examMarks || d.exam?.marks || {},
+        examMarks: d.examMarks || form.examMarks || form.data?.examMarks || d.exam?.marks || {},
         examTotal: d.exam?.totalMarks || 0,
         examiner: d.exam?.examiner || '',
         examComment: d.exam?.comment || '',
