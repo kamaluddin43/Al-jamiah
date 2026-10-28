@@ -27731,7 +27731,11 @@ async function loadStudentsFromFirestore() {
                 photo: fd.studentPhoto || '',
                 source: 'admission',          // ★ সোর্স ট্র্যাকিং
                 admissionFormId: form.id,     // ★ মূল ফরমের ID
-                approvedAt: fd.approvedAt
+                approvedAt: fd.approvedAt,
+                
+                // ✅✅✅ নতুন যোগ — মার্কস ফিল্ড ম্যাপিং ✅✅✅
+                resultMarksObj: fd.examMarks || form.data?.examMarks || form.data?.resultMarksObj || {},
+                customMarks: fd.customMarks || form.data?.customMarks || {}
             });
         });
 
@@ -32195,6 +32199,11 @@ window.doLogout = async function() {
         await window.fbAuth.signOut();
         console.log('✅ Logged out');
         
+        // ★★★ লিসেনার বন্ধ করি ★★★
+        if (typeof stopStudentsRealtimeListener === 'function') {
+            stopStudentsRealtimeListener();
+        }
+
         // UI reset
         currentUser = null;
         currentUserData = null;
@@ -32619,6 +32628,10 @@ function showApp() {
             }
         }, 500);
     }
+    // ★★★ Real-time listener চালু করি ★★★
+    setTimeout(() => {
+        startStudentsRealtimeListener();
+    }, 1200);
 }
 
 // শিক্ষকের জন্য dropdown-এ শুধু assign করা জামাত দেখান
@@ -53297,6 +53310,129 @@ window.submitLeaveApplication = async function() {
 };
 
 console.log('✅ ছুটির আবেদন মডিউল লোড হয়েছে');
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ Real-time Students Listener ★★★
+// ═══════════════════════════════════════════════════════════════
+let _studentsUnsubscribe = null;
+let _admissionFormsUnsubscribe = null;
+
+async function startStudentsRealtimeListener() {
+    // পুরনো লিসেনার বন্ধ
+    if (_studentsUnsubscribe) _studentsUnsubscribe();
+    if (_admissionFormsUnsubscribe) _admissionFormsUnsubscribe();
+    if (!currentUser) return;
+    
+    const { collection, onSnapshot, getDocs } = window.fbFuncs;
+    
+    // ★ প্রথমে একবার সব ডাটা ফুল লোড করি
+    async function reloadAllStudents() {
+        try {
+            const [sSnap, fSnap] = await Promise.all([
+                getDocs(collection(window.fbDB, 'students')),
+                getDocs(collection(window.fbDB, 'admissionForms'))
+            ]);
+            
+            const manualStudents = [];
+            sSnap.forEach(d => manualStudents.push({ id: d.id, ...d.data(), source: 'manual' }));
+            
+            const admittedStudents = [];
+            fSnap.forEach(d => {
+                const form = { id: d.id, ...d.data() };
+                const isApproved = form.status === 'approved' 
+                    || form.currentStep === 'COMPLETED' 
+                    || form.currentStep === 12
+                    || (form.savedSteps && form.savedSteps.includes(11));
+                if (!isApproved) return;
+                
+                const fd = flattenAdmFormData(form);
+                
+                // ডুপ্লিকেট চেক
+                const isDuplicate = manualStudents.some(s => 
+                    s.studentId && fd.studentId && 
+                    String(s.studentId).trim() === String(fd.studentId).trim()
+                );
+                if (isDuplicate) return;
+                
+                admittedStudents.push({
+                    id: 'admission_' + form.id,
+                    name: fd.name,
+                    guardian: fd.guardianName || fd.fatherName,
+                    studentId: fd.studentId,
+                    dob: fd.dob,
+                    mobile1: fd.mobile1,
+                    mobile2: fd.mobile2,
+                    address: fd.currentAddress,
+                    dept: fd.dept,
+                    className: fd.nextClass,
+                    admissionFee: fd.admissionFee,
+                    firstMonthFood: fd.firstMonthFood,
+                    sessionFee: 0,
+                    monthlyFood: fd.monthlyFood,
+                    hostelFee: fd.monthlyHostel,
+                    monthlySalary: fd.monthlySalary,
+                    remark: null,
+                    photo: fd.studentPhoto || '',
+                    source: 'admission',
+                    admissionFormId: form.id,
+                    approvedAt: fd.approvedAt,
+                    // ✅ মার্কস ফিল্ড যোগ
+                    resultMarksObj: fd.examMarks || form.data?.examMarks || {},
+                    customMarks: fd.customMarks || form.data?.customMarks || {}
+                });
+            });
+            
+            // একসাথে মিলাই
+            studentsCache = [...manualStudents, ...admittedStudents];
+            studentsCache.sort((a, b) => {
+                const d = (a.dept || '').localeCompare(b.dept || '');
+                if (d !== 0) return d;
+                const c = (a.className || '').localeCompare(b.className || '');
+                if (c !== 0) return c;
+                return (a.name || '').localeCompare(b.name || '');
+            });
+            
+            studentsLoaded = true;
+            console.log(`🔄 Real-time reload: ${studentsCache.length} জন`);
+            
+            // খোলা টেবিল/রেজাল্ট রিফ্রেশ
+            if (document.getElementById('result-marks-entry-page')?.classList.contains('hidden') === false) {
+                if (typeof renderMarksEntryTable === 'function') renderMarksEntryTable();
+            }
+            if (document.getElementById('results-dept-page')?.classList.contains('hidden') === false) {
+                if (typeof renderResultDeptPage === 'function') renderResultDeptPage();
+            }
+            if (typeof _currentStudentSub !== 'undefined' && _currentStudentSub) {
+                if (typeof renderStudentDetailContent === 'function') renderStudentDetailContent();
+            }
+        } catch (err) {
+            console.error('❌ reloadAllStudents error:', err);
+        }
+    }
+    
+    // ★ লিসেনার সেট করি
+    _studentsUnsubscribe = onSnapshot(
+        collection(window.fbDB, 'students'),
+        () => reloadAllStudents(),
+        (error) => console.error('❌ Students listener error:', error)
+    );
+    
+    _admissionFormsUnsubscribe = onSnapshot(
+        collection(window.fbDB, 'admissionForms'),
+        () => reloadAllStudents(),
+        (error) => console.error('❌ AdmissionForms listener error:', error)
+    );
+    
+    console.log('✅ Real-time listeners চালু হয়েছে (students + admissionForms)');
+}
+
+function stopStudentsRealtimeListener() {
+    if (_studentsUnsubscribe) { _studentsUnsubscribe(); _studentsUnsubscribe = null; }
+    if (_admissionFormsUnsubscribe) { _admissionFormsUnsubscribe(); _admissionFormsUnsubscribe = null; }
+    console.log('🔇 Real-time listeners বন্ধ হয়েছে');
+}
+
+console.log('✅ Real-time listener মডিউল লোড হয়েছে');
 </script>
 </body>
 </html>
