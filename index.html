@@ -10,8 +10,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.json">
-<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2232/2232688.png">
-<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2232/2232688.png" type="image/png">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/kamaluddin43/Al-jamiah/c5630f58c5f79d6063a18becbe3d6a0e59c27fee/logo.png">
+<link rel="icon" href="https://raw.githubusercontent.com/kamaluddin43/Al-jamiah/c5630f58c5f79d6063a18becbe3d6a0e59c27fee/logo.png" type="image/png">
+<link rel="shortcut icon" href="https://raw.githubusercontent.com/kamaluddin43/Al-jamiah/c5630f58c5f79d6063a18becbe3d6a0e59c27fee/logo.png" type="image/png">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script type="module">
@@ -1919,25 +1920,29 @@ header button {
 
 <!-- ═══════════════════ HEADER ═══════════════════ -->
 <header class="bg-emerald-900 text-white shadow-md no-print sticky top-0 z-40">
-    <!-- flex-col md:flex-row সরিয়ে শুধু flex-row দেওয়া হলো -->
-    <div class="max-w-7xl mx-auto px-3 md:px-4 py-3 flex flex-row justify-between items-center gap-2">
+    <div class="max-w-7xl mx-auto px-3 md:px-4 py-2.5 flex flex-row justify-between items-center gap-2">
         
-        <!-- বাম পাশ: লোগো ও নাম -->
-        <div class="flex items-center gap-2 md:gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0"
+        <!-- বাম পাশ: লোগো, নাম ও ঠিকানা (সবকিছু ক্লিকেবল) -->
+        <div class="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0"
              onclick="switchTab('home')"
              title="হোম পেইজে ফিরে যান">
             
-            <!-- মোবাইলে আইকন কিছুটা ছোট (w-10), ডেক্সটপে বড় (md:w-12) -->
-            <div class="w-10 h-10 md:w-12 md:h-12 bg-amber-500/20 rounded-xl border border-amber-400/40 flex items-center justify-center text-amber-400 text-xl md:text-2xl shadow-inner flex-shrink-0">
-                <i class="fa-solid fa-book-open-reader"></i>
+            <!-- ★ ডাইনামিক লোগো (জাভাস্ক্রিপ্ট থেকে সেট হবে) -->
+            <div id="header-logo-container" class="w-10 h-10 md:w-12 md:h-12 bg-amber-500/20 rounded-xl border border-amber-400/40 flex items-center justify-center text-amber-400 text-xl md:text-2xl shadow-inner flex-shrink-0 overflow-hidden">
+                <!-- ব্যাকআপ আইকন -->
+                <i class="fa-solid fa-book-open-reader" id="header-fallback-icon"></i>
             </div>
             
-            <!-- min-w-0 ও truncate দেওয়া হলো যাতে লেখা বড় হলে ... হয়ে যায় -->
-            <div class="min-w-0">
-                <h1 class="text-base md:text-xl font-bold font-arabic leading-tight flex items-center gap-2 truncate">
-                    <span>আল-জামিয়া</span>
+            <!-- মাদরাসার নাম ও ঠিকানা -->
+            <div class="min-w-0 flex flex-col justify-center">
+                <!-- মাদরাসার নাম (বড় করে) -->
+                <h1 id="header-madrasa-name" class="text-sm md:text-lg font-bold leading-tight truncate max-w-[170px] md:max-w-xs text-white font-arabic">
+                    লোড হচ্ছে...
                 </h1>
-                <p id="header-madrasa-name" class="text-[10px] md:text-xs text-emerald-200 mt-0.5 truncate max-w-[130px] md:max-w-xs"></p>
+                <!-- ঠিকানা (ছোট করে) -->
+                <p id="header-address" class="text-[9px] md:text-xs text-emerald-200 mt-0.5 truncate max-w-[170px] md:max-w-xs leading-tight">
+                    <!-- জাভাস্ক্রিপ্ট থেকে ঠিকানা বসবে -->
+                </p>
             </div>
         </div>
 
@@ -1948,7 +1953,7 @@ header button {
                 <p id="header-user-role" class="text-[9px] md:text-[10px] text-amber-400 leading-tight">---</p>
             </div>
             
-            <!-- মোবাইলে বাটন কিছুটা ছোট করা হলো -->
+            <!-- মোবাইলে বাটন কিছুটা ছোট -->
             <button onclick="doLogout()" class="w-8 h-8 md:w-9 md:h-9 bg-red-600/80 hover:bg-red-700 text-white rounded-full flex items-center justify-center transition shadow-md hover:shadow-lg flex-shrink-0" title="লগআউট">
                 <i class="fa-solid fa-right-from-bracket text-xs md:text-sm"></i>
             </button>
@@ -7369,28 +7374,61 @@ function getTeacherMeta(name) {
 }
 
 function applySettingsToUI() {
-    document.getElementById('header-madrasa-name').textContent = settings.madrasaName || 'পাঠ পরিমাণ ট্র্যাকিং সিস্টেম';
-    document.getElementById('year-badge').textContent = 'শিক্ষাবর্ষ: ' + (settings.year || '২০২৪-২০২৫');
+    // ★ ১. মাদরাসার নাম হেডারে বসানো
+    const headerName = document.getElementById('header-madrasa-name');
+    if (headerName) {
+        headerName.textContent = settings.madrasaName || 'জামিয়া ইসলামিয়া';
+    }
+
+    // ★ ২. ঠিকানা হেডারে বসানো
+    const headerAddress = document.getElementById('header-address');
+    if (headerAddress) {
+        headerAddress.textContent = settings.address || '';
+    }
+
+    // ★ ৩. হেডারের লোগো আপডেট করা
+    const logoContainer = document.getElementById('header-logo-container');
+    if (logoContainer) {
+        if (settings.logo && settings.logo.trim() !== '') {
+            // লোগো থাকলে ইমেজ দেখাবে (সাদা ব্যাকগ্রাউন্ডে)
+            logoContainer.innerHTML = `<img src="${settings.logo}" alt="Logo" class="w-full h-full object-contain p-1 bg-white rounded-xl">`;
+        } else {
+            // লোগো না থাকলে ডিফল্ট আইকন দেখাবে
+            logoContainer.innerHTML = `<i class="fa-solid fa-book-open-reader"></i>`;
+        }
+    }
+
+    // হোম পেজের মাদরাসার নামও আপডেট করে দিলাম (যদি থাকে)
+    const homeMadrasa = document.getElementById('home-madrasa-name');
+    if (homeMadrasa) {
+        homeMadrasa.textContent = (settings.madrasaName || 'আল-জামিয়াহ') + ' সিস্টেমে স্বাগতম';
+    }
+
+    // শিক্ষাবর্ষ ব্যাজ (যদি অন্য কোথাও থাকে)
+    const yearBadge = document.getElementById('year-badge');
+    if (yearBadge) {
+        yearBadge.textContent = 'শিক্ষাবর্ষ: ' + (settings.year || '২০২৪-২০২৫');
+    }
 }
 
 async function saveSettings(e) {
     e.preventDefault();
     
-    // ১. ইনপুট থেকে ডাটা নেওয়া
+    // ১. ইনপুট থেকে ডাটা নেওয়া
     settings.madrasaName = document.getElementById('set-madrasa-bn').value.trim();
     settings.madrasaNameAr = document.getElementById('set-madrasa-ar').value.trim();
     settings.address = document.getElementById('set-address').value.trim();
     settings.year = document.getElementById('set-year').value.trim() || '২০২৪-২০২৫';
     
-    // (লোগো ও সিগনেচার আগেই handleLogoUpload ফাংশনে settings-এ সেভ হয়ে গেছে)
+    // (লোগো ও সিগনেচার আগেই handleLogoUpload ফাংশনে settings-এ সেভ হয়ে গেছে)
     
     // ২. লোকাল স্টোরেজে সেভ
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     
-    // ৩. UI আপডেট
+    // ৩. UI আপডেট (এখানেই নাম, ঠিকানা, লোগো সব হেডারে বসে যাবে)
     applySettingsToUI();
     
-    // ৪. ★★★ ফায়ারবেসে সেভ করা (সব ডিভাইসে সিঙ্ক হওয়ার জন্য) ★★★
+    // ৪. ★★★ ফায়ারবেসে সেভ করা (সব ডিভাইসে সিঙ্ক হওয়ার জন্য) ★★★
     if (currentUser) {
         try {
             const { doc, setDoc, serverTimestamp } = window.fbFuncs;
@@ -7404,18 +7442,14 @@ async function saveSettings(e) {
                 updatedAt: serverTimestamp()
             }, { merge: true });
             
-            showToast('✅ সেটিংস সফলভাবে ফায়ারবেসে সেভ হয়েছে', 'success');
+            showToast('✅ সেটিংস সফলভাবে ফায়ারবেসে সেভ হয়েছে', 'success');
         } catch (err) {
             console.error('❌ Firebase save error:', err);
-            showToast('❌ লোকাল সেভ হয়েছে, তবে ফায়ারবেসে যায়নি', 'error');
+            showToast('❌ লোকাল সেভ হয়েছে, তবে ফায়ারবেসে যায়নি', 'error');
         }
     } else {
         showToast('✅ সেটিংস লোকাল সেভ হয়েছে (লগইন নেই)', 'warn');
     }
-    
-    // হেডারের নাম আপডেট
-    const headerName = document.getElementById('header-madrasa-name');
-    if (headerName) headerName.textContent = settings.madrasaName;
 }
 
 // ═══════════════════ শিক্ষাবর্ষ ম্যানেজমেন্ট ═══════════════════
@@ -39216,6 +39250,7 @@ window.saveNewMarksColumn = async function(className) {
 // ★ মার্কস সেভ ফাংশন
 window.saveAllMarks = async function() {
     if (_marksEntryLocked && currentUserData?.role !== 'admin') { showToast('🔒 মার্কস এন্ট্রি লক করা আছে।', 'warn'); return; }
+    
     let hasInvalidMarks = false;
     document.querySelectorAll('.mark-input').forEach(inp => {
         const val = inp.value.trim();
@@ -39225,9 +39260,10 @@ window.saveAllMarks = async function() {
         }
     });
     if (hasInvalidMarks) {
-        showToast('⚠️ কিছু ঘরে ১০০-এর বেশি নম্বর দেওয়া আছে! দয়া করে ঠিক করুন।', 'error');
-        return; // সেভ হবে না
+        showToast('⚠️ কিছু ঘরে ১০০-এর বেশি নম্বর দেওয়া আছে! দয়া করে ঠিক করুন।', 'error');
+        return;
     }
+    
     const inputs = document.querySelectorAll('.mark-input');
     if (inputs.length === 0) {
         showToast('⚠️ সেভ করার মতো কোনো ডাটা নেই', 'warn');
@@ -39244,7 +39280,6 @@ window.saveAllMarks = async function() {
         const colKey = inp.dataset.colKey;
         const rawVal = inp.value.trim();
         
-        // ফায়ারবেসে undefined এড়াতে ভ্যালু চেক
         let safeVal = null;
         if (rawVal !== '') {
             safeVal = parseInt(rawVal);
@@ -39267,26 +39302,76 @@ window.saveAllMarks = async function() {
     try {
         const { doc, updateDoc } = window.fbFuncs;
         let count = 0;
+        let failed = 0;
 
         for (const sId of Object.keys(studentDataToSave)) {
-            const updateData = {};
             const data = studentDataToSave[sId];
 
-            if (Object.keys(data.resultMarksObj).length > 0) updateData.resultMarksObj = data.resultMarksObj;
-            if (Object.keys(data.customMarks).length > 0) updateData.customMarks = data.customMarks;
+            // ★★★ দুই জায়গায় সেভ করার স্মার্ট লজিক ★★★
+            // ফরম্যাট থেকে আইডি এক্সট্র্যাক্ট করা (যদি admission_ থাকে, সরিয়ে ফেলি)
+            const rawDocId = String(sId).startsWith('admission_') 
+                ? String(sId).replace('admission_', '') 
+                : sId;
 
-            if (Object.keys(updateData).length > 0) {
-                await updateDoc(doc(window.fbDB, 'students', sId), updateData);
-                
-                const s = studentsCache.find(x => x.id === sId);
-                if (s) {
-                    if (updateData.resultMarksObj) s.resultMarksObj = updateData.resultMarksObj;
-                    if (updateData.customMarks) s.customMarks = updateData.customMarks;
+            try {
+                // ১. প্রথমে students কালেকশনে ডাটা প্রস্তুত করি (students এর ফরম্যাট)
+                const updateDataForStudent = {};
+                if (Object.keys(data.resultMarksObj).length > 0) updateDataForStudent.resultMarksObj = data.resultMarksObj;
+                if (Object.keys(data.customMarks).length > 0) updateDataForStudent.customMarks = data.customMarks;
+
+                let isSaved = false;
+
+                // চেষ্টা ১: students কালেকশনে সেভ করা
+                if (Object.keys(updateDataForStudent).length > 0) {
+                    try {
+                        await updateDoc(doc(window.fbDB, 'students', sId), updateDataForStudent);
+                        isSaved = true;
+                    } catch (err) {
+                        // যদি students এ ডকুমেন্ট না থাকে (No document to update), তবে এরর ইগনোর করে admissionForms এ চেষ্টা করব
+                        if (err.code !== 'not-found' && !err.message.includes('No document to update')) {
+                            throw err; // অন্য কোনো এরর হলে থ্রো করব
+                        }
+                    }
                 }
-                count++;
+
+                // চেষ্টা ২: যদি students এ সেভ না হয়, তবে admissionForms এ সেভ করার চেষ্টা করি
+                if (!isSaved) {
+                    const updateDataForAdmission = {};
+                    // admissionForms এ সাধারণত data.examMarks নামে সেভ হয়
+                    if (Object.keys(data.resultMarksObj).length > 0) updateDataForAdmission['data.examMarks'] = data.resultMarksObj;
+                    if (Object.keys(data.customMarks).length > 0) updateDataForAdmission['data.customMarks'] = data.customMarks;
+
+                    if (Object.keys(updateDataForAdmission).length > 0) {
+                        // এখানে rawDocId ব্যবহার করছি, কারণ admissionForms এর ডকুমেন্ট আইডিতে 'admission_' প্রিফিক্স থাকে না
+                        await updateDoc(doc(window.fbDB, 'admissionForms', rawDocId), updateDataForAdmission);
+                        isSaved = true;
+                    }
+                }
+
+                // ৩. লোকাল ক্যাশ (studentsCache) আপডেট করা
+                if (isSaved) {
+                    const s = studentsCache.find(x => x.id === sId);
+                    if (s) {
+                        if (data.resultMarksObj) s.resultMarksObj = { ...(s.resultMarksObj || {}), ...data.resultMarksObj };
+                        if (data.customMarks) s.customMarks = { ...(s.customMarks || {}), ...data.customMarks };
+                    }
+                    count++;
+                } else {
+                    failed++;
+                }
+
+            } catch (err) {
+                console.warn(`⚠️ ${sId} আপডেট ব্যর্থ:`, err.message);
+                failed++;
             }
         }
-        showToast(`✅ ${count} জন ছাত্রের মার্কস সফলভাবে সেভ হয়েছে!`, 'success');
+
+        if (count > 0) {
+            showToast(`✅ ${count} জন ছাত্রের মার্কস সফলভাবে সেভ হয়েছে!${failed > 0 ? ` (${failed}টি ব্যর্থ)` : ''}`, 'success');
+        } else {
+            showToast('❌ কোন ডাটা সেভ হয়নি।', 'error');
+        }
+        
     } catch (err) {
         console.error('❌ saveAllMarks error:', err);
         showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
