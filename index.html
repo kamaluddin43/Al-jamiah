@@ -1043,17 +1043,20 @@ header button {
     }
 }
 </style>
+    <!-- ★★★ ঠিক এখানে বসান (</head> এর ঠিক আগে) ★★★ -->
+    <script>
+        if (localStorage.getItem('gp_student_id')) {
+            const style = document.createElement('style');
+            style.id = 'hide-main-app-style';
+            style.innerHTML = `
+                body > header, body > main, body > footer { display: none !important; }
+            `;
+            document.head.appendChild(style);
+        }
+    </script>
 </head>
 <body class="min-h-screen text-slate-800 flex flex-col">
-        <!-- ★★★ গার্ডিয়ান হলে মূল অ্যাপ লুকানোর স্ক্রিপ্ট ★★★ -->
-<script>
-    // গার্ডিয়ান হলে সাথে সাথে মূল অ্যাপ লুকাবে, তবে গার্ডিয়ান পোর্টাল ছাড়া অন্য কিছু থাকলে তা লুকাবে না
-    if (localStorage.getItem('gp_student_id')) {
-        const style = document.createElement('style');
-        style.innerHTML = 'header, main, footer { display: none !important; }';
-        document.head.appendChild(style);
-    }
-</script>
+
 <!-- ═══════════════════ TEACHER PICKER MODAL ═══════════════════ -->
 <div id="teacher-picker-modal" class="fixed inset-0 modal-backdrop z-[300] items-center justify-center p-4 hidden">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col modal-enter">
@@ -8216,41 +8219,73 @@ function loadRecords() {
 // Firestore থেকে records লোড
 window.loadRecordsFromFirestore = async function() {
     if (!currentUser) return;
-    try {
-        const { collection, getDocs, query, where, orderBy } = window.fbFuncs;
-        
-        let q;
-        if (currentUserData?.role === 'admin') {
-            // এডমিন সব records দেখবে
-            q = collection(window.fbDB, 'records');
-        } else {
-            // শিক্ষক শুধু নিজের বানানো records
-            q = query(collection(window.fbDB, 'records'), where('createdBy', '==', currentUser.uid));
+    
+    const CACHE_KEY = 'madrasa_records_cache_v1'; // ★ নতুন ক্যাশ কি
+
+    // ★ ১. প্রথমে লোকাল স্টোরেজ থেকে ডাটা লোড করি (অফলাইন সাপোর্ট)
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+        try {
+            records = JSON.parse(cached);
+            // ★ migration প্রয়োগ করি (যাতে পুরনো ডাটাও ঠিকমতো কাজ করে)
+            records = records.map(r => migrateRecord(r));
+            renderSavedDataTable();
+            updateStats();
+            console.log('📦 Records loaded from cache');
+        } catch(e) {}
+    }
+
+    // ★ ২. ইন্টারনেট থাকলে ফায়ারবেস থেকে লেটেস্ট ডাটা আনি
+    if (navigator.onLine) {
+        try {
+            const { collection, getDocs, query, where } = window.fbFuncs;
+            
+            let q;
+            if (currentUserData?.role === 'admin') {
+                // এডমিন সব records দেখবে
+                q = collection(window.fbDB, 'records');
+            } else {
+                // শিক্ষক শুধু নিজের বানানো records
+                q = query(collection(window.fbDB, 'records'), where('createdBy', '==', currentUser.uid));
+            }
+            
+            const snap = await getDocs(q);
+            const fbRecords = [];
+            snap.forEach(d => {
+                fbRecords.push({ id: d.id, ...d.data() });
+            });
+            
+            // Sort by createdAt desc
+            fbRecords.sort((a, b) => {
+                const ta = a.createdAt?.seconds || 0;
+                const tb = b.createdAt?.seconds || 0;
+                return tb - ta;
+            });
+            
+            // ★ প্রতিটি record-এ migration প্রয়োগ (academicYear যোগ)
+            records = fbRecords.map(r => migrateRecord(r));
+            
+            // ★ সফলভাবে লোড হলে ক্যাশে সেভ করি
+            localStorage.setItem(CACHE_KEY, JSON.stringify(records));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); // পুরনো স্টোরেজ কী-ও আপডেট রাখি
+            
+            console.log(`✅ ${records.length}টি record migrate করা হয়েছে`);
+            renderSavedDataTable();
+            updateStats();
+            console.log('☁️ Records loaded from Firestore:', records.length);
+        } catch (err) {
+            console.error('❌ loadRecordsFromFirestore error:', err);
+            // এরর খেলেও ক্যাশ থেকে ডাটা অলরেডি লোড হয়ে গেছে, তাই চিন্তার কিছু নেই
+            if (!cached) {
+                records = [];
+            }
         }
-        
-        const snap = await getDocs(q);
-        const fbRecords = [];
-        snap.forEach(d => {
-            fbRecords.push({ id: d.id, ...d.data() });
-        });
-        
-        // Sort by createdAt desc
-        fbRecords.sort((a, b) => {
-            const ta = a.createdAt?.seconds || 0;
-            const tb = b.createdAt?.seconds || 0;
-            return tb - ta;
-        });
-        
-        // ★ প্রতিটি record-এ migration প্রয়োগ (academicYear যোগ)
-        records = fbRecords.map(r => migrateRecord(r));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-        console.log(`✅ ${records.length}টি record migrate করা হয়েছে`);
-        renderSavedDataTable();
-        updateStats();
-        console.log('☁️ Records loaded from Firestore:', records.length);
-    } catch (err) {
-        console.error('❌ loadRecordsFromFirestore error:', err);
-        // cache থেকে যা আছে তাই চলবে
+    } else {
+        // ★ অফলাইন মোড
+        console.log('📴 Offline mode — records loaded from cache');
+        if (!cached) {
+            records = [];
+        }
     }
 };
 
@@ -10359,6 +10394,29 @@ async function loadRoutinesForYear() {
     const year = routineState.academicYear;
     if (!year || !currentUser) return;
     
+    const CACHE_KEY = `madrasa_routines_cache_${year}`;
+
+    // ★ ১. প্রথমে ব্রাউজারের ক্যাশ থেকে রুটিন লোড করি
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+        try { 
+            routinesCache = JSON.parse(cached); 
+            console.log('📦 Routines loaded from cache');
+            
+            // ★★★ নতুন যোগ করা হলো: ক্যাশ লোড হলেই স্ক্রিনে রেন্ডার করি ★★★
+            if (typeof renderRoutineSub === 'function') renderRoutineSub();
+            if (typeof updateRoutineEntryProgress === 'function') updateRoutineEntryProgress();
+            
+        } catch(e) {}
+    }
+
+    // ★ ২. ইন্টারনেট না থাকলে ফায়ারবেসে কল দেব না
+    if (!navigator.onLine) {
+        console.log('📴 Offline mode — routines loaded from cache');
+        return; 
+    }
+
+    // ★ ৩. নেট থাকলে ফায়ারবেস থেকে লেটেস্ট রুটিন লোড করি
     try {
         const { collection, getDocs, query, where } = window.fbFuncs;
         const q = query(collection(window.fbDB, 'routines'), where('academicYear', '==', year));
@@ -10368,26 +10426,20 @@ async function loadRoutinesForYear() {
         snap.forEach(d => {
             const r = { id: d.id, ...d.data() };
             
-            // ★★★ এখানেই আসল ফিক্স: ফায়ারবেস থেকে আসার সময়ই নাম চেক ও আপডেট করা ★★★
+            // ★ আপনার আগের ম্যাচিং লজিক অক্ষুণ্ণ রাখা হয়েছে ★
             const dept = r.dept;
             const validClasses = getClassesForDept(dept);
-            
-            // যদি রুটিনের ক্লাসের নাম কনফিগে না থাকে
             if (r.className && !validClasses.includes(r.className)) {
                 const matchedClass = validClasses.find(c => 
-                    c.includes(r.className) || 
-                    r.className.includes(c.split(' ')[0]) ||
+                    c.includes(r.className) || r.className.includes(c.split(' ')[0]) ||
                     c.split(' ')[0] === r.className.split(' ')[0]
                 );
                 if (matchedClass) r.className = matchedClass;
             }
-
-            // যদি রুটিনের কিতাবের নাম কনফিগে না থাকে
             const validBooks = (configData?.books || {})[r.className] || [];
             if (r.bookName && !validBooks.includes(r.bookName)) {
                 const matchedBook = validBooks.find(b => 
-                    b.includes(r.bookName) || 
-                    r.bookName.includes(b.split(' ')[0]) ||
+                    b.includes(r.bookName) || r.bookName.includes(b.split(' ')[0]) ||
                     b.split(' ')[0] === r.bookName.split(' ')[0]
                 );
                 if (matchedBook) r.bookName = matchedBook;
@@ -10399,6 +10451,13 @@ async function loadRoutinesForYear() {
         
         console.log(`📚 ${routinesCache.length} টি routine লোড হয়েছে (${year})`);
         
+        // ★ ৪. সফলভাবে ফায়ারবেস থেকে লোড হলে ক্যাশে সেভ করি
+        localStorage.setItem(CACHE_KEY, JSON.stringify(routinesCache));
+        
+        // ★★★ নতুন যোগ করা হলো: ফায়ারবেস থেকে লোড হয়েও স্ক্রিনে রেন্ডার করি ★★★
+        if (typeof renderRoutineSub === 'function') renderRoutineSub();
+        if (typeof updateRoutineEntryProgress === 'function') updateRoutineEntryProgress();
+
         // Auto ক্যারি-ফরওয়ার্ড প্রস্তাব (এডমিনের জন্য)
         if (routineState.subView === 'entry' && 
             currentUserData?.role === 'admin' && 
@@ -10407,7 +10466,6 @@ async function loadRoutinesForYear() {
         }
     } catch (err) {
         console.error('❌ loadRoutinesForYear error:', err);
-        routinesCache = [];
     }
 }
 
@@ -27779,88 +27837,136 @@ let _currentStudentClass = '';       // বর্তমান জামাত/�
 async function loadStudentsFromFirestore() {
     if (!currentUser) return;
 
-    try {
-        const { collection, getDocs } = window.fbFuncs;
+    const CACHE_KEY = 'madrasa_students_cache_v1'; // ★ ক্যাশ কি
 
-        // ─── ১. এডমিন প্যানেলের ম্যানুয়াল ছাত্র (students কালেকশন) ───
-        const sSnap = await getDocs(collection(window.fbDB, 'students'));
-        const manualStudents = [];
-        sSnap.forEach(d => manualStudents.push({ id: d.id, ...d.data(), source: 'manual' }));
+    // ★ ১. প্রথমে লোকাল স্টোরেজ থেকে ছাত্র ডাটা লোড করি (অফলাইন সাপোর্ট)
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+        try {
+            studentsCache = JSON.parse(cached);
+            studentsLoaded = true;
+            console.log('📦 Students loaded from cache');
+            // UI রিফ্রেশ করতে চাইলে এখানে কল করতে পারেন
+        } catch(e) {}
+    }
 
-        // ─── ২. ভর্তি সম্পন্ন ছাত্র (admissionForms কালেকশন) ───
-        const fSnap = await getDocs(collection(window.fbDB, 'admissionForms'));
-        const admittedStudents = [];
-        
-        fSnap.forEach(d => {
-            const form = { id: d.id, ...d.data() };
-            
-            // ★ শুধু approved ফরম
-            const isApproved = form.status === 'approved' 
-                || form.currentStep === 'COMPLETED' 
-                || form.currentStep === 12
-                || (form.savedSteps && form.savedSteps.includes(11));
-            
-            if (!isApproved) return;
+    // ★ ২. ইন্টারনেট থাকলে ফায়ারবেস থেকে লেটেস্ট ডাটা আনব
+    if (navigator.onLine) {
+        try {
+            const { collection, getDocs } = window.fbFuncs;
 
-            // ★ ফরম থেকে স্টুডেন্ট অবজেক্ট তৈরি
-            const fd = flattenAdmFormData(form);
-            
-            // ★ ডুপ্লিকেট চেক: একই studentId আগে থেকে ম্যানুয়াল লিস্টে আছে কি?
-            const isDuplicate = manualStudents.some(s => 
-                s.studentId && fd.studentId && 
-                String(s.studentId).trim() === String(fd.studentId).trim()
-            );
-            
-            if (isDuplicate) return; // ম্যানুয়াল এন্ট্রি থাকলে ভর্তির ডাটা skip
+            // ─── ১. এডমিন প্যানেলের ম্যানুয়াল ছাত্র (students কালেকশন) ───
+            const sSnap = await getDocs(collection(window.fbDB, 'students'));
+            const manualStudents = [];
+            sSnap.forEach(d => manualStudents.push({ id: d.id, ...d.data(), source: 'manual' }));
 
-            admittedStudents.push({
-                id: 'admission_' + form.id,   // আলাদা ID যাতে ম্যানুয়ালের সাথে মেশে না
-                name: fd.name,
-                guardian: fd.guardianName || fd.fatherName,
-                studentId: fd.studentId,
-                dob: fd.dob,
-                mobile1: fd.mobile1,
-                mobile2: fd.mobile2,
-                address: fd.currentAddress,
-                dept: fd.dept,
-                className: fd.nextClass,
-                admissionFee: fd.admissionFee,
-                firstMonthFood: fd.firstMonthFood,
-                sessionFee: 0,
-                monthlyFood: fd.monthlyFood,
-                hostelFee: fd.monthlyHostel,
-                monthlySalary: fd.monthlySalary,
-                remark: null,
-                photo: fd.studentPhoto || '',
-                source: 'admission',          // ★ সোর্স ট্র্যাকিং
-                admissionFormId: form.id,     // ★ মূল ফরমের ID
-                approvedAt: fd.approvedAt,
+            // ─── ২. ভর্তি সম্পন্ন ছাত্র (admissionForms কালেকশন) ───
+            const fSnap = await getDocs(collection(window.fbDB, 'admissionForms'));
+            const admittedStudents = [];
+            
+            fSnap.forEach(d => {
+                const form = { id: d.id, ...d.data() };
                 
-                // ✅✅✅ নতুন যোগ — মার্কস ফিল্ড ম্যাপিং ✅✅✅
-                resultMarksObj: fd.examMarks || form.data?.examMarks || form.data?.resultMarksObj || {},
-                customMarks: fd.customMarks || form.data?.customMarks || {}
+                // ★ শুধু approved ফরম
+                const isApproved = form.status === 'approved' 
+                    || form.currentStep === 'COMPLETED' 
+                    || form.currentStep === 12
+                    || (form.savedSteps && form.savedSteps.includes(11));
+                
+                if (!isApproved) return;
+
+                // ★ ফরম থেকে স্টুডেন্ট অবজেক্ট তৈরি
+                const fd = flattenAdmFormData(form);
+                
+                // ★ ডুপ্লিকেট চেক: একই studentId আগে থেকে ম্যানুয়াল লিস্টে আছে কি?
+                const isDuplicate = manualStudents.some(s => 
+                    s.studentId && fd.studentId && 
+                    String(s.studentId).trim() === String(fd.studentId).trim()
+                );
+                
+                if (isDuplicate) return; // ম্যানুয়াল এন্ট্রি থাকলে ভর্তির ডাটা skip
+
+                admittedStudents.push({
+                    id: 'admission_' + form.id,   // আলাদা ID যাতে ম্যানুয়ালের সাথে মেশে না
+                    name: fd.name,
+                    guardian: fd.guardianName || fd.fatherName,
+                    studentId: fd.studentId,
+                    dob: fd.dob,
+                    mobile1: fd.mobile1,
+                    mobile2: fd.mobile2,
+                    address: fd.currentAddress,
+                    dept: fd.dept,
+                    className: fd.nextClass,
+                    admissionFee: fd.admissionFee,
+                    firstMonthFood: fd.firstMonthFood,
+                    sessionFee: 0,
+                    monthlyFood: fd.monthlyFood,
+                    hostelFee: fd.monthlyHostel,
+                    monthlySalary: fd.monthlySalary,
+                    remark: null,
+                    photo: fd.studentPhoto || '',
+                    source: 'admission',          // ★ সোর্স ট্র্যাকিং
+                    admissionFormId: form.id,     // ★ মূল ফরমের ID
+                    approvedAt: fd.approvedAt,
+                    
+                    // ✅✅✅ নতুন যোগ — মার্কস ফিল্ড ম্যাপিং ✅✅✅
+                    resultMarksObj: fd.examMarks || form.data?.examMarks || form.data?.resultMarksObj || {},
+                    customMarks: fd.customMarks || form.data?.customMarks || {}
+                });
             });
-        });
 
-        // ─── ৩. একসাথে মিলাই ───
-        studentsCache = [...manualStudents, ...admittedStudents];
+            // ─── ৩. একসাথে মিলাই ───
+            studentsCache = [...manualStudents, ...admittedStudents];
 
-        // Sort: dept → className → name
-        studentsCache.sort((a, b) => {
-            const d = (a.dept || '').localeCompare(b.dept || '');
-            if (d !== 0) return d;
-            const c = (a.className || '').localeCompare(b.className || '');
-            if (c !== 0) return c;
-            return (a.name || '').localeCompare(b.name || '');
-        });
+            // Sort: dept → className → name
+            studentsCache.sort((a, b) => {
+                const d = (a.dept || '').localeCompare(b.dept || '');
+                if (d !== 0) return d;
+                const c = (a.className || '').localeCompare(b.className || '');
+                if (c !== 0) return c;
+                return (a.name || '').localeCompare(b.name || '');
+            });
 
-        studentsLoaded = true;
-        console.log(`👨‍🎓 মোট ${studentsCache.length} জন (ম্যানুয়াল: ${manualStudents.length}, ভর্তি: ${admittedStudents.length})`);
+            studentsLoaded = true;
+            console.log(`👨‍🎓 মোট ${studentsCache.length} জন (ম্যানুয়াল: ${manualStudents.length}, ভর্তি: ${admittedStudents.length})`);
 
-    } catch (err) {
-        console.error('❌ loadStudentsFromFirestore error:', err);
-        studentsCache = [];
-        studentsLoaded = true;
+            // ★ সফলভাবে লোড হলে ক্যাশে সেভ করি
+            localStorage.setItem(CACHE_KEY, JSON.stringify(studentsCache));
+            console.log('☁️ Students data saved to cache');
+            
+            // ★★★ নতুন যোগ করুন: UI রিফ্রেশ করার লাইনগুলো ★★★
+            if (typeof renderAdminStudents === 'function' && document.getElementById('adm-content')) {
+                // যদি এডমিন প্যানেলে থাকেন
+                // renderAdminStudents(); 
+            }
+            if (typeof _currentStudentSub !== 'undefined' && _currentStudentSub) {
+                // যদি শিক্ষার্থী ট্যাবে থাকেন
+                if (typeof renderStudentDetailContent === 'function') renderStudentDetailContent();
+            }
+            if (typeof renderJamatReport === 'function' && document.getElementById('jamat-report-pages')?.children.length > 0) {
+                // যদি জামাত রিপোর্টে থাকেন
+                // renderJamatReport(); // (চাইলে আনকমেন্ট করবেন, তবে বারবার কল হলে স্লো হতে পারে)
+            }
+                    // ★★★ নতুন যোগ করুন: UI রিফ্রেশ করার লাইনগুলো ★★★
+            if (typeof renderAdminStudents === 'function' && document.getElementById('adm-content')) {
+                // renderAdminStudents(); // (এটি চাইলে আনকমেন্ট করবেন)
+            }
+
+        } catch (err) {
+            console.error('❌ loadStudentsFromFirestore error:', err);
+            // এরর খেলেও ক্যাশ থেকে ডাটা অলরেডি লোড হয়ে গেছে, তাই চিন্তার কিছু নেই
+            if (!cached) {
+                studentsCache = [];
+                studentsLoaded = true;
+            }
+        }
+    } else {
+        // ★ অফলাইন মোড
+        console.log('📴 Offline mode — students loaded from cache');
+        if (!cached) {
+            studentsCache = [];
+            studentsLoaded = true;
+        }
     }
 }
 
@@ -32966,36 +33072,48 @@ window.seedConfigToFirestore = async function() {
 // Firestore থেকে কনফিগ লোড (cache সহ)
 window.loadConfigFromFirestore = async function() {
     const CACHE_KEY = 'madrasa_config_cache_v3';
-    try {
-        const { doc, getDoc } = window.fbFuncs;
-        const ref = doc(window.fbDB, CONFIG_DOC_PATH, CONFIG_DOC_ID);
+    
+    // ★ ১. প্রথমে লোকাল স্টোরেজ থেকে ডাটা লোড করি (এটি অফলাইনেও কাজ করবে)
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+        try {
+            const c = JSON.parse(cached);
+            applyConfig(c);
+            configLoadedFrom = 'cache';
+            console.log('📦 Config loaded from cache (Offline Support)');
+        } catch(e) {}
+    }
 
-        // প্রথমে cache থেকে দেখি (দ্রুত লোড)
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-            try {
-                const c = JSON.parse(cached);
-                applyConfig(c);
-                configLoadedFrom = 'cache';
-                console.log('📦 Config loaded from cache');
-            } catch(e) {}
-        }
+    // ★ ২. এরপর চেক করি ইন্টারনেট আছে কি না। যদি থাকে, তবেই ফায়ারবেস থেকে ডাটা আনি।
+    if (navigator.onLine) {
+        try {
+            const { doc, getDoc } = window.fbFuncs;
+            const ref = doc(window.fbDB, CONFIG_DOC_PATH, CONFIG_DOC_ID);
 
-        // তারপর Firestore থেকে sync (background)
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-            const data = snap.data();
-            applyConfig(data);
-            localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-            configLoadedFrom = 'firestore';
-            console.log('☁️ Config loaded from Firestore');
-        } else {
-            console.warn('⚠️ Firestore-এ config/main নেই — আগে seed করুন');
-            if (!cached) showToast('⚠️ কনফিগ ডাটা নেই — Settings থেকে seed করুন', 'warn');
+            const snap = await getDoc(ref);
+            if (snap.exists()) {
+                const data = snap.data();
+                applyConfig(data);
+                localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                configLoadedFrom = 'firestore';
+                console.log('☁️ Config loaded from Firestore');
+            } else {
+                console.warn('⚠️ Firestore-এ config/main নেই — আগে seed করুন');
+                if (!cached) showToast('⚠️ কনফিগ ডাটা নেই — Settings থেকে seed করুন', 'warn');
+            }
+        } catch (err) {
+            console.error('❌ loadConfigFromFirestore error:', err);
+            // নেটওয়ার্ক এরর খেলেও আগের ক্যাশ ডাটা দিয়েই অ্যাপ চলবে
+            if (!cached) {
+                showToast('❌ ইন্টারনেট নেই এবং লোকাল ডাটাও নেই', 'error');
+            }
         }
-    } catch (err) {
-        console.error('❌ loadConfigFromFirestore error:', err);
-        // cache থাকলে সেটাই চলবে
+    } else {
+        // অফলাইন মোড
+        console.log('📴 অফলাইন মোড — লোকাল ডাটা দিয়ে চলছে');
+        if (!cached) {
+            showToast('📴 ইন্টারনেট নেই, অ্যাপ পুরোপুরি লোড হতে পারছে না', 'warn');
+        }
     }
 };
 
@@ -40809,6 +40927,22 @@ window.addEventListener('load', async () => {
             }
         } catch (error) {
             console.error("অটো-লগইন চেকার এরর:", error);
+            
+            // ★ নতুন: নেট না থাকলে লোকাল স্টোরেজ থেকে ডাটা নিয়ে পোর্টাল খুলি
+            const cachedStudents = localStorage.getItem('madrasa_students_cache_v1');
+            if (cachedStudents && savedStudentId) {
+                try {
+                    const studentsArr = JSON.parse(cachedStudents);
+                    const found = studentsArr.find(s => String(s.studentId) === savedStudentId || String(s.id) === savedStudentId);
+                    if (found) {
+                        _guardianSession = found;
+                        document.getElementById('gp-temp-loader')?.remove();
+                        showGuardianPortal();
+                        return;
+                    }
+                } catch(e) {}
+            }
+            document.getElementById('gp-temp-loader')?.remove();
         }
     }
 });
@@ -43183,13 +43317,23 @@ let _feePaymentsCache = [];
 
 async function loadFeeStructure() {
     if (!currentUser) return;
+    
+    const CACHE_KEY = 'madrasa_fee_structure_cache';
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+        try { _feeStructureCache = JSON.parse(cached); } catch(e) {}
+    }
+
+    if (!navigator.onLine) return; // অফলাইন হলে ক্যাশ দিয়েই কাজ চালাবে
+
     try {
         const { doc, getDoc } = window.fbFuncs;
         const snap = await getDoc(doc(window.fbDB, 'config', 'feeStructure'));
         _feeStructureCache = snap.exists() ? (snap.data().structure || {}) : {};
+        
+        localStorage.setItem(CACHE_KEY, JSON.stringify(_feeStructureCache)); // ক্যাশে সেভ
     } catch (err) {
         console.error('❌ loadFeeStructure:', err);
-        _feeStructureCache = {};
     }
 }
 
@@ -43218,14 +43362,24 @@ function getClassFeeStructure(dept, className) {
 
 async function loadFeePayments() {
     if (!currentUser) return;
+    
+    const CACHE_KEY = 'madrasa_fee_payments_cache';
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+        try { _feePaymentsCache = JSON.parse(cached); } catch(e) {}
+    }
+
+    if (!navigator.onLine) return; // অফলাইন হলে ক্যাশ দিয়েই কাজ চালাবে
+
     try {
         const { collection, getDocs } = window.fbFuncs;
         const snap = await getDocs(collection(window.fbDB, 'feePayments'));
         _feePaymentsCache = [];
         snap.forEach(d => _feePaymentsCache.push({ id: d.id, ...d.data() }));
+        
+        localStorage.setItem(CACHE_KEY, JSON.stringify(_feePaymentsCache)); // ক্যাশে সেভ
     } catch (err) {
         console.error('❌ loadFeePayments:', err);
-        _feePaymentsCache = [];
     }
 }
 
@@ -53038,12 +53192,28 @@ async function renderGpRoutine(container) {
 }
 
 // ═══════════════════ ৫. যোগাযোগ ট্যাব (দায়িত্বশীল, মুহতামিম) ═══════════════════
+// ═══════════════════════════════════════════════════════════════
+// ★★★ গার্ডিয়ান পোর্টাল — যোগাযোগ পেজ (সেটিংস থেকে অটো লোড) ★★★
+// ═══════════════════════════════════════════════════════════════
+
 async function renderGpContact(container) {
     const student = _guardianSession;
+    
+    // ★ ১. লেটেস্ট কনফিগ ডাটা রিলোড করি (যাতে সেটিংসে নতুন যা যোগ হয়েছে তা সাথে সাথে পাওয়া যায়)
+    try {
+        const { doc, getDoc } = window.fbFuncs;
+        const configSnap = await getDoc(doc(window.fbDB, 'config', 'main'));
+        if (configSnap.exists()) {
+            configData = configSnap.data();
+        }
+    } catch (e) {
+        console.warn('Config reload failed in contact page', e);
+    }
+
     const contacts = configData?.contacts || {};
     const madrasaInfo = configData?.madrasaInfo || {};
 
-    // ১. রোল অনুযায়ী ডাটা কালেক্ট করা
+    // ★ ২. সেটিংসে ডিফাইন করা পদগুলোর লেবেল ও আইকন
     const roleList = [
         { key: 'principal', label: 'প্রিন্সিপাল', icon: 'fa-user-tie', color: 'rose' },
         { key: 'vice_principal', label: 'ভাইস প্রিন্সিপাল', icon: 'fa-user-tie', color: 'rose' },
@@ -53056,7 +53226,7 @@ async function renderGpContact(container) {
 
     let contactsHTML = '';
 
-    // ২. ক্লাস টিচার (দায়িত্বশীল) খোঁজা
+    // ★ ৩. শ্রেণি শিক্ষক (Class Teacher) বের করা
     let classTeacherName = 'নির্ধারিত হয়নি';
     let classTeacherMobile = '—';
     if (configData && configData.assignments) {
@@ -53064,18 +53234,18 @@ async function renderGpContact(container) {
         const assigned = configData.assignments[classKey] || [];
         if (assigned.length > 0) {
             classTeacherName = assigned.join(', ');
-            const tMeta = findTeacherByName(assigned[0]);
+            const tMeta = typeof findTeacherByName === 'function' ? findTeacherByName(assigned[0]) : null;
             if (tMeta && tMeta.mobile) classTeacherMobile = tMeta.mobile;
         }
     }
 
-    // ক্লাস টিচার কার্ড
+    // শ্রেণি শিক্ষক কার্ড (সবসময় সবার উপরে থাকবে)
     contactsHTML += `
         <div class="flex items-center gap-4 p-3 border-2 border-emerald-200 rounded-xl mb-3 bg-emerald-50 shadow-sm relative overflow-hidden">
             <div class="w-12 h-12 bg-emerald-200 text-emerald-700 rounded-full flex items-center justify-center text-xl flex-shrink-0">
                 <i class="fa-solid fa-chalkboard-user"></i>
             </div>
-            <div class="flex-1">
+            <div class="flex-1 min-w-0">
                 <p class="text-[10px] text-emerald-800 font-bold uppercase tracking-wider">শ্রেণি শিক্ষক (দায়িত্বশীল)</p>
                 <p class="text-sm font-bold text-slate-800">${classTeacherName}</p>
                 <p class="text-xs text-slate-600 font-mono mt-0.5">${classTeacherMobile}</p>
@@ -53084,19 +53254,22 @@ async function renderGpContact(container) {
         </div>
     `;
 
-    // ৩. অন্যান্য দায়িত্বশীলদের কার্ড
+    // ★ ৪. সেটিংস থেকে অন্যান্য দায়িত্বশীলদের কার্ড তৈরি
     roleList.forEach(role => {
         const person = contacts[role.key];
+        
+        // যদি সেটিংসে এই পদে কাউকে সিলেক্ট করা থাকে
         if (person && person.name) {
             const phone = person.mobile || '—';
+            
             contactsHTML += `
                 <div class="flex items-center gap-4 p-3 border border-slate-200 rounded-xl mb-2 bg-white shadow-sm">
                     <div class="w-10 h-10 bg-${role.color}-100 text-${role.color}-600 rounded-full flex items-center justify-center text-lg flex-shrink-0">
                         <i class="fa-solid ${role.icon}"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-[10px] text-slate-500 font-semibold">${role.label}</p>
-                        <p class="text-sm font-bold text-slate-800">${person.name}</p>
+                        <p class="text-[10px] text-slate-500 font-bold">${role.label}</p>
+                        <p class="text-sm font-bold text-slate-800 truncate">${person.name}</p>
                         <p class="text-xs text-slate-600 font-mono mt-0.5">${phone}</p>
                     </div>
                     ${phone !== '—' ? `<a href="tel:${phone}" class="w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full flex items-center justify-center transition"><i class="fa-solid fa-phone text-xs"></i></a>` : ''}
@@ -53105,16 +53278,27 @@ async function renderGpContact(container) {
         }
     });
 
-    // ৪. মাদরাসার সোশ্যাল লিংক
+    // ★ ৫. মাদরাসার সোশ্যাল লিংক (ফেসবুক ও ইমেইল)
     let socialHTML = '';
     if (madrasaInfo.facebook || madrasaInfo.email) {
         socialHTML = `
             <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mt-4 text-center">
                 <p class="text-xs font-bold text-blue-900 mb-2">মাদরাসার সাথে যোগাযোগ</p>
-                <div class="flex justify-center gap-3">
-                    ${madrasaInfo.facebook ? `<a href="${madrasaInfo.facebook}" target="_blank" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"><i class="fa-brands fa-facebook"></i> ফেসবুক</a>` : ''}
-                    ${madrasaInfo.email ? `<a href="mailto:${madrasaInfo.email}" class="px-4 py-2 bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"><i class="fa-solid fa-envelope"></i> ইমেইল</a>` : ''}
+                <div class="flex justify-center gap-3 flex-wrap">
+                    ${madrasaInfo.facebook ? `<a href="${madrasaInfo.facebook}" target="_blank" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow transition"><i class="fa-brands fa-facebook"></i> ফেসবুক</a>` : ''}
+                    ${madrasaInfo.email ? `<a href="mailto:${madrasaInfo.email}" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow transition"><i class="fa-solid fa-envelope"></i> ইমেইল</a>` : ''}
                 </div>
+            </div>
+        `;
+    }
+
+    // ★ ৬. যদি কোনো তথ্যই সেট না থাকে
+    if (contactsHTML.trim() === '' && socialHTML === '') {
+        contactsHTML = `
+            <div class="bg-white p-8 rounded-xl text-center">
+                <i class="fa-solid fa-address-book text-4xl text-slate-300 mb-3"></i>
+                <p class="text-sm font-bold text-slate-600">কোনো যোগাযোগের তথ্য পাওয়া যায়নি</p>
+                <p class="text-xs text-slate-400 mt-1">এডমিন প্যানেলের সেটিংস থেকে দায়িত্বশীলদের নাম যোগ করুন।</p>
             </div>
         `;
     }
