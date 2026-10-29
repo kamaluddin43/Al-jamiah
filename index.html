@@ -2509,11 +2509,11 @@ header button {
                 <span class="text-sm md:text-base font-bold leading-tight text-center">২. যোগাযোগ</span>
             </button>
 
-            <!-- ৩. অগ্রগতি -->
-            <button onclick="openGuardianPage('progress')" id="guardian-btn-progress"
+            <!-- ৩. হোমওয়ার্ক -->
+            <button onclick="openGuardianPage('homework')" id="guardian-btn-homework" 
                     class="guardian-main-btn group bg-gradient-to-br from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-chart-line text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">৩. অগ্রগতি</span>
+                <i class="fa-solid fa-book-open text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm md:text-base font-bold leading-tight text-center">৩. হোমওয়ার্ক</span>
             </button>
 
             <!-- ৪. গার্ডিয়ান পোর্টাল -->
@@ -32845,6 +32845,56 @@ function showApp() {
     setTimeout(() => {
         startStudentsRealtimeListener();
     }, 1200);
+    // ★★★ এখানে নতুন কোডটি বসান ★★★
+    setTimeout(() => {
+        cleanupOldHomeworkAndSuggestions();
+    }, 5000);
+}
+
+// ★★★ showApp() ফাংশনে একবার কল করুন ★★★
+async function cleanupOldHomeworkAndSuggestions() {
+    if (!currentUser) return;
+    try {
+        const { collection, getDocs, query, where, deleteDoc, doc, Timestamp } = window.fbFuncs;
+        
+        // ─── হোমওয়ার্ক ক্লিনআপ (৩ দিনের পুরনো) ───
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        const threeDaysAgoStr = threeDaysAgo.toISOString().split('T')[0];
+        
+        const hwQuery = query(collection(window.fbDB, 'homework'), where('date', '<', threeDaysAgoStr));
+        const hwSnap = await getDocs(hwQuery);
+        for (const d of hwSnap.docs) {
+            await deleteDoc(doc(window.fbDB, 'homework', d.id));
+            console.log(`🗑️ পুরনো হোমওয়ার্ক ডিলিট: ${d.data().date}`);
+        }
+
+        // ─── সাজেশন ক্লিনআপ (নির্দিষ্ট নিয়ম অনুযায়ী) ───
+        const now = new Date();
+        const examMonths = {
+            term1: [3, 4],      // এপ্রিল-মে (১ম সাময়িক)
+            term2: [8, 9],      // সেপ্টেম্বর-অক্টোবর (২য় সাময়িক)
+            annual: [11, 12]    // ডিসেম্বর-জানুয়ারি (বার্ষিক)
+        };
+        // কোন পরীক্ষা কখন ডিলিট হবে তার লজিক
+        // （উদাহরণ: ২য় সাময়িকের সময় ১ম সাময়িকের সাজেশন ডিলিট）
+        
+        const suggestionsSnap = await getDocs(collection(window.fbDB, 'suggestions'));
+        for (const d of suggestionsSnap.docs) {
+            const sugg = d.data();
+            const createdDate = sugg.createdAt?.toDate ? sugg.createdAt.toDate() : new Date();
+            // সরল লজিক: ৬ মাসের পুরনো সাজেশন ডিলিট
+            const sixMonthsAgo = new Date();
+            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+            if (createdDate < sixMonthsAgo) {
+                await deleteDoc(doc(window.fbDB, 'suggestions', d.id));
+                console.log(`🗑️ পুরনো সাজেশন ডিলিট`);
+            }
+        }
+
+    } catch (err) {
+        console.error('❌ cleanupOldHomeworkAndSuggestions:', err);
+    }
 }
 
 // শিক্ষকের জন্য dropdown-এ শুধু assign করা জামাত দেখান
@@ -34705,7 +34755,7 @@ window.renderAdminTeacher = function() {
                 </div>
             </div>
 
-            <div class="border border-slate-200 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
+            <div class="border border-slate-200 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto overflow-x-auto">
                 <table class="w-full text-left text-sm border-collapse">
                     <thead class="bg-slate-100 sticky top-0">
                         <tr>
@@ -43297,8 +43347,8 @@ async function renderGuardianPageContent() {
         renderGuardianFeesPage(container);
     } else if (_currentGuardianPage === 'communication') {
         renderGuardianCommunicationPage(container);
-    } else if (_currentGuardianPage === 'progress') {
-        renderGuardianProgressPage(container);
+    } else if (_currentGuardianPage === 'homework') {
+        renderHomeworkPage(container); 
     } else if (_currentGuardianPage === 'portal') {
         renderGuardianPortalPage(container);
     }
@@ -52384,7 +52434,7 @@ window.switchGpTab = async function(tab) {
         pageBody.innerHTML = comingSoonHTML;
     }
     else if (tab === 'homework') {
-        pageBody.innerHTML = comingSoonHTML;
+        await renderGpHomework(pageBody);
     }
     else if (tab === 'complaint') {
         pageBody.innerHTML = comingSoonHTML;
@@ -55639,6 +55689,657 @@ ${principalName}
         showToast('❌ প্রকাশ ব্যর্থ: ' + err.message, 'error');
     }
 };
+// ═══════════════════════════════════════════════════════════════
+// ★★★ হোমওয়ার্ক মডিউল (সম্পূর্ণ নতুন) ★★★
+// ═══════════════════════════════════════════════════════════════
+
+let _homeworkState = {
+    activeTab: 'entry', // 'entry' | 'history' | 'suggestion'
+    // For Entry & Suggestion Tabs
+    selectedDept: '',
+    selectedClass: '',
+    entryDate: new Date().toISOString().split('T')[0],
+    // For History Tab
+    historyDate: new Date().toISOString().split('T')[0],
+};
+
+async function renderHomeworkPage(container) {
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-3 mb-4">
+            <div class="flex flex-wrap gap-2">
+                <button onclick="switchHomeworkTab('entry')" id="hw-tab-btn-entry"
+                        class="flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition">
+                    <i class="fa-solid fa-pen-to-square"></i> হোমওয়ার্ক এন্ট্রি
+                </button>
+                <button onclick="switchHomeworkTab('history')" id="hw-tab-btn-history"
+                        class="flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition">
+                    <i class="fa-solid fa-history"></i> হোমওয়ার্ক হিস্টোরি
+                </button>
+                <button onclick="switchHomeworkTab('suggestion')" id="hw-tab-btn-suggestion"
+                        class="flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition">
+                    <i class="fa-solid fa-lightbulb"></i> সাজেশন
+                </button>
+            </div>
+        </div>
+        <div id="hw-content-area"></div>
+    `;
+
+    switchHomeworkTab(_homeworkState.activeTab);
+}
+
+window.switchHomeworkTab = function(tab) {
+    _homeworkState.activeTab = tab;
+    
+    // বাটন হাইলাইট
+    ['entry', 'history', 'suggestion'].forEach(t => {
+        const btn = document.getElementById('hw-tab-btn-' + t);
+        if (btn) {
+            if (t === tab) {
+                btn.className = 'flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition bg-amber-600 text-white shadow-md';
+            } else {
+                btn.className = 'flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100 border border-slate-200';
+            }
+        }
+    });
+
+    const content = document.getElementById('hw-content-area');
+    if (!content) return;
+
+    if (tab === 'entry') renderHomeworkEntry(content);
+    else if (tab === 'history') renderHomeworkHistory(content);
+    else if (tab === 'suggestion') renderSuggestionPage(content);
+};
+
+// ─── ১. হোমওয়ার্ক এন্ট্রি পেজ ───
+async function renderHomeworkEntry(container) {
+    container.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-slate-400"></i></div>`;
+    
+    // RoutinesCache লোড করা নিশ্চিত করি
+    if (!routinesCache || routinesCache.length === 0) {
+        await loadRoutinesForYear();
+    }
+
+    const depts = configData?.departments || [];
+    const deptOptions = depts.map(d => `<option value="${d.key}" ${_homeworkState.selectedDept === d.key ? 'selected' : ''}>${d.name}</option>`).join('');
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4">
+            <h3 class="text-base font-bold text-slate-800 mb-4"><i class="fa-solid fa-pen-to-square text-amber-600"></i> হোমওয়ার্ক এন্ট্রি ফরম</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">বিভাগ *</label>
+                    <select id="hw-entry-dept" onchange="onHomeworkDeptChange()" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm bg-white">
+                        <option value="">-- বিভাগ --</option>
+                        ${deptOptions}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">শ্রেণি *</label>
+                    <select id="hw-entry-class" onchange="renderHomeworkEntryTable()" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm bg-white font-arabic">
+                         <option value="">-- শ্রেণি --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">তারিখ *</label>
+                    <input type="date" id="hw-entry-date" value="${_homeworkState.entryDate}" onchange="_homeworkState.entryDate=this.value; renderHomeworkEntryTable()" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm">
+                </div>
+            </div>
+            
+            <div id="hw-entry-table-area">
+                <div class="text-center py-10 text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                    <p class="text-sm">বিভাগ ও শ্রেণি নির্বাচন করুন</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Pre-populate if previously selected
+    if (_homeworkState.selectedDept) {
+        document.getElementById('hw-entry-dept').value = _homeworkState.selectedDept;
+        onHomeworkDeptChange();
+        if (_homeworkState.selectedClass) {
+            document.getElementById('hw-entry-class').value = _homeworkState.selectedClass;
+            renderHomeworkEntryTable();
+        }
+    }
+}
+
+window.onHomeworkDeptChange = function() {
+    _homeworkState.selectedDept = document.getElementById('hw-entry-dept').value;
+    _homeworkState.selectedClass = ''; // reset class
+    const classSel = document.getElementById('hw-entry-class');
+    classSel.innerHTML = '<option value="">-- শ্রেণি --</option>';
+    const classes = getClassesForDept(_homeworkState.selectedDept);
+    classes.forEach(c => {
+        classSel.innerHTML += `<option value="${c}">${c}</option>`;
+    });
+    renderHomeworkEntryTable(); // clear table
+};
+
+async function renderHomeworkEntryTable() {
+    const dept = _homeworkState.selectedDept;
+    const className = _homeworkState.selectedClass;
+    const date = _homeworkState.entryDate;
+    const area = document.getElementById('hw-entry-table-area');
+    if (!area) return;
+
+    _homeworkState.selectedClass = document.getElementById('hw-entry-class').value;
+    _homeworkState.entryDate = document.getElementById('hw-entry-date').value;
+
+    if (!dept || !className || !date) {
+        area.innerHTML = `<div class="text-center py-10 text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-300"><p class="text-sm">বিভাগ, শ্রেণি ও তারিখ নির্বাচন করুন</p></div>`;
+        return;
+    }
+
+    area.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-slate-400"></i></div>`;
+
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        const year = getCurrentYear();
+        
+        // ১. এই ক্লাসের ক্লাস রুটিন থেকে শিক্ষক ও কিতাব বের করি
+        const q = query(
+            collection(window.fbDB, 'routines'),
+            where('academicYear', '==', year),
+            where('dept', '==', dept),
+            where('className', '==', className)
+        );
+        const routinesSnap = await getDocs(q);
+        const classRoutines = [];
+        routinesSnap.forEach(d => classRoutines.push({ id: d.id, ...d.data() }));
+
+        if (classRoutines.length === 0) {
+            area.innerHTML = `<div class="text-center py-10 text-amber-600 bg-amber-50 rounded-lg border border-dashed border-amber-300"><p class="text-sm">এই শ্রেণির কোনো ক্লাস রুটিন নেই।</p></div>`;
+            return;
+        }
+
+        // ২. এই নির্দিষ্ট তারিখে আগের হোমওয়ার্ক এন্ট্রি আছে কিনা চেক করি
+        const hwQ = query(
+            collection(window.fbDB, 'homework'),
+            where('academicYear', '==', year),
+            where('dept', '==', dept),
+            where('className', '==', className),
+            where('date', '==', date)
+        );
+        const hwSnap = await getDocs(hwQ);
+        const existingHW = {};
+        hwSnap.forEach(d => {
+            const data = d.data();
+            existingHW[`${data.bookName}::${data.teacherName}`] = data;
+        });
+
+        // ৩. ইউনিক (কিতাব + শিক্ষক) কম্বিনেশন বের করি
+        const uniqueAssignments = [];
+        const seen = new Set();
+        classRoutines.forEach(r => {
+            const key = `${r.bookName}::${r.teacherName}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueAssignments.push({ bookName: r.bookName, teacherName: r.teacherName });
+            }
+        });
+
+        // ৪. টেবিল তৈরি
+        let tableRows = uniqueAssignments.map(a => {
+            const hwKey = `${a.bookName}::${a.teacherName}`;
+            const existing = existingHW[hwKey] || {};
+            return `
+                <tr class="border-b hover:bg-slate-50" data-book="${a.bookName}" data-teacher="${a.teacherName}">
+                    <td class="p-2 text-xs font-bold text-slate-800 font-arabic" style="min-width:120px;">${a.bookName}</td>
+                    <td class="p-2 text-xs text-slate-600" style="min-width:100px;">${a.teacherName}</td>
+                    <td class="p-1"><input type="number" placeholder="শুরু" value="${existing.startPage || ''}" class="hw-input w-full text-center text-xs p-1.5 border rounded" data-field="startPage"></td>
+                    <td class="p-1"><input type="number" placeholder="শেষ" value="${existing.endPage || ''}" class="hw-input w-full text-center text-xs p-1.5 border rounded" data-field="endPage"></td>
+                    <td class="p-1"><input type="text" placeholder="বিষয়/বিবরণ" value="${existing.topic || ''}" class="hw-input w-full text-xs p-1.5 border rounded" data-field="topic"></td>
+                </tr>
+            `;
+        }).join('');
+
+        area.innerHTML = `
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse border border-slate-300">
+                    <thead class="bg-slate-100 text-slate-700">
+                        <tr>
+                            <th class="p-2 text-[10px] font-bold border">কিতাব</th>
+                            <th class="p-2 text-[10px] font-bold border">শিক্ষক</th>
+                            <th class="p-2 text-[10px] font-bold border text-center">পৃষ্ঠা (শুরু)</th>
+                            <th class="p-2 text-[10px] font-bold border text-center">পৃষ্ঠা (শেষ)</th>
+                            <th class="p-2 text-[10px] font-bold border">বিষয় / বিবরণ</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            </div>
+            <div class="flex justify-end mt-4">
+                <button onclick="saveHomeworkEntries()" class="px-5 py-2.5 bg-emerald-700 text-white text-sm font-bold rounded-lg shadow"><i class="fa-solid fa-save"></i> সেভ করুন</button>
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('❌ renderHomeworkEntryTable:', err);
+        area.innerHTML = `<div class="text-center py-10 text-red-500 bg-red-50 rounded-lg border border-dashed border-red-300"><p class="text-sm">ডাটা লোড ব্যর্থ: ${err.message}</p></div>`;
+    }
+}
+
+window.saveHomeworkEntries = async function() {
+    const dept = _homeworkState.selectedDept;
+    const className = _homeworkState.selectedClass;
+    const date = _homeworkState.entryDate;
+    if (!dept || !className || !date) {
+        showToast('⚠️ বিভাগ, শ্রেণি ও তারিখ নির্বাচন করুন', 'warn');
+        return;
+    }
+
+    const rows = document.querySelectorAll('#hw-entry-table-area tbody tr');
+    const entriesToSave = [];
+    
+    rows.forEach(row => {
+        const bookName = row.dataset.book;
+        const teacherName = row.dataset.teacher;
+        const startPage = row.querySelector('input[data-field="startPage"]').value.trim();
+        const endPage = row.querySelector('[data-field="endPage"]').value.trim();
+        const topic = row.querySelector('input[data-field="topic"]').value.trim();
+
+        // কোনোটাই না থাকলে সেভ হবে না
+        if (startPage || endPage || topic) {
+            entriesToSave.push({
+                academicYear: getCurrentYear(),
+                dept,
+                className,
+                date,
+                bookName,
+                teacherName,
+                startPage: startPage || '',
+                endPage: endPage || '',
+                topic: topic || '',
+                createdAt: serverTimestamp(),
+                createdBy: currentUser?.uid || 'unknown'
+            });
+        }
+    });
+
+    if (entriesToSave.length === 0) {
+        showToast('⚠️ সেভ করার মতো কোনো ডাটা নেই', 'warn');
+        return;
+    }
+
+    showToast(`💾 ${entriesToSave.length}টি এন্ট্রি সেভ হচ্ছে...`, 'info');
+
+    try {
+        const { collection, addDoc, serverTimestamp } = window.fbFuncs;
+        
+        // আগের ডাটা ডিলিট করা
+        const { getDocs, query, where, deleteDoc, doc } = window.fbFuncs;
+        const oldQ = query(collection(window.fbDB, 'homework'), where('date', '==', date), where('className', '==', className), where('dept', '==', dept));
+        const oldSnap = await getDocs(oldQ);
+        for (const d of oldSnap.docs) {
+            await deleteDoc(doc(window.fbDB, 'homework', d.id));
+        }
+
+        // নতুন ডাটা যোগ করা
+        for (const entry of entriesToSave) {
+            await addDoc(collection(window.fbDB, 'homework'), entry);
+        }
+
+        showToast('✅ হোমওয়ার্ক সেভ হয়েছে', 'success');
+    } catch (err) {
+        console.error('❌ saveHomeworkEntries:', err);
+        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
+    }
+};
+
+// ─── ২. হোমওয়ার্ক হিস্টোরি পেজ ───
+async function renderHomeworkHistory(container) {
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+                <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-history text-slate-500"></i> হোমওয়ার্ক হিস্টোরি (গত ৩ দিন)</h3>
+                 <div>
+                    <label class="text-xs font-bold text-slate-600 mr-2">তারিখ:</label>
+                    <input type="date" id="hw-history-date" value="${_homeworkState.historyDate}" onchange="_homeworkState.historyDate=this.value; loadHomeworkHistory()" class="rounded border border-slate-300 p-2 text-xs">
+                </div>
+            </div>
+            <div id="hw-history-content">
+                <div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-xl"></i></div>
+            </div>
+        </div>
+    `;
+    loadHomeworkHistory();
+}
+
+async function loadHomeworkHistory() {
+    const container = document.getElementById('hw-history-content');
+    if (!container) return;
+    
+    const selectedDate = _homeworkState.historyDate;
+    if (!selectedDate) {
+        container.innerHTML = `<div class="text-center py-10 text-slate-400">তারিখ নির্বাচন করুন</div>`;
+        return;
+    }
+
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        const year = getCurrentYear();
+
+        const q = query(
+            collection(window.fbDB, 'homework'),
+            where('academicYear', '==', year),
+            where('date', '==', selectedDate)
+        );
+        const snap = await getDocs(q);
+        const hwData = [];
+        snap.forEach(d => hwData.push(d.data()));
+
+        if (hwData.length === 0) {
+            container.innerHTML = `<div class="text-center py-10 text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-300"><p class="text-sm">এই তারিখে কোনো হোমওয়ার্ক নেই।</p></div>`;
+            return;
+        }
+        
+        // ক্লাস অনুযায়ী গ্রুপ করা
+        const grouped = hwData.reduce((acc, item) => {
+            const key = `${item.dept}::${item.className}`;
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(item);
+            return acc;
+        }, {});
+
+        let html = '';
+        for (const key in grouped) {
+            const [dept, className] = key.split('::');
+            const deptName = configData.departments.find(d=>d.key===dept)?.name || dept;
+            html += `
+                <div class="mb-4 border border-slate-200 rounded-lg overflow-hidden">
+                    <div class="bg-slate-100 p-2 text-sm font-bold text-slate-800">${deptName} — <span class="font-arabic">${className}</span></div>
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 text-xs"><tr><th class="p-2">কিতাব</th><th class="p-2">শিক্ষক</th><th class="p-2 text-center">পৃষ্ঠা</th><th class="p-2">বিষয়</th></tr></thead>
+                        <tbody>
+                            ${grouped[key].map(item => `
+                                <tr class="border-t">
+                                    <td class="p-2 text-xs font-bold font-arabic">${item.bookName}</td>
+                                    <td class="p-2 text-xs">${item.teacherName}</td>
+                                    <td class="p-2 text-xs text-center font-mono">${item.startPage || '—'} - ${item.endPage || '—'}</td>
+                                    <td class="p-2 text-xs">${item.topic || '—'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+
+    } catch (err) {
+        console.error('❌ loadHomeworkHistory:', err);
+        container.innerHTML = `<div class="text-center py-10 text-red-500">হিস্টোরি লোড ব্যর্থ</div>`;
+    }
+}
+
+// ─── ৩. সাজেশন পেজ ───
+async function renderSuggestionPage(container) {
+    const depts = configData?.departments || [];
+    const deptOptions = depts.map(d => `<option value="${d.key}" ${_homeworkState.selectedDept === d.key ? 'selected' : ''}>${d.name}</option>`).join('');
+    const examTypes = [ { key: 'term1', label: '১ম সাময়িক' }, { key: 'term2', label: '২য় সাময়িক' }, { key: 'annual', label: 'বার্ষিক' } ];
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4">
+            <h3 class="text-base font-bold text-slate-800 mb-4"><i class="fa-solid fa-lightbulb text-blue-500"></i> সাজেশন তৈরি</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">বিভাগ *</label>
+                    <select id="hw-suggestion-dept" onchange="onSuggestionDeptChange()" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm bg-white">
+                        <option value="">-- বিভাগ --</option>
+                        ${deptOptions}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">শ্রেণি *</label>
+                    <select id="hw-suggestion-class" onchange="onSuggestionClassChange()" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm bg-white font-arabic">
+                         <option value="">-- শ্রেণি --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">পরীক্ষার ধরন *</label>
+                    <select id="hw-suggestion-examtype" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm bg-white">
+                        ${examTypes.map(et => `<option value="${et.key}">${et.label}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">তারিখ *</label>
+                    <input type="date" id="hw-suggestion-date" value="${_homeworkState.entryDate}" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm">
+                </div>
+            </div>
+            <div class="flex justify-between items-center mb-4">
+                 <button onclick="openSuggestionModal()" id="open-suggestion-modal-btn" class="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg shadow hidden"><i class="fa-solid fa-plus"></i> নতুন সাজেশন যোগ</button>
+                 <div class="ml-auto">
+                    <button onclick="viewSuggestionHistory()" class="px-4 py-2 bg-slate-200 text-slate-700 text-sm font-bold rounded-lg"><i class="fa-solid fa-folder-open"></i> সেভ করা সাজেশন</button>
+                 </div>
+            </div>
+            <div id="hw-suggestion-content" class="text-center py-10 text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                <p class="text-sm">বিভাগ, শ্রেণি ও পরীক্ষার ধরন নির্বাচন করুন</p>
+            </div>
+        </div>
+    `;
+    if (_homeworkState.selectedDept) {
+        document.getElementById('hw-suggestion-dept').value = _homeworkState.selectedDept;
+        onSuggestionDeptChange();
+        if (_homeworkState.selectedClass) {
+            document.getElementById('hw-suggestion-class').value = _homeworkState.selectedClass;
+            onSuggestionClassChange();
+        }
+    }
+}
+
+window.onSuggestionDeptChange = function() {
+    _homeworkState.selectedDept = document.getElementById('hw-suggestion-dept').value;
+    _homeworkState.selectedClass = '';
+    const classSel = document.getElementById('hw-suggestion-class');
+    classSel.innerHTML = '<option value="">-- শ্রেণি --</option>';
+    const classes = getClassesForDept(_homeworkState.selectedDept);
+    classes.forEach(c => classSel.innerHTML += `<option value="${c}">${c}</option>`);
+    onSuggestionClassChange(); // Reset view
+};
+
+window.onSuggestionClassChange = function() {
+    _homeworkState.selectedClass = document.getElementById('hw-suggestion-class').value;
+    const btn = document.getElementById('open-suggestion-modal-btn');
+    if (_homeworkState.selectedDept && _homeworkState.selectedClass) {
+        btn.classList.remove('hidden');
+        // TODO: Load existing suggestion for this exam & class
+    } else {
+        btn.classList.add('hidden');
+    }
+};
+
+window.openSuggestionModal = async function() {
+    const dept = document.getElementById('hw-suggestion-dept').value;
+    const className = document.getElementById('hw-suggestion-class').value;
+    const examType = document.getElementById('hw-suggestion-examtype').value;
+    
+    if(!dept || !className || !examType) { showToast('⚠️ বিভাগ, শ্রেণি ও পরীক্ষার ধরন সিলেক্ট করুন', 'warn'); return; }
+
+    // Load subjects (books) for the class
+    const books = (configData?.books || {})[className] || [];
+
+    const modal = document.createElement('div');
+    modal.id = 'suggestion-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.8);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="bg-blue-700 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                <h3 class="font-bold"><i class="fa-solid fa-lightbulb"></i> সাজেশন এন্ট্রি — <span class="font-arabic">${className}</span></h3>
+                <button onclick="document.getElementById('suggestion-modal').remove()" class="text-white text-2xl">×</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1" id="suggestion-modal-body">
+                 <div class="space-y-2" id="suggestion-items-wrap"></div>
+                 <button onclick="addSuggestionItem()" class="w-full mt-2 py-2 border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 text-sm font-bold rounded-lg"><i class="fa-solid fa-plus"></i> নতুন বিষয় যোগ করুন</button>
+            </div>
+            <div class="p-3 bg-slate-50 border-t rounded-b-2xl flex justify-end">
+                 <button onclick="saveSuggestion()" class="px-5 py-2 bg-blue-700 text-white text-sm font-bold rounded-lg"><i class="fa-solid fa-save"></i> সংরক্ষণ</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Add initial row
+    if (books.length > 0) addSuggestionItem(books[0]);
+    else addSuggestionItem();
+};
+
+window.addSuggestionItem = function(bookName = '') {
+    const wrap = document.getElementById('suggestion-items-wrap');
+    const books = (configData?.books || {})[document.getElementById('hw-suggestion-class').value] || [];
+    const bookOptions = books.map(b => `<option value="${b}" ${b === bookName ? 'selected' : ''}>${b}</option>`).join('');
+    
+    const row = document.createElement('div');
+    row.className = 'suggestion-item flex gap-2 items-center bg-slate-50 p-2 rounded border';
+    row.innerHTML = `
+        <select class="sugg-book flex-1 rounded border p-1.5 text-xs">${bookOptions}</select>
+        <input type="text" placeholder="পৃষ্ঠা/বিষয়" class="sugg-topic flex-1 rounded border p-1.5 text-xs">
+        <input type="text" placeholder="গুরুত্বপূর্ণ পয়েন্ট" class="sugg-points flex-1 rounded border p-1.5 text-xs">
+        <button onclick="this.parentElement.remove()" class="text-red-500"><i class="fa-solid fa-minus"></i></button>
+    `;
+    wrap.appendChild(row);
+};
+
+window.saveSuggestion = async function() {
+    const dept = document.getElementById('hw-suggestion-dept').value;
+    const className = document.getElementById('hw-suggestion-class').value;
+    const examType = document.getElementById('hw-suggestion-examtype').value;
+    const date = document.getElementById('hw-suggestion-date').value;
+
+    const items = Array.from(document.querySelectorAll('.suggestion-item')).map(row => ({
+        book: row.querySelector('.sugg-book').value,
+        topic: row.querySelector('.sugg-topic').value,
+        points: row.querySelector('.sugg-points').value
+    })).filter(item => item.topic || item.points); // only keep rows with data
+
+    if(items.length === 0) { showToast('⚠️ অন্তত একটি সাজেশন আইটেম যোগ করুন', 'warn'); return; }
+
+    try {
+        const { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, doc } = window.fbFuncs;
+        
+        // Delete old suggestion for same dept, class, exam
+        const oldQ = query(collection(window.fbDB, 'suggestions'), where('dept', '==', dept), where('className', '==', className), where('examType', '==', examType));
+        const oldSnap = await getDocs(oldQ);
+        for (const d of oldSnap.docs) await deleteDoc(doc(window.fbDB, 'suggestions', d.id));
+
+        await addDoc(collection(window.fbDB, 'suggestions'), {
+            dept, className, examType, date, items, createdAt: serverTimestamp(), createdBy: currentUser.uid
+        });
+        showToast('✅ সাজেশন সেভ হয়েছে', 'success');
+        document.getElementById('suggestion-modal').remove();
+    } catch(err) {
+        showToast('❌ সেভ ব্যর্থ', 'error');
+    }
+};
+
+window.viewSuggestionHistory = async function() {
+    const container = document.getElementById('hw-suggestion-content');
+    container.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl"></i></div>`;
+    try {
+        const { collection, getDocs, query, orderBy } = window.fbFuncs;
+        const q = query(collection(window.fbDB, 'suggestions'), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        const suggestions = [];
+        snap.forEach(d => suggestions.push({id: d.id, ...d.data()}));
+        
+        if (suggestions.length === 0) {
+            container.innerHTML = `<p class="text-center py-10 text-slate-400">কোনো সংরক্ষিত সাজেশন নেই</p>`;
+            return;
+        }
+
+        container.innerHTML = suggestions.map(s => `
+            <div class="border p-3 rounded-lg mb-2">
+                <h4 class="font-bold text-sm text-blue-800">${configData.departments.find(d=>d.key===s.dept)?.name} - <span class="font-arabic">${s.className}</span></h4>
+                <p class="text-xs text-slate-500">পরীক্ষা: ${s.examType} | তারিখ: ${s.date}</p>
+                <div class="text-xs mt-1">${s.items.map(i => `<p>- ${i.book}: ${i.topic} ${i.points}</p>`).join('')}</div>
+            </div>
+        `).join('');
+    } catch(e) {
+        container.innerHTML = `<p class="text-red-500">লোড ব্যর্থ</p>`;
+    }
+}
+// ═══════════════════════════════════════════════════════════════
+// ★★★ গার্ডিয়ান পোর্টালে হোমওয়ার্ক দেখানো ★★★
+// ═══════════════════════════════════════════════════════════════
+
+async function renderGpHomework(container) {
+    const student = _guardianSession;
+    if (!student) return;
+
+    container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>`;
+
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        const year = getCurrentYear();
+        const today = new Date().toISOString().split('T')[0];
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+        // গত ২ দিনের হোমওয়ার্ক
+        const qHW = query(
+            collection(window.fbDB, 'homework'),
+            where('academicYear', '==', year),
+            where('dept', '==', student.dept),
+            where('className', '==', student.className),
+            where('date', 'in', [today, yesterday])
+        );
+        const hwSnap = await getDocs(qHW);
+        const homework = [];
+        hwSnap.forEach(d => homework.push(d.data()));
+        
+        // সাজেশন
+        const qSugg = query(
+            collection(window.fbDB, 'suggestions'),
+            where('dept', '==', student.dept),
+            where('className', '==', student.className)
+        );
+        const suggSnap = await getDocs(qSugg);
+        const suggestions = [];
+        suggSnap.forEach(d => suggestions.push(d.data()));
+        
+        let homeworkHTML = `<p class="text-xs text-slate-400 text-center italic py-3">গত ২ দিনের কোনো হোমওয়ার্ক নেই</p>`;
+        if (homework.length > 0) {
+            homeworkHTML = homework.sort((a,b)=> b.date.localeCompare(a.date)).map(hw => {
+                const dateStr = hw.date === today ? 'আজ' : 'গতকাল';
+                return `
+                    <div class="border-l-4 border-amber-400 bg-amber-50 p-2 mb-2 rounded-r-lg text-xs">
+                        <p class="font-bold text-amber-800">${dateStr} — <span class="font-arabic">${hw.bookName}</span></p>
+                        <p class="text-slate-700">পৃষ্ঠা: ${hw.startPage} - ${hw.endPage} | বিষয়: ${hw.topic}</p>
+                        <p class="text-slate-500 text-[10px]">শিক্ষক: ${hw.teacherName}</p>
+                    </div>`;
+            }).join('');
+        }
+
+        let suggestionHTML = '';
+        if (suggestions.length > 0) {
+            suggestionHTML = suggestions.map(sugg => `
+                <div class="border border-blue-200 bg-blue-50 p-2 mb-2 rounded-r-lg text-xs">
+                    <p class="font-bold text-blue-800">${sugg.examType} সাজেশন</p>
+                    <div class="text-slate-700">${sugg.items.map(i => `<p>- ${i.book}: ${i.topic} ${i.points ? `(${i.points})` : ''}</p>`).join('')}</div>
+                </div>
+            `).join('');
+        }
+
+        container.innerHTML = `
+            <div class="space-y-4 pb-10">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <h3 class="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="fa-solid fa-book-open text-amber-500"></i> সাম্প্রতিক হোমওয়ার্ক</h3>
+                    ${homeworkHTML}
+                </div>
+                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <h3 class="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="fa-solid fa-lightbulb text-blue-500"></i> সাজেশন</h3>
+                    ${suggestionHTML || '<p class="text-xs text-slate-400 text-center italic py-3">কোনো সাজেশন নেই</p>'}
+                </div>
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('❌ renderGpHomework:', err);
+        container.innerHTML = `<p class="text-center text-red-500 py-6">হোমওয়ার্ক লোড ব্যর্থ হয়েছে</p>`;
+    }
+}
 </script>
 </body>
 </html>
