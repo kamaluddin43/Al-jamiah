@@ -1045,6 +1045,15 @@ header button {
 </style>
 </head>
 <body class="min-h-screen text-slate-800 flex flex-col">
+        <!-- ★★★ গার্ডিয়ান হলে মূল অ্যাপ লুকানোর স্ক্রিপ্ট ★★★ -->
+<script>
+    // গার্ডিয়ান হলে সাথে সাথে মূল অ্যাপ লুকাবে, তবে গার্ডিয়ান পোর্টাল ছাড়া অন্য কিছু থাকলে তা লুকাবে না
+    if (localStorage.getItem('gp_student_id')) {
+        const style = document.createElement('style');
+        style.innerHTML = 'header, main, footer { display: none !important; }';
+        document.head.appendChild(style);
+    }
+</script>
 <!-- ═══════════════════ TEACHER PICKER MODAL ═══════════════════ -->
 <div id="teacher-picker-modal" class="fixed inset-0 modal-backdrop z-[300] items-center justify-center p-4 hidden">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col modal-enter">
@@ -2510,6 +2519,12 @@ header button {
                 <i class="fa-solid fa-id-card text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
                 <span class="text-sm md:text-base font-bold leading-tight text-center">৪. পোর্টাল</span>
             </button>
+            <!-- ★ নতুন ৫ম বাটন: ছুটির আবেদন ম্যানেজমেন্ট ★ -->
+            <button onclick="openGuardianPage('leave-management')" id="guardian-btn-leave-management"
+                    class="guardian-main-btn group bg-gradient-to-br from-rose-500 to-rose-700 hover:from-rose-600 hover:to-rose-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                <i class="fa-solid fa-envelope-open-text text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm md:text-base font-bold leading-tight text-center">৫. ছুটির আবেদন</span>
+            </button>
         </div>
     </div>
 </section>
@@ -3287,6 +3302,38 @@ header button {
                 </button>
             </div>
         </form>
+
+        <!-- ★★★ যোগাযোগ ও স্বাক্ষর সেটিংস ★★★ -->
+        <div class="mt-8 pt-6 border-t border-slate-200">
+            <h3 class="text-sm font-bold text-slate-700 mb-3">
+                <i class="fa-solid fa-address-book text-emerald-600"></i> যোগাযোগ ও স্বাক্ষর সেটিংস
+            </h3>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                
+                <!-- মাদরাসার সোশ্যাল লিংক -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1"><i class="fa-brands fa-facebook text-blue-600"></i> মাদরাসার ফেসবুক পেজ লিংক</label>
+                        <input type="url" id="set-fb-link" placeholder="https://facebook.com/yourpage" class="w-full rounded-lg border-slate-300 border p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-red-500"></i> মাদরাসার ইমেইল</label>
+                        <input type="email" id="set-email-link" placeholder="info@madrasa.com" class="w-full rounded-lg border-slate-300 border p-2 text-sm">
+                    </div>
+                </div>
+
+                <!-- দায়িত্বশীল নির্বাচন ও স্বাক্ষর -->
+                <div id="contact-roles-container" class="space-y-3 pt-2 border-t border-slate-200">
+                    <!-- জাভাস্ক্রিপ্ট দিয়ে এখানে পদগুলো লোড হবে -->
+                </div>
+
+                <div class="flex justify-end pt-2">
+                    <button type="button" onclick="saveContactSettings()" class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold rounded-lg shadow transition flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> যোগাযোগ সেটিংস সেভ করুন
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- ★★★ নতুন: অ্যাপ থিম কালার সেটিংস ★★★ -->
         <div class="mt-8 pt-6 border-t border-slate-200">
@@ -29037,7 +29084,7 @@ function switchTab(tabId) {
     if (tabId === 'jamat-report') renderJamatReport();
     if (tabId === 'teacher-report') renderTeacherReport();
     if (tabId === 'data-list') { renderSavedDataTable(); populateTeacherFilterDropdown(); }
-    if (tabId === 'settings') updateStats();
+    if (tabId === 'settings') updateStats(); loadContactSettings();
     if (tabId === 'admin') switchAdminSub('dept');
     if (tabId === 'dashboard') renderDashboard();
     if (tabId === 'routine') {
@@ -32542,6 +32589,10 @@ function showLogin() {
 }
 
 function showApp() {
+    if (window._guardianSession) {
+        showGuardianPortal();
+        return; 
+    }
     const loadScreen = document.getElementById('loading-screen');
     if (loadScreen) loadScreen.classList.add('hidden');
     document.getElementById('login-screen').classList.add('hidden');
@@ -43117,6 +43168,10 @@ async function renderGuardianPageContent() {
     } else if (_currentGuardianPage === 'portal') {
         renderGuardianPortalPage(container);
     }
+        // ★ নতুন কেস যুক্ত করুন ★
+    if (_currentGuardianPage === 'leave-management') {
+        return renderGuardianLeaveManagement(container);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -44017,7 +44072,260 @@ function renderGuardianPortalPage(container) {
     `;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// ★★★ মূল অ্যাপের গার্ডিয়ান ট্যাব — ছুটির আবেদন ম্যানেজমেন্ট ★★★
+// ═══════════════════════════════════════════════════════════════
+
+async function renderGuardianLeaveManagement(container) {
+    container.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-slate-400"></i></div>`;
+
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, 'leaveApplications'));
+        let allApps = [];
+        snap.forEach(d => allApps.push({ id: d.id, ...d.data() }));
+
+        // ─── ★ অ্যাক্সেস কন্ট্রোল (কে কী দেখবে) ★ ───
+        const isAdmin = currentUserData?.role === 'admin';
+        const myName = currentUserData?.teacherName || currentUserData?.name || '';
+
+        let visibleApps = allApps;
+
+        if (!isAdmin) {
+            // এডমিন না হলে (অর্থাৎ শিক্ষক হলে)
+            // ১. শুধু তার ক্লাসের আবেদন
+            visibleApps = allApps.filter(app => app.classTeacher === myName);
+            
+            // ২. যদি সে প্রিন্সিপাল বা শিক্ষাসচিবও হয়, তবে সেগুলোও দেখতে পারবে
+            const isPrincipal = configData?.contacts?.principal?.name === myName;
+            const isEduSec = configData?.contacts?.edu_sec?.name === myName;
+            
+            if (isPrincipal || isEduSec) {
+                // প্রিন্সিপাল/শিক্ষাসচিব বরাবর যেসব আবেদন এসেছে তা যোগ করি
+                const addressedToMe = allApps.filter(app => 
+                    (app.addressedTo === 'প্রিন্সিপাল' && isPrincipal) ||
+                    (app.addressedTo === 'শিক্ষাসচিব' && isEduSec)
+                );
+                // ডুপ্লিকেট ছাড়া মার্জ করি
+                visibleApps = [...new Set([...visibleApps, ...addressedToMe])];
+            }
+        }
+
+        // পেন্ডিং আগে দেখাবো
+        visibleApps.sort((a, b) => {
+            if (a.status === 'pending' && b.status !== 'pending') return -1;
+            if (a.status !== 'pending' && b.status === 'pending') return 1;
+            return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+        });
+
+        if (visibleApps.length === 0) {
+            container.innerHTML = `
+                <div class="bg-white rounded-xl shadow-md p-12 text-center">
+                    <i class="fa-solid fa-inbox text-5xl text-slate-300 mb-3"></i>
+                    <p class="font-bold text-slate-600">আপনার কাছে কোনো আবেদন নেই</p>
+                    <p class="text-xs text-slate-400 mt-1">${isAdmin ? 'সব আবেদন এখানে দেখা যাবে।' : 'শুধু আপনার ক্লাসের আবেদন দেখতে পাবেন।'}</p>
+                </div>`;
+            return;
+        }
+
+        const typeLabels = {
+            temporary: 'সাময়িক ছুটি',
+            partial: 'খণ্ডকালীন ছুটি',
+            approval: 'মঞ্জুরির আবেদন',
+            promise: 'অঙ্গীকারনামা'
+        };
+
+        let html = `<div class="space-y-3">`;
+        
+        // ★ অ্যাকশন ট্যাব ফিল্টার (পেন্ডিং / সম্পন্ন) ★
+        html += `
+            <div class="flex gap-2 mb-2">
+                <button onclick="_filterLeaveApps('pending')" class="px-4 py-1.5 bg-amber-100 text-amber-800 rounded font-bold text-xs">পেন্ডিং</button>
+                <button onclick="_filterLeaveApps('all')" class="px-4 py-1.5 bg-slate-100 text-slate-700 rounded font-bold text-xs">সব</button>
+            </div>
+        `;
+
+        visibleApps.forEach(app => {
+            const isPending = app.status === 'pending';
+            const isRecommended = app.status === 'recommended';
+            const isPartial = app.type === 'partial';
+            const isMyRecommendationTask = isPartial && app.classTeacher === myName && app.status === 'pending';
+
+            const dateStr = app.createdAt?.seconds ? new Date(app.createdAt.seconds * 1000).toLocaleDateString('bn-BD') : '---';
+
+            html += `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-3 overflow-hidden">
+                    <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center">
+                        <div>
+                            <span class="text-sm font-bold text-slate-800">${app.studentName}</span>
+                            <span class="text-xs text-slate-500 font-arabic ml-2">(${app.className})</span>
+                        </div>
+                        <span class="badge ${isPending ? 'bg-amber-100 text-amber-800' : app.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : app.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'} text-[10px]">
+                            ${isPending ? '⏳ অপেক্ষমাণ' : isRecommended ? '👍 সুপারিশকৃত' : app.status === 'approved' ? '✅ মঞ্জুর' : '❌ বাতিল'}
+                        </span>
+                    </div>
+                    
+                    <div class="p-4 text-xs grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="space-y-1">
+                            <p><b>ধরন:</b> ${typeLabels[app.type] || app.type}</p>
+                            <p><b>কারণ:</b> ${app.reason}</p>
+                            <p><b>তারিখ:</b> ${dateStr}</p>
+                            ${app.extraNote ? `<p class="italic text-slate-500">"${app.extraNote}"</p>` : ''}
+                            
+                            <!-- ★★★ এখানে নতুন যোগ করা হলো: অভিভাবক যে দিনের জন্য আবেদন করেছেন ★★★ -->
+                            ${app.type !== 'promise' && app.startDate ? `
+                                <p class="text-rose-700 font-bold bg-rose-50 p-1.5 rounded border border-rose-200 mt-1">
+                                    <i class="fa-solid fa-calendar-alt"></i> 
+                                    চেয়েছেন: ${new Date(app.startDate).toLocaleDateString('bn-BD')} 
+                                    থেকে ${app.endDate ? new Date(app.endDate).toLocaleDateString('bn-BD') : '—'} 
+                                    ${app.totalDays ? `(${toBanglaNumber(app.totalDays)} দিন)` : ''}
+                                </p>
+                            ` : ''}
+                            <!-- ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ -->
+
+                            <p><b>অভিভাবক:</b> ${app.guardianName} (${app.guardianMobile})</p>
+                        </div>
+                        <div class="bg-slate-50 rounded p-2">
+                            <p><b>বরাবর:</b> ${app.addressedTo || '—'}</p>
+                            <p><b>শ্রেণি শিক্ষক:</b> ${app.classTeacher || '—'}</p>
+                        </div>
+                    </div>
+
+                    ${(isPending || isRecommended) ? `
+                    <div class="p-4 border-t bg-slate-50">
+                        ${isMyRecommendationTask ? `
+                            <p class="text-xs text-blue-700 mb-2"><i class="fa-solid fa-info-circle"></i> আপনি শ্রেণি শিক্ষক। আপনি সুপারিশ করলে তা প্রিন্সিপাল/শিক্ষাসচিবের কাছে যাবে।</p>
+                            <button onclick="recommendLeaveMgmt('${app.id}')" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow">সুপারিশ করুন</button>
+                        ` : `
+                            <div class="space-y-2 bg-white p-3 rounded border border-slate-200">
+                                <p class="text-[10px] text-slate-500 font-bold mb-1">মঞ্জুরির তথ্য দিন:</p>
+                                ${app.type !== 'promise' ? `
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="text-[10px] text-slate-600 font-bold">ছুটি শুরু</label>
+                                        <input type="date" id="appr-start-${app.id}" value="${app.startDate || ''}" class="w-full text-xs p-1.5 border rounded">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] text-slate-600 font-bold">ছুটি শেষ</label>
+                                        <input type="date" id="appr-end-${app.id}" value="${app.endDate || ''}" class="w-full text-xs p-1.5 border rounded">
+                                    </div>
+                                </div>
+                                ` : ''}
+                                <div>
+                                    <label class="text-[10px] text-slate-600 font-bold">মন্তব্য</label>
+                                    <select id="appr-sel-${app.id}" onchange="document.getElementById('appr-txt-${app.id}').value=this.value" class="w-full text-xs p-1.5 border rounded mb-1">
+                                        <option value="">-- কমন মন্তব্য --</option>
+                                        <option value="ছুটি মঞ্জুর করা হলো।">ছুটি মঞ্জুর করা হলো।</option>
+                                        <option value="শেষবারের জন্য অনুমতি দেওয়া হলো।">শেষবারের জন্য অনুমতি দেওয়া হলো।</option>
+                                        <option value="এবারের জন্য অনুমতি দেওয়া হলো।">এবারের জন্য অনুমতি দেওয়া হলো।</option>
+                                        <option value="পূর্বের ছুটির কারণে বাতিল করা হলো।">পূর্বের ছুটির কারণে বাতিল করা হলো।</option>
+                                    </select>
+                                    <input type="text" id="appr-txt-${app.id}" placeholder="নিজে লিখতে পারেন..." class="w-full text-xs p-1.5 border rounded">
+                                </div>
+                                <div class="flex gap-2 pt-1">
+                                    <button onclick="approveLeaveMgmt('${app.id}', '${app.type}')" class="flex-1 py-2 bg-emerald-600 text-white rounded text-xs font-bold shadow">অনুমোদন</button>
+                                    <button onclick="rejectLeaveMgmt('${app.id}')" class="flex-1 py-2 bg-red-100 text-red-700 rounded text-xs font-bold">প্রত্যাখ্যান</button>
+                                </div>
+                            </div>
+                        `}
+                    </div>` : app.status === 'approved' ? `
+                    <div class="p-3 bg-emerald-50 border-t border-emerald-200 text-xs">
+                        <p><b>অনুমোদিত:</b> ${app.approvedStartDate ? new Date(app.approvedStartDate).toLocaleDateString('bn-BD') : ''} থেকে ${app.approvedEndDate ? new Date(app.approvedEndDate).toLocaleDateString('bn-BD') : ''}</p>
+                        <p><b>মন্তব্য:</b> ${app.adminComment}</p>
+                        <p><b>অনুমোদনকারী:</b> ${app.approvedBy} <span class="ml-2">${app.approvedDate ? new Date(app.approvedDate.seconds * 1000).toLocaleDateString('bn-BD') : ''}</span></p>
+                        ${app.approverSignature ? `<img src="${app.approverSignature}" class="h-8 mt-1">` : ''}
+                    </div>` : app.status === 'rejected' ? `
+                    <div class="p-3 bg-red-50 border-t border-red-200 text-xs">
+                        <p><b>প্রত্যাখ্যানের কারণ:</b> ${app.adminComment}</p>
+                    </div>` : ''}
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+        container.innerHTML = html;
+
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = `<p class="text-red-500 text-center">লোড ব্যর্থ</p>`;
+    }
+}
+
+// ★ সুপারিশ ফাংশন ★
+window.recommendLeaveMgmt = async function(appId) {
+    try {
+        const { doc, updateDoc, serverTimestamp } = window.fbFuncs;
+        await updateDoc(doc(window.fbDB, 'leaveApplications', appId), {
+            status: 'recommended',
+            teacherRecommendation: true,
+            recommendedAt: serverTimestamp()
+        });
+        showToast('✅ সুপারিশ করা হয়েছে', 'success');
+        renderGuardianLeaveManagement(document.getElementById('guardian-detail-content'));
+    } catch (e) { showToast('❌ এরর', 'error'); }
+};
+
+// ★ অনুমোদন ফাংশন (অটো লোডিং সহ) ★
+window.approveLeaveMgmt = async function(appId, type) {
+    const comment = document.getElementById(`appr-txt-${appId}`).value;
+    const startDate = type !== 'promise' ? document.getElementById(`appr-start-${appId}`).value : '';
+    const endDate = type !== 'promise' ? document.getElementById(`appr-end-${appId}`).value : '';
+
+    if (!comment) return showToast('⚠️ মন্তব্য লিখুন', 'warn');
+    if (type !== 'promise' && (!startDate || !endDate)) return showToast('⚠️ ছুটির তারিখ দিন', 'warn');
+
+    try {
+        const { doc, updateDoc, serverTimestamp } = window.fbFuncs;
+        
+        // ★ অটো-লোডিং: অনুমোদনকারীর নাম ও স্বাক্ষর ★
+        const myName = currentUserData?.teacherName || currentUserData?.name || 'এডমিন';
+        let mySignature = '';
+        
+        // যদি তিনি প্রিন্সিপাল হন
+        if (configData?.contacts?.principal?.name === myName) mySignature = configData.contacts.principal.signature;
+        // যদি তিনি শিক্ষাসচিব হন
+        else if (configData?.contacts?.edu_sec?.name === myName) mySignature = configData.contacts.edu_sec.signature;
+        // অথবা যদি তার নিজের প্রোফাইলে সিগনেচার থাকে
+        else {
+            const tMeta = findTeacherByName(myName);
+            if (tMeta && tMeta.signature) mySignature = tMeta.signature;
+        }
+
+        await updateDoc(doc(window.fbDB, 'leaveApplications', appId), {
+            status: 'approved',
+            approvedStartDate: startDate,
+            approvedEndDate: endDate,
+            adminComment: comment,
+            approvedBy: myName,
+            approverSignature: mySignature,
+            approvedDate: serverTimestamp()
+        });
+        showToast('✅ অনুমোদন দেওয়া হয়েছে', 'success');
+        renderGuardianLeaveManagement(document.getElementById('guardian-detail-content'));
+    } catch (e) { 
+        console.error(e);
+        showToast('❌ এরর: ' + e.message, 'error'); 
+    }
+};
+
+// ★ প্রত্যাখ্যান ফাংশন ★
+window.rejectLeaveMgmt = async function(appId) {
+    const comment = document.getElementById(`appr-txt-${appId}`).value;
+    if (!comment) return showToast('⚠️ প্রত্যাখ্যানের কারণ লিখুন', 'warn');
+
+    try {
+        const { doc, updateDoc, serverTimestamp } = window.fbFuncs;
+        await updateDoc(doc(window.fbDB, 'leaveApplications', appId), {
+            status: 'rejected',
+            adminComment: comment,
+            rejectedAt: serverTimestamp()
+        });
+        showToast('❌ প্রত্যাখ্যান করা হয়েছে', 'success');
+        renderGuardianLeaveManagement(document.getElementById('guardian-detail-content'));
+    } catch (e) { showToast('❌ এরর', 'error'); }
+};
 console.log('✅ গার্ডিয়ান মডিউল লোড হয়েছে');
+
 // ═══════════════════════════════════════════════════════════════
 // ★★★ হিসাব বিভাগ — সম্পূর্ণ মডিউল ★★★
 // ═══════════════════════════════════════════════════════════════
@@ -45405,6 +45713,148 @@ window.acctPrintSalarySheet = function() {
 console.log('✅ হিসাব বিভাগ মডিউল লোড হয়েছে');
 
 // ═══════════════════════════════════════════════════════════════
+// ★★★ যোগাযোগ ও স্বাক্ষর ব্যবস্থাপনা ★★★
+// ═══════════════════════════════════════════════════════════════
+
+const CONTACT_ROLES = [
+    { key: 'principal', label: 'প্রিন্সিপাল' },
+    { key: 'vice_principal', label: 'ভাইস প্রিন্সিপাল' },
+    { key: 'edu_sec', label: 'শিক্ষাসচিব' },
+    { key: 'asst_edu_sec', label: 'সহ. শিক্ষাসচিব' },
+    { key: 'nazem', label: 'নাযেমে দারুল ইকামা' },
+    { key: 'dept_head', label: 'বিভাগীয় প্রধান' },
+    { key: 'accountant', label: 'হিসাব রক্ষক' }
+];
+
+let _contactSignatures = {}; // মেমোরিতে স্বাক্ষর জমা রাখার জন্য
+
+// সেটিংসে পদগুলো লোড করা
+window.loadContactSettings = function() {
+    const container = document.getElementById('contact-roles-container');
+    if (!container) return;
+
+    const teachers = (configData?.teachers || []).filter(t => !t.remark?.type);
+    const contacts = configData?.contacts || {};
+    const madrasaInfo = configData?.madrasaInfo || {};
+
+    // ফেসবুক ও ইমেইল আগের ডাটা বসানো
+    document.getElementById('set-fb-link').value = madrasaInfo.facebook || '';
+    document.getElementById('set-email-link').value = madrasaInfo.email || '';
+
+    container.innerHTML = CONTACT_ROLES.map(role => {
+        const currentTeacher = contacts[role.key]?.name || '';
+        const currentSig = contacts[role.key]?.signature || '';
+        if (currentSig) _contactSignatures[role.key] = currentSig;
+
+        return `
+            <div class="bg-white border border-slate-200 rounded-lg p-3 flex flex-col md:flex-row gap-3 items-center">
+                <div class="flex-1 w-full">
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">${role.label}</label>
+                    <select onchange="onRoleTeacherSelect('${role.key}', this.value)" class="w-full rounded border border-slate-300 p-2 text-sm">
+                        <option value="">-- শিক্ষক নির্বাচন করুন --</option>
+                        ${teachers.map(t => `<option value="${t.name}" ${currentTeacher === t.name ? 'selected' : ''}>${t.name} (${t.post})</option>`).join('')}
+                    </select>
+                </div>
+                <div class="w-full md:w-auto">
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">স্বাক্ষর</label>
+                    <div class="flex items-center gap-2">
+                        <div id="sig-preview-${role.key}" class="w-16 h-10 border border-slate-200 rounded bg-slate-50 flex items-center justify-center overflow-hidden">
+                            ${currentSig ? `<img src="${currentSig}" class="max-h-full max-w-full">` : `<i class="fa-solid fa-signature text-slate-300"></i>`}
+                        </div>
+                        <input type="file" id="sig-upload-${role.key}" accept="image/*" onchange="handleRoleSignatureUpload('${role.key}', this)" class="hidden">
+                        <label for="sig-upload-${role.key}" class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded border border-blue-200 cursor-pointer transition">
+                            <i class="fa-solid fa-upload"></i> আপলোড
+                        </label>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+// স্বাক্ষর আপলোড হ্যান্ডলার
+window.handleRoleSignatureUpload = function(roleKey, input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) { showToast('⚠️ স্বাক্ষর ৫০০KB এর কম হতে হবে', 'warn'); return; }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        _contactSignatures[roleKey] = dataUrl;
+        
+        // প্রিভিউ আপডেট
+        const preview = document.getElementById(`sig-preview-${roleKey}`);
+        if (preview) preview.innerHTML = `<img src="${dataUrl}" class="max-h-full max-w-full">`;
+    };
+    reader.readAsDataURL(file);
+};
+
+// পদে শিক্ষক সিলেক্ট করার হ্যান্ডলার
+window.onRoleTeacherSelect = function(roleKey, teacherName) {
+    // ★ এখানে আপনি চাইলে ভবিষ্যতে কোনো লজিক বসাতে পারেন (যেমন- শিক্ষকের নিজের সেভ করা স্বাক্ষর থাকলে তা অটো লোড করা)
+    // তবে আপাতত আমরা সেটিংস থেকে ম্যানুয়াল আপলোডকৃত স্বাক্ষরই ব্যবহার করব।
+};
+
+// যোগাযোগ সেটিংস সেভ করা
+window.saveContactSettings = async function() {
+    if (!currentUser) return showToast('❌ লগইন করুন', 'error');
+    
+    showToast('⏳ সেভ হচ্ছে...', 'info');
+
+    try {
+        const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+        const newContacts = {};
+        
+        CONTACT_ROLES.forEach(role => {
+            const sel = document.querySelector(`select[onchange="onRoleTeacherSelect('${role.key}', this.value)"]`);
+            const name = sel ? sel.value : '';
+            if (name) {
+                const teacherMeta = findTeacherByName(name) || {};
+                newContacts[role.key] = {
+                    name: name,
+                    post: teacherMeta.post || '',
+                    mobile: teacherMeta.mobile || '',
+                    signature: _contactSignatures[role.key] || ''
+                };
+            }
+        });
+
+        const madrasaInfo = {
+            facebook: document.getElementById('set-fb-link').value.trim(),
+            email: document.getElementById('set-email-link').value.trim()
+        };
+
+        await setDoc(doc(window.fbDB, 'config', 'main'), {
+            contacts: newContacts,
+            madrasaInfo: madrasaInfo,
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        // লোকাল কনফিগ আপডেট
+        if (!configData) configData = {};
+        configData.contacts = newContacts;
+        configData.madrasaInfo = madrasaInfo;
+        localStorage.setItem('madrasa_config_cache_v3', JSON.stringify(configData));
+
+        showToast('✅ যোগাযোগ সেটিংস সেভ হয়েছে', 'success');
+    } catch (err) {
+        console.error('❌ saveContactSettings:', err);
+        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
+    }
+};
+
+// ★★★ অটো-লোড করার হেল্পার ফাংশন (অন্য পেজে ব্যবহারের জন্য) ★★★
+window.getContactName = function(roleKey) {
+    const c = configData?.contacts?.[roleKey];
+    return c ? c.name : '';
+};
+window.getContactSignature = function(roleKey) {
+    const c = configData?.contacts?.[roleKey];
+    return c ? c.signature : '';
+};
+
+// ═══════════════════════════════════════════════════════════════
 // ★★★ অ্যাপ থিম কালার ম্যানেজমেন্ট ★★★
 // ═══════════════════════════════════════════════════════════════
 const APP_THEMES = {
@@ -46585,6 +47035,8 @@ async function admFormRenderStep8() {
     const teachers = (configData?.teachers || []).filter(t => !t.remark?.type);
     const comments = cfg.commonComments || [];
     
+    const defaultEduSec = typeof getContactName === 'function' ? getContactName('edu_sec') : '';
+    
     // শিক্ষা সচিব সিলেক্ট হলে স্বাক্ষর লোড
     const signature = d.signature || '';
 
@@ -46599,7 +47051,7 @@ async function admFormRenderStep8() {
                     <label class="block text-xs font-bold text-slate-700 mb-1">শিক্ষাসচিবের নাম <span class="text-red-500">*</span></label>
                     <select id="admF-eduSec" onchange="admFormLoadEduSecSign()" class="w-full rounded border border-slate-300 p-2 text-sm bg-white">
                         <option value="">-- শিক্ষক নির্বাচন করুন --</option>
-                        ${teachers.map(t => `<option value="${t.name}" ${d.name === t.name ? 'selected' : ''}>${t.name} (${t.post})</option>`).join('')}
+                        ${teachers.map(t => `<option value="${t.name}" ${d.name === t.name || (!d.name && t.name === defaultEduSec) ? 'selected' : ''}>${t.name} (${t.post})</option>`).join('')}
                     </select>
                 </div>
                 
@@ -46885,6 +47337,8 @@ async function admFormRenderStep11() {
     const comments = cfg.commonComments || [];
     const today = new Date().toISOString().split('T')[0];
 
+    const defaultPrincipal = typeof getContactName === 'function' ? getContactName('principal') : '';
+
     body.innerHTML = `
         <div class="border border-slate-200 rounded-lg overflow-hidden">
             <div class="bg-emerald-100 px-4 py-2 border-b border-emerald-200 flex items-center justify-between">
@@ -46897,7 +47351,7 @@ async function admFormRenderStep11() {
                     <label class="block text-xs font-bold text-slate-700 mb-1">প্রিন্সিপালের নাম <span class="text-red-500">*</span></label>
                     <select id="admF-principal" onchange="admFormLoadPrincipalSign()" class="w-full rounded border border-slate-300 p-2 text-sm bg-white">
                         <option value="">-- নির্বাচন করুন --</option>
-                        ${teachers.map(t => `<option value="${t.name}" ${d.name === t.name ? 'selected' : ''}>${t.name} (${t.post})</option>`).join('')}
+                        ${teachers.map(t => `<option value="${t.name}" ${d.name === t.name || (!d.name && t.name === defaultPrincipal) ? 'selected' : ''}>${t.name} (${t.post})</option>`).join('')}
                     </select>
                 </div>
                 
@@ -52586,66 +53040,89 @@ async function renderGpRoutine(container) {
 // ═══════════════════ ৫. যোগাযোগ ট্যাব (দায়িত্বশীল, মুহতামিম) ═══════════════════
 async function renderGpContact(container) {
     const student = _guardianSession;
-    
-    // জামাতের দায়িত্বশীল শিক্ষক খোঁজা
-    let inchargeName = '—';
-    let inchargeMobile = '—';
-    
-    try {
-        if (configData && configData.assignments) {
-            const classKey = `${student.dept}::${student.className}`;
-            const assignedTeachers = configData.assignments[classKey] || [];
-            if (assignedTeachers.length > 0) {
-                inchargeName = assignedTeachers.join(', ');
-                const firstTeacher = findTeacherByName(assignedTeachers[0]);
-                if (firstTeacher && firstTeacher.mobile) {
-                    inchargeMobile = firstTeacher.mobile;
-                }
-            }
+    const contacts = configData?.contacts || {};
+    const madrasaInfo = configData?.madrasaInfo || {};
+
+    // ১. রোল অনুযায়ী ডাটা কালেক্ট করা
+    const roleList = [
+        { key: 'principal', label: 'প্রিন্সিপাল', icon: 'fa-user-tie', color: 'rose' },
+        { key: 'vice_principal', label: 'ভাইস প্রিন্সিপাল', icon: 'fa-user-tie', color: 'rose' },
+        { key: 'edu_sec', label: 'শিক্ষাসচিব', icon: 'fa-user-shield', color: 'blue' },
+        { key: 'asst_edu_sec', label: 'সহ. শিক্ষাসচিব', icon: 'fa-user-shield', color: 'blue' },
+        { key: 'nazem', label: 'নাযেমে দারুল ইকামা', icon: 'fa-building', color: 'indigo' },
+        { key: 'dept_head', label: 'বিভাগীয় প্রধান', icon: 'fa-sitemap', color: 'violet' },
+        { key: 'accountant', label: 'হিসাব রক্ষক', icon: 'fa-calculator', color: 'amber' }
+    ];
+
+    let contactsHTML = '';
+
+    // ২. ক্লাস টিচার (দায়িত্বশীল) খোঁজা
+    let classTeacherName = 'নির্ধারিত হয়নি';
+    let classTeacherMobile = '—';
+    if (configData && configData.assignments) {
+        const classKey = `${student.dept}::${student.className}`;
+        const assigned = configData.assignments[classKey] || [];
+        if (assigned.length > 0) {
+            classTeacherName = assigned.join(', ');
+            const tMeta = findTeacherByName(assigned[0]);
+            if (tMeta && tMeta.mobile) classTeacherMobile = tMeta.mobile;
         }
-    } catch (e) {}
+    }
 
-    // মুহতামিম ও শিক্ষাসচিব (মক ডাটা - এডমিন থেকে সেট করা যেতে পারে)
-    const muhtamimName = 'মাওলানা আহমাদুল্লাহ';
-    const muhtamimMobile = '০১৭xxxxxxxx';
-    const eduSecName = 'মাওলানা হাবিবুর রহমান';
-    const eduSecMobile = '০১৮xxxxxxxx';
+    // ক্লাস টিচার কার্ড
+    contactsHTML += `
+        <div class="flex items-center gap-4 p-3 border-2 border-emerald-200 rounded-xl mb-3 bg-emerald-50 shadow-sm relative overflow-hidden">
+            <div class="w-12 h-12 bg-emerald-200 text-emerald-700 rounded-full flex items-center justify-center text-xl flex-shrink-0">
+                <i class="fa-solid fa-chalkboard-user"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-[10px] text-emerald-800 font-bold uppercase tracking-wider">শ্রেণি শিক্ষক (দায়িত্বশীল)</p>
+                <p class="text-sm font-bold text-slate-800">${classTeacherName}</p>
+                <p class="text-xs text-slate-600 font-mono mt-0.5">${classTeacherMobile}</p>
+            </div>
+            ${classTeacherMobile !== '—' ? `<a href="tel:${classTeacherMobile}" class="w-10 h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full flex items-center justify-center shadow-md transition"><i class="fa-solid fa-phone"></i></a>` : ''}
+        </div>
+    `;
 
-    container.innerHTML = `
-        <div class="space-y-3">
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                <h3 class="text-sm font-bold text-slate-800 mb-3">যোগাযোগের মাধ্যম</h3>
-                
-                <div class="flex items-center gap-4 p-3 border border-slate-100 rounded-lg mb-2 bg-slate-50">
-                    <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-lg"><i class="fa-solid fa-chalkboard-user"></i></div>
-                    <div class="flex-1">
-                        <p class="text-xs text-slate-500 font-semibold">শ্রেণি শিক্ষক (দায়িত্বশীল)</p>
-                        <p class="text-sm font-bold text-slate-800">${inchargeName}</p>
-                        <p class="text-xs text-slate-600 font-mono mt-0.5">${inchargeMobile}</p>
+    // ৩. অন্যান্য দায়িত্বশীলদের কার্ড
+    roleList.forEach(role => {
+        const person = contacts[role.key];
+        if (person && person.name) {
+            const phone = person.mobile || '—';
+            contactsHTML += `
+                <div class="flex items-center gap-4 p-3 border border-slate-200 rounded-xl mb-2 bg-white shadow-sm">
+                    <div class="w-10 h-10 bg-${role.color}-100 text-${role.color}-600 rounded-full flex items-center justify-center text-lg flex-shrink-0">
+                        <i class="fa-solid ${role.icon}"></i>
                     </div>
-                    ${inchargeMobile !== '—' ? `<a href="tel:${inchargeMobile}" class="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center"><i class="fa-solid fa-phone text-xs"></i></a>` : ''}
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[10px] text-slate-500 font-semibold">${role.label}</p>
+                        <p class="text-sm font-bold text-slate-800">${person.name}</p>
+                        <p class="text-xs text-slate-600 font-mono mt-0.5">${phone}</p>
+                    </div>
+                    ${phone !== '—' ? `<a href="tel:${phone}" class="w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full flex items-center justify-center transition"><i class="fa-solid fa-phone text-xs"></i></a>` : ''}
                 </div>
+            `;
+        }
+    });
 
-                <div class="flex items-center gap-4 p-3 border border-slate-100 rounded-lg mb-2">
-                    <div class="w-10 h-10 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-lg"><i class="fa-solid fa-user-tie"></i></div>
-                    <div class="flex-1">
-                        <p class="text-xs text-slate-500 font-semibold">মুহতামিম</p>
-                        <p class="text-sm font-bold text-slate-800">${muhtamimName}</p>
-                        <p class="text-xs text-slate-600 font-mono mt-0.5">${muhtamimMobile}</p>
-                    </div>
-                    <a href="tel:${muhtamimMobile}" class="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center"><i class="fa-solid fa-phone text-xs"></i></a>
-                </div>
-
-                <div class="flex items-center gap-4 p-3 border border-slate-100 rounded-lg">
-                    <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-lg"><i class="fa-solid fa-user-shield"></i></div>
-                    <div class="flex-1">
-                        <p class="text-xs text-slate-500 font-semibold">শিক্ষাসচিব</p>
-                        <p class="text-sm font-bold text-slate-800">${eduSecName}</p>
-                        <p class="text-xs text-slate-600 font-mono mt-0.5">${eduSecMobile}</p>
-                    </div>
-                    <a href="tel:${eduSecMobile}" class="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center"><i class="fa-solid fa-phone text-xs"></i></a>
+    // ৪. মাদরাসার সোশ্যাল লিংক
+    let socialHTML = '';
+    if (madrasaInfo.facebook || madrasaInfo.email) {
+        socialHTML = `
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mt-4 text-center">
+                <p class="text-xs font-bold text-blue-900 mb-2">মাদরাসার সাথে যোগাযোগ</p>
+                <div class="flex justify-center gap-3">
+                    ${madrasaInfo.facebook ? `<a href="${madrasaInfo.facebook}" target="_blank" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"><i class="fa-brands fa-facebook"></i> ফেসবুক</a>` : ''}
+                    ${madrasaInfo.email ? `<a href="mailto:${madrasaInfo.email}" class="px-4 py-2 bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"><i class="fa-solid fa-envelope"></i> ইমেইল</a>` : ''}
                 </div>
             </div>
+        `;
+    }
+
+    container.innerHTML = `
+        <div class="space-y-3 pb-10">
+            ${contactsHTML}
+            ${socialHTML}
         </div>
     `;
 }
@@ -52870,20 +53347,39 @@ async function loadPreviousLeaveApplications() {
             rejected: '❌ বাতিল'
         };
 
+        // (এখানে আপনার আগের typeLabels, statusColors, statusLabels ডিক্লেয়ার করা থাকবে)
+
         wrap.innerHTML = apps.slice(0, 5).map(a => {
-            const d = a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000) : new Date();
-            const dateStr = d.toLocaleDateString('bn-BD');
+            const dateStr = a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000).toLocaleDateString('bn-BD') : '---';
             const status = a.status || 'pending';
+            
+            // ★ এই কালার গুলো আগে থেকে ডিক্লেয়ার করা না থাকলে এখানে রেখে দিন
+            const statusColors = { pending: 'bg-amber-100 text-amber-800', approved: 'bg-emerald-100 text-emerald-800', rejected: 'bg-red-100 text-red-800', recommended: 'bg-blue-100 text-blue-800' };
+            const statusLabels = { pending: '⏳ অপেক্ষমাণ', approved: '✅ মঞ্জুরকৃত', rejected: '❌ বাতিল', recommended: '👍 সুপারিশকৃত' };
+
             return `
-                <div class="border border-slate-200 rounded-lg p-2 mb-2 flex items-center justify-between gap-2">
-                    <div class="flex-1 min-w-0">
+                <div class="border border-slate-200 rounded-lg p-2 mb-2">
+                    <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="badge bg-slate-100 text-slate-700 text-[10px]">${typeLabels[a.type] || a.type}</span>
                             <span class="text-[10px] text-slate-500">${dateStr}</span>
                         </div>
-                        <p class="text-[11px] text-slate-600 mt-0.5 truncate">${a.reason || '—'}</p>
+                        <span class="badge ${statusColors[status]} text-[10px]">${statusLabels[status]}</span>
                     </div>
-                    <span class="badge ${statusColors[status]} text-[10px]">${statusLabels[status]}</span>
+                    <p class="text-[11px] text-slate-600 mt-1 truncate">${a.reason || '—'}</p>
+                    
+                    ${a.status === 'approved' ? `
+                        <div class="mt-2 pt-2 border-t border-emerald-200 text-[10px]">
+                            <p><b>মঞ্জুর:</b> ${a.approvedStartDate ? new Date(a.approvedStartDate).toLocaleDateString('bn-BD') : ''} থেকে ${a.approvedEndDate ? new Date(a.approvedEndDate).toLocaleDateString('bn-BD') : ''}</p>
+                            <p><b>মন্তব্য:</b> ${a.adminComment || '—'}</p>
+                            <p><b>অনুমোদনকারী:</b> ${a.approvedBy || '—'}</p>
+                            ${a.approverSignature ? `<img src="${a.approverSignature}" class="h-6 mt-1">` : ''}
+                        </div>
+                    ` : a.status === 'rejected' ? `
+                        <div class="mt-2 pt-2 border-t border-red-200 text-[10px] text-red-700">
+                            <p><b>প্রত্যাখ্যানের কারণ:</b> ${a.adminComment || '—'}</p>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }).join('');
