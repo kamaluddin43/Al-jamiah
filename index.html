@@ -8218,7 +8218,10 @@ function loadRecords() {
 
 // Firestore থেকে records লোড
 window.loadRecordsFromFirestore = async function() {
-    if (!currentUser) return;
+    if (window._isRecordsLoading) return;
+    window._isRecordsLoading = true;
+    
+    if (!currentUser) { window._isRecordsLoading = false; return; }
     
     const CACHE_KEY = 'madrasa_records_cache_v1'; // ★ নতুন ক্যাশ কি
 
@@ -8229,8 +8232,6 @@ window.loadRecordsFromFirestore = async function() {
             records = JSON.parse(cached);
             // ★ migration প্রয়োগ করি (যাতে পুরনো ডাটাও ঠিকমতো কাজ করে)
             records = records.map(r => migrateRecord(r));
-            renderSavedDataTable();
-            updateStats();
             console.log('📦 Records loaded from cache');
         } catch(e) {}
     }
@@ -8270,8 +8271,6 @@ window.loadRecordsFromFirestore = async function() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); // পুরনো স্টোরেজ কী-ও আপডেট রাখি
             
             console.log(`✅ ${records.length}টি record migrate করা হয়েছে`);
-            renderSavedDataTable();
-            updateStats();
             console.log('☁️ Records loaded from Firestore:', records.length);
         } catch (err) {
             console.error('❌ loadRecordsFromFirestore error:', err);
@@ -8287,6 +8286,7 @@ window.loadRecordsFromFirestore = async function() {
             records = [];
         }
     }
+    window._isRecordsLoading = false;
 };
 
 // ★★★ নতুন মাইগ্রেশন ফাংশন ★★★
@@ -10390,9 +10390,12 @@ window.resetRoutineEntryForm = function() {
 };
 
 // ═══════════════════ Firestore থেকে রুটিন লোড + Auto ক্যারি-ফরওয়ার্ড ═══════════════════
-async function loadRoutinesForYear() {
+async function loadRoutinesForYear() { // ★ async যোগ করুন
+    if (window._isRoutinesLoading) return;
+    window._isRoutinesLoading = true;
+
     const year = routineState.academicYear;
-    if (!year || !currentUser) return;
+    if (!year || !currentUser) { window._isRoutinesLoading = false; return; }
     
     const CACHE_KEY = `madrasa_routines_cache_${year}`;
 
@@ -10402,17 +10405,13 @@ async function loadRoutinesForYear() {
         try { 
             routinesCache = JSON.parse(cached); 
             console.log('📦 Routines loaded from cache');
-            
-            // ★★★ নতুন যোগ করা হলো: ক্যাশ লোড হলেই স্ক্রিনে রেন্ডার করি ★★★
-            if (typeof renderRoutineSub === 'function') renderRoutineSub();
-            if (typeof updateRoutineEntryProgress === 'function') updateRoutineEntryProgress();
-            
         } catch(e) {}
     }
 
     // ★ ২. ইন্টারনেট না থাকলে ফায়ারবেসে কল দেব না
     if (!navigator.onLine) {
         console.log('📴 Offline mode — routines loaded from cache');
+        window._isRoutinesLoading = false; // ★ এই লাইনটি যোগ করুন
         return; 
     }
 
@@ -10426,7 +10425,7 @@ async function loadRoutinesForYear() {
         snap.forEach(d => {
             const r = { id: d.id, ...d.data() };
             
-            // ★ আপনার আগের ম্যাচিং লজিক অক্ষুণ্ণ রাখা হয়েছে ★
+            // আপনার আগের ম্যাচিং লজিক অক্ষুণ্ণ রাখা হয়েছে
             const dept = r.dept;
             const validClasses = getClassesForDept(dept);
             if (r.className && !validClasses.includes(r.className)) {
@@ -10444,8 +10443,6 @@ async function loadRoutinesForYear() {
                 );
                 if (matchedBook) r.bookName = matchedBook;
             }
-            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-
             routinesCache.push(r);
         });
         
@@ -10454,10 +10451,6 @@ async function loadRoutinesForYear() {
         // ★ ৪. সফলভাবে ফায়ারবেস থেকে লোড হলে ক্যাশে সেভ করি
         localStorage.setItem(CACHE_KEY, JSON.stringify(routinesCache));
         
-        // ★★★ নতুন যোগ করা হলো: ফায়ারবেস থেকে লোড হয়েও স্ক্রিনে রেন্ডার করি ★★★
-        if (typeof renderRoutineSub === 'function') renderRoutineSub();
-        if (typeof updateRoutineEntryProgress === 'function') updateRoutineEntryProgress();
-
         // Auto ক্যারি-ফরওয়ার্ড প্রস্তাব (এডমিনের জন্য)
         if (routineState.subView === 'entry' && 
             currentUserData?.role === 'admin' && 
@@ -10467,6 +10460,7 @@ async function loadRoutinesForYear() {
     } catch (err) {
         console.error('❌ loadRoutinesForYear error:', err);
     }
+    window._isRoutinesLoading = false; // ★ এই লাইনটি যোগ করুন
 }
 
 // ★ আগের বছরের রুটিন খুঁজে ক্যারি-ফরওয়ার্ডের সুপারিশ
@@ -11702,6 +11696,9 @@ window.switchCalView = function(view) {
 
 // ═══════════════════ ক্যালেন্ডার ডেটা লোড (v3 — fresh mode) ═══════════════════
 async function loadCalendarEvents(session, dept, forceFirestore = false) {
+    if (window._isCalendarLoading) return;
+    window._isCalendarLoading = true;
+
     const cacheKey = CALENDAR_STORAGE_KEY;
     let allEvents = null;
     let source = 'none';
@@ -11825,6 +11822,8 @@ async function loadCalendarEvents(session, dept, forceFirestore = false) {
 
     console.log(`📅 Filtered for session="${session}" dept="${dept}": ${filtered.length}টি ইভেন্ট`);
 
+    window._isCalendarLoading = false; 
+    
     return filtered;
 }
 
@@ -27835,9 +27834,19 @@ let _currentStudentClass = '';       // বর্তমান জামাত/�
 
 // ★ শিক্ষার্থী লোড (Firestore)
 async function loadStudentsFromFirestore() {
-    if (!currentUser) return;
+    // ★★★ ১. নতুন যোগ করা হলো: ইনফিনিট লুপ বন্ধ করার সেফটি লক ★★★
+    if (window._isStudentsLoading) {
+        console.log('⏳ Students already loading, skipping duplicate call');
+        return;
+    }
+    window._isStudentsLoading = true;
 
-    const CACHE_KEY = 'madrasa_students_cache_v1'; // ★ ক্যাশ কি
+    if (!currentUser) {
+        window._isStudentsLoading = false; // লক খুলে দিলাম
+        return;
+    }
+
+    const CACHE_KEY = 'madrasa_students_cache_v1';
 
     // ★ ১. প্রথমে লোকাল স্টোরেজ থেকে ছাত্র ডাটা লোড করি (অফলাইন সাপোর্ট)
     const cached = localStorage.getItem(CACHE_KEY);
@@ -27846,7 +27855,6 @@ async function loadStudentsFromFirestore() {
             studentsCache = JSON.parse(cached);
             studentsLoaded = true;
             console.log('📦 Students loaded from cache');
-            // UI রিফ্রেশ করতে চাইলে এখানে কল করতে পারেন
         } catch(e) {}
     }
 
@@ -27867,7 +27875,6 @@ async function loadStudentsFromFirestore() {
             fSnap.forEach(d => {
                 const form = { id: d.id, ...d.data() };
                 
-                // ★ শুধু approved ফরম
                 const isApproved = form.status === 'approved' 
                     || form.currentStep === 'COMPLETED' 
                     || form.currentStep === 12
@@ -27875,19 +27882,17 @@ async function loadStudentsFromFirestore() {
                 
                 if (!isApproved) return;
 
-                // ★ ফরম থেকে স্টুডেন্ট অবজেক্ট তৈরি
                 const fd = flattenAdmFormData(form);
                 
-                // ★ ডুপ্লিকেট চেক: একই studentId আগে থেকে ম্যানুয়াল লিস্টে আছে কি?
                 const isDuplicate = manualStudents.some(s => 
                     s.studentId && fd.studentId && 
                     String(s.studentId).trim() === String(fd.studentId).trim()
                 );
                 
-                if (isDuplicate) return; // ম্যানুয়াল এন্ট্রি থাকলে ভর্তির ডাটা skip
+                if (isDuplicate) return;
 
                 admittedStudents.push({
-                    id: 'admission_' + form.id,   // আলাদা ID যাতে ম্যানুয়ালের সাথে মেশে না
+                    id: 'admission_' + form.id,
                     name: fd.name,
                     guardian: fd.guardianName || fd.fatherName,
                     studentId: fd.studentId,
@@ -27905,11 +27910,9 @@ async function loadStudentsFromFirestore() {
                     monthlySalary: fd.monthlySalary,
                     remark: null,
                     photo: fd.studentPhoto || '',
-                    source: 'admission',          // ★ সোর্স ট্র্যাকিং
-                    admissionFormId: form.id,     // ★ মূল ফরমের ID
+                    source: 'admission',
+                    admissionFormId: form.id,
                     approvedAt: fd.approvedAt,
-                    
-                    // ✅✅✅ নতুন যোগ — মার্কস ফিল্ড ম্যাপিং ✅✅✅
                     resultMarksObj: fd.examMarks || form.data?.examMarks || form.data?.resultMarksObj || {},
                     customMarks: fd.customMarks || form.data?.customMarks || {}
                 });
@@ -27918,7 +27921,6 @@ async function loadStudentsFromFirestore() {
             // ─── ৩. একসাথে মিলাই ───
             studentsCache = [...manualStudents, ...admittedStudents];
 
-            // Sort: dept → className → name
             studentsCache.sort((a, b) => {
                 const d = (a.dept || '').localeCompare(b.dept || '');
                 if (d !== 0) return d;
@@ -27928,46 +27930,29 @@ async function loadStudentsFromFirestore() {
             });
 
             studentsLoaded = true;
-            console.log(`👨‍🎓 মোট ${studentsCache.length} জন (ম্যানুয়াল: ${manualStudents.length}, ভর্তি: ${admittedStudents.length})`);
+            console.log(`👨‍🎓 মোট ${studentsCache.length} জন`);
 
             // ★ সফলভাবে লোড হলে ক্যাশে সেভ করি
             localStorage.setItem(CACHE_KEY, JSON.stringify(studentsCache));
             console.log('☁️ Students data saved to cache');
-            
-            // ★★★ নতুন যোগ করুন: UI রিফ্রেশ করার লাইনগুলো ★★★
-            if (typeof renderAdminStudents === 'function' && document.getElementById('adm-content')) {
-                // যদি এডমিন প্যানেলে থাকেন
-                // renderAdminStudents(); 
-            }
-            if (typeof _currentStudentSub !== 'undefined' && _currentStudentSub) {
-                // যদি শিক্ষার্থী ট্যাবে থাকেন
-                if (typeof renderStudentDetailContent === 'function') renderStudentDetailContent();
-            }
-            if (typeof renderJamatReport === 'function' && document.getElementById('jamat-report-pages')?.children.length > 0) {
-                // যদি জামাত রিপোর্টে থাকেন
-                // renderJamatReport(); // (চাইলে আনকমেন্ট করবেন, তবে বারবার কল হলে স্লো হতে পারে)
-            }
-                    // ★★★ নতুন যোগ করুন: UI রিফ্রেশ করার লাইনগুলো ★★★
-            if (typeof renderAdminStudents === 'function' && document.getElementById('adm-content')) {
-                // renderAdminStudents(); // (এটি চাইলে আনকমেন্ট করবেন)
-            }
 
         } catch (err) {
             console.error('❌ loadStudentsFromFirestore error:', err);
-            // এরর খেলেও ক্যাশ থেকে ডাটা অলরেডি লোড হয়ে গেছে, তাই চিন্তার কিছু নেই
             if (!cached) {
                 studentsCache = [];
                 studentsLoaded = true;
             }
         }
     } else {
-        // ★ অফলাইন মোড
         console.log('📴 Offline mode — students loaded from cache');
         if (!cached) {
             studentsCache = [];
             studentsLoaded = true;
         }
     }
+
+    // ★★★ ২. নতুন যোগ করা হলো: কাজ শেষে লক খুলে দেওয়া ★★★
+    window._isStudentsLoading = false;
 }
 
 // ★ শিক্ষক nào কোন জামাত দেখতে পারবে (assignment থেকে)
@@ -43366,7 +43351,10 @@ let _feeStructureCache = {};
 let _feePaymentsCache = [];
 
 async function loadFeeStructure() {
-    if (!currentUser) return;
+    if (window._isFeeStructureLoading) return;
+    window._isFeeStructureLoading = true;
+    
+    if (!currentUser) { window._isFeeStructureLoading = false; return; }
     
     const CACHE_KEY = 'madrasa_fee_structure_cache';
     const cached = localStorage.getItem(CACHE_KEY);
@@ -43374,17 +43362,23 @@ async function loadFeeStructure() {
         try { _feeStructureCache = JSON.parse(cached); } catch(e) {}
     }
 
-    if (!navigator.onLine) return; // অফলাইন হলে ক্যাশ দিয়েই কাজ চালাবে
+    // ★★★ এখানে পরিবর্তন করেছেন ★★★
+    if (!navigator.onLine) { 
+        window._isFeeStructureLoading = false; 
+        return; 
+    }
 
     try {
         const { doc, getDoc } = window.fbFuncs;
         const snap = await getDoc(doc(window.fbDB, 'config', 'feeStructure'));
         _feeStructureCache = snap.exists() ? (snap.data().structure || {}) : {};
         
-        localStorage.setItem(CACHE_KEY, JSON.stringify(_feeStructureCache)); // ক্যাশে সেভ
+        localStorage.setItem(CACHE_KEY, JSON.stringify(_feeStructureCache));
     } catch (err) {
         console.error('❌ loadFeeStructure:', err);
     }
+    
+    window._isFeeStructureLoading = false;
 }
 
 async function saveFeeStructure() {
@@ -43411,7 +43405,14 @@ function getClassFeeStructure(dept, className) {
 }
 
 async function loadFeePayments() {
-    if (!currentUser) return;
+    // ★★★ ১. লক বসানো হলো ★★★
+    if (window._isFeePaymentsLoading) return;
+    window._isFeePaymentsLoading = true;
+
+    if (!currentUser) { 
+        window._isFeePaymentsLoading = false; 
+        return; 
+    }
     
     const CACHE_KEY = 'madrasa_fee_payments_cache';
     const cached = localStorage.getItem(CACHE_KEY);
@@ -43419,7 +43420,11 @@ async function loadFeePayments() {
         try { _feePaymentsCache = JSON.parse(cached); } catch(e) {}
     }
 
-    if (!navigator.onLine) return; // অফলাইন হলে ক্যাশ দিয়েই কাজ চালাবে
+    // ★★★ ২. অফলাইন চেক ★★★
+    if (!navigator.onLine) { 
+        window._isFeePaymentsLoading = false; 
+        return; 
+    }
 
     try {
         const { collection, getDocs } = window.fbFuncs;
@@ -43427,10 +43432,13 @@ async function loadFeePayments() {
         _feePaymentsCache = [];
         snap.forEach(d => _feePaymentsCache.push({ id: d.id, ...d.data() }));
         
-        localStorage.setItem(CACHE_KEY, JSON.stringify(_feePaymentsCache)); // ক্যাশে সেভ
+        localStorage.setItem(CACHE_KEY, JSON.stringify(_feePaymentsCache));
     } catch (err) {
         console.error('❌ loadFeePayments:', err);
     }
+    
+    // ★★★ ৩. কাজ শেষে লক খোলা হলো ★★★
+    window._isFeePaymentsLoading = false;
 }
 
 function getStudentTotalPaid(studentDbId) {
@@ -52297,23 +52305,22 @@ window.showGuardianPortal = function() {
 
                     <!-- ডান দিক: অভিভাবকের নাম ও থ্রি-ডট মেনু -->
                     <div class="flex items-center gap-3">
-                        <div class="text-right hidden sm:block">
-                            <p class="text-[10px] text-emerald-200 leading-tight">স্বাগতম,</p>
-                            <p class="text-xs font-bold text-white leading-tight">
-                                ${student.guardian || student.guardianName || student.fatherName || 'অভিভাবক'}
-                            </p>
-                        </div>
-                        
+                    <div class="text-right"> 
+                        <p class="text-[10px] text-emerald-200 leading-tight">স্বাগতম,</p>
+                        <p class="text-xs font-bold text-white leading-tight">
+                            ${student.guardian || student.guardianName || student.fatherName || 'অভিভাবক'}
+                        </p>
+                    </div>
                         <!-- থ্রি ডট বাটন (ক্লিক করলে লগআউট অপশন আসবে) -->
                         <div class="relative">
                             <button onclick="document.getElementById('guardian-dropdown').classList.toggle('hidden')" class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition focus:outline-none">
                                 <i class="fa-solid fa-ellipsis-vertical"></i>
                             </button>
-                            
-                            <!-- ড্রপডাউন মেনু -->
-                            <div id="guardian-dropdown" class="hidden absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-xl py-1 z-50 border border-slate-200">
-                                <button onclick="logoutGuardian()" class="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition flex items-center gap-2">
-                                    <i class="fa-solid fa-sign-out-alt"></i> লগআউট
+                            <!-- ★★★ অতি ছোট ও কমপ্যাক্ট ড্রপডাউন ★★★ -->
+                            <div id="guardian-dropdown" class="hidden absolute right-0 mt-2 w-[85px] bg-white rounded-lg shadow-lg py-1 z-[100] border border-slate-200">
+                                <button onclick="logoutGuardian()" class="w-full text-center px-2 py-1.5 text-[10px] font-bold text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
+                                    <span>লগআউট</span>
                                 </button>
                             </div>
                         </div>
