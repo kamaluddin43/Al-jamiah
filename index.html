@@ -2070,6 +2070,13 @@ header button {
                 <span class="text-sm md:text-base font-bold leading-tight text-center">গার্ডিয়ান</span>
             </button>
 
+            <!-- ★★★ ১০. নিয়মকানুন ★★★ -->
+            <button onclick="switchTab('rules')" id="tab-btn-rules"
+                    class="tab-btn group bg-gradient-to-br from-slate-500 to-slate-700 hover:from-slate-600 hover:to-slate-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                <i class="fa-solid fa-scroll text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm md:text-base font-bold leading-tight text-center">নিয়মকানুন</span>
+            </button>
+
             <!-- ১০. সেটিংস (এডমিন only) -->
             <button onclick="switchTab('settings')" id="tab-btn-settings"
                     class="tab-btn group bg-gradient-to-br from-rose-500 to-rose-700 hover:from-rose-600 hover:to-rose-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px] hidden">
@@ -2393,7 +2400,6 @@ header button {
 </section>
 
 <!-- ═══════════════════ TAB: ACCOUNTING (হিসাব বিভাগ) ═══════════════════ -->
-<!-- ═══════════════════ TAB: ACCOUNTING (হিসাব বিভাগ) ═══════════════════ -->
 <section id="tab-accounting" class="tab-content hidden space-y-4">
 
     <!-- ★ হোম বাটন (sticky) -->
@@ -2516,12 +2522,13 @@ header button {
                 <span class="text-sm md:text-base font-bold leading-tight text-center">৩. হোমওয়ার্ক</span>
             </button>
 
-            <!-- ৪. গার্ডিয়ান পোর্টাল -->
-            <button onclick="openGuardianPage('portal')" id="guardian-btn-portal"
-                    class="guardian-main-btn group bg-gradient-to-br from-violet-500 to-violet-700 hover:from-violet-600 hover:to-violet-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-id-card text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">৪. পোর্টাল</span>
+            <!-- ৪. অভিযোগ (শুধু এডমিন) -->
+            <button onclick="openGuardianPage('complaint')" id="guardian-btn-complaint"
+                    class="guardian-main-btn group bg-gradient-to-br from-orange-500 to-orange-700 hover:from-orange-600 hover:to-orange-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px] admin-only-btn">
+                <i class="fa-solid fa-bullhorn text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm md:text-base font-bold leading-tight text-center">৪. অভিযোগ</span>
             </button>
+
             <!-- ★ নতুন ৫ম বাটন: ছুটির আবেদন ম্যানেজমেন্ট ★ -->
             <button onclick="openGuardianPage('leave-management')" id="guardian-btn-leave-management"
                     class="guardian-main-btn group bg-gradient-to-br from-rose-500 to-rose-700 hover:from-rose-600 hover:to-rose-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
@@ -2551,6 +2558,63 @@ header button {
             <p class="text-sm">লোড হচ্ছে...</p>
         </div>
     </div>
+</section>
+
+<!-- ═══════════════════ TAB: RULES (নিয়মকানুন) ═══════════════════ -->
+<section id="tab-rules" class="tab-content hidden space-y-4">
+
+    <!-- ★ হোম বাটন (sticky) -->
+    <div class="sticky top-16 md:top-20 z-30 flex justify-start gap-2 flex-wrap no-print">
+        <button onclick="switchTab('home')" class="flex items-center gap-2 px-4 py-2 bg-white hover:bg-emerald-50 border-2 border-emerald-600 text-emerald-800 hover:text-emerald-900 rounded-lg shadow-md hover:shadow-lg transition-all font-bold text-sm">
+            <i class="fa-solid fa-house"></i>
+            <span>হোম</span>
+        </button>
+    </div>
+
+    <!-- ★ মূল মেনু (৫টি বাটন) -->
+    <div id="rules-main-menu" class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
+        <div class="text-center mb-6">
+            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-slate-500 to-slate-700 rounded-2xl flex items-center justify-center text-white text-4xl mb-4 shadow-lg">
+                <i class="fa-solid fa-scroll"></i>
+            </div>
+            <h2 class="text-2xl md:text-3xl font-bold text-slate-800 mb-2">মাদরাসার নিয়মকানুন</h2>
+            <p class="text-sm text-slate-500">বিভাগ নির্বাচন করে বিস্তারিত নিয়মাবলী দেখুন</p>
+        </div>
+
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 max-w-5xl mx-auto">
+            <button onclick="openRulesCategory('admission')" class="rules-cat-btn group bg-gradient-to-br from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white rounded-2xl p-4 md:p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-2 min-h-[110px] md:min-h-[140px]">
+                <i class="fa-solid fa-user-plus text-2xl md:text-3xl opacity-95 group-hover:scale-110 transition-transform"></i>
+                <span class="text-xs md:text-sm font-bold text-center leading-tight">ভর্তি</span>
+            </button>
+            <button onclick="openRulesCategory('darul_iqama')" class="rules-cat-btn group bg-gradient-to-br from-sky-500 to-sky-700 hover:from-sky-600 hover:to-sky-800 text-white rounded-2xl p-4 md:p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-2 min-h-[110px] md:min-h-[140px]">
+                <i class="fa-solid fa-building text-2xl md:text-3xl opacity-95 group-hover:scale-110 transition-transform"></i>
+                <span class="text-xs md:text-sm font-bold text-center leading-tight">দারুল ইকামা</span>
+            </button>
+            <button onclick="openRulesCategory('talimat')" class="rules-cat-btn group bg-gradient-to-br from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white rounded-2xl p-4 md:p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-2 min-h-[110px] md:min-h-[140px]">
+                <i class="fa-solid fa-book-open text-2xl md:text-3xl opacity-95 group-hover:scale-110 transition-transform"></i>
+                <span class="text-xs md:text-sm font-bold text-center leading-tight">তালিমাত</span>
+            </button>
+            <button onclick="openRulesCategory('maktaba')" class="rules-cat-btn group bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-600 hover:to-indigo-800 text-white rounded-2xl p-4 md:p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-2 min-h-[110px] md:min-h-[140px]">
+                <i class="fa-solid fa-book text-2xl md:text-3xl opacity-95 group-hover:scale-110 transition-transform"></i>
+                <span class="text-xs md:text-sm font-bold text-center leading-tight">মাকতাবা (লাইব্রেরি)</span>
+            </button>
+            <button onclick="openRulesCategory('matbakh')" class="rules-cat-btn group bg-gradient-to-br from-rose-500 to-rose-700 hover:from-rose-600 hover:to-rose-800 text-white rounded-2xl p-4 md:p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-2 min-h-[110px] md:min-h-[140px]">
+                <i class="fa-solid fa-utensils text-2xl md:text-3xl opacity-95 group-hover:scale-110 transition-transform"></i>
+                <span class="text-xs md:text-sm font-bold text-center leading-tight">মাতবাখ (বোডিং)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ★ ক্যাটাগরি ডিটেইল পেজ -->
+    <div id="rules-category-page" class="hidden space-y-4">
+        <!-- ক্যাটাগরির হেডার + ব্যাক বাটন -->
+        <div id="rules-cat-header"></div>
+        <!-- সাব-ট্যাব বার -->
+        <div id="rules-subtabs-bar"></div>
+        <!-- কনটেন্ট এরিয়া -->
+        <div id="rules-sections-content"></div>
+    </div>
+
 </section>
 
 <!-- ═══════════════════ TAB: ACADEMIC CALENDAR ═══════════════════ -->
@@ -29149,7 +29213,7 @@ function switchTab(tabId) {
         return;
     }
 
-    // নির্দিষ্ট ট্যাব দেখাই
+        // নির্দিষ্ট ট্যাব দেখাই
     const target = document.getElementById('tab-' + tabId);
     if (!target) {
         console.warn('⚠️ Tab পাওয়া যায়নি:', tabId);
@@ -32733,6 +32797,10 @@ function showApp() {
         const btn = document.getElementById(id);
         if (btn) btn.classList.toggle('hidden', !isAdmin);
     });
+
+    // ★ গার্ডিয়ান ট্যাবের 'অভিযোগ' বাটন শুধু এডমিন দেখবে
+    const guardianComplaintBtn = document.getElementById('guardian-btn-complaint');
+    if (guardianComplaintBtn) guardianComplaintBtn.classList.toggle('hidden', !isAdmin);
 
     // সেটিংস বাটন
     const setBtn = document.getElementById('tab-btn-settings');
@@ -43334,8 +43402,8 @@ async function renderGuardianPageContent() {
         renderGuardianCommunicationPage(container);
     } else if (_currentGuardianPage === 'homework') {
         renderHomeworkPage(container); 
-    } else if (_currentGuardianPage === 'portal') {
-        renderGuardianPortalPage(container);
+    } else if (_currentGuardianPage === 'complaint') {
+        renderGuardianComplaintPage(container);
     }
         // ★ নতুন কেস যুক্ত করুন ★
     if (_currentGuardianPage === 'leave-management') {
@@ -44223,66 +44291,715 @@ function buildRemarkHTML() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ৪. গার্ডিয়ান পোর্টাল পেইজ
+// ★★★ এডমিন — অভিযোগ ও প্রতিষ্ঠানের বার্তা (মূল ডিসপ্যাচার) ★★★
 // ═══════════════════════════════════════════════════════════════
-function renderGuardianPortalPage(container) {
+
+let _complaintAdminState = {
+    activeTab: 'complaints',  // 'complaints' | 'messages'
+    complaintFilter: 'all',   // 'all' | 'pending' | 'replied' | 'complaint' | 'suggestion'
+    complaintSearch: '',
+    complaints: [],
+    messages: []
+};
+
+function renderGuardianComplaintPage(container) {
     container.innerHTML = `
-        <h3 class="text-lg font-bold text-slate-800 mb-3"><i class="fa-solid fa-id-card text-violet-600"></i> গার্ডিয়ান পোর্টাল</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="bg-white rounded-xl border border-slate-200 p-4">
-                <div class="w-14 h-14 bg-violet-100 rounded-xl flex items-center justify-center text-violet-700 text-2xl mb-3">
-                    <i class="fa-solid fa-user-shield"></i>
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
+            <div class="flex flex-wrap gap-2">
+                <button onclick="switchComplaintAdminTab('complaints')" id="ca-tab-complaints"
+                        class="flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-comment-dots"></i> অভিযোগ / পরামর্শ
+                </button>
+                <button onclick="switchComplaintAdminTab('messages')" id="ca-tab-messages"
+                        class="flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-bullhorn"></i> প্রতিষ্ঠানের বিশেষ বার্তা
+                </button>
+            </div>
+        </div>
+        <div id="ca-content-area">
+            <div class="text-center py-12 text-slate-400">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i>
+                <p>লোড হচ্ছে...</p>
+            </div>
+        </div>
+    `;
+    
+    switchComplaintAdminTab(_complaintAdminState.activeTab);
+}
+
+window.switchComplaintAdminTab = function(tab) {
+    _complaintAdminState.activeTab = tab;
+    
+    ['complaints', 'messages'].forEach(t => {
+        const btn = document.getElementById('ca-tab-' + t);
+        if (!btn) return;
+        if (t === tab) {
+            btn.className = 'flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 bg-orange-600 text-white shadow';
+        } else {
+            btn.className = 'flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 bg-white text-slate-600 hover:bg-slate-100 border border-slate-200';
+        }
+    });
+    
+    const area = document.getElementById('ca-content-area');
+    if (!area) return;
+    
+    if (tab === 'complaints') {
+        renderAdminComplaintsList(area);
+    } else {
+        renderAdminMessagesPanel(area);
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 【 ট্যাব ১: অভিভাবকের অভিযোগ/পরামর্শ তালিকা 】
+// ═══════════════════════════════════════════════════════════════
+async function renderAdminComplaintsList(area) {
+    area.innerHTML = `<div class="text-center py-12 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i><p>অভিযোগ লোড হচ্ছে...</p></div>`;
+    
+    try {
+        const { collection, getDocs, query, orderBy } = window.fbFuncs;
+        const q = query(collection(window.fbDB, 'complaints'), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        _complaintAdminState.complaints = [];
+        snap.forEach(d => _complaintAdminState.complaints.push({ id: d.id, ...d.data() }));
+    } catch (err) {
+        console.error('❌ renderAdminComplaintsList:', err);
+        // orderBy fail করলে fallback
+        try {
+            const { collection, getDocs } = window.fbFuncs;
+            const snap = await getDocs(collection(window.fbDB, 'complaints'));
+            _complaintAdminState.complaints = [];
+            snap.forEach(d => _complaintAdminState.complaints.push({ id: d.id, ...d.data() }));
+            _complaintAdminState.complaints.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        } catch (e) {
+            area.innerHTML = `<div class="bg-red-50 p-6 rounded-xl text-center text-red-600 font-bold">লোড ব্যর্থ: ${err.message}</div>`;
+            return;
+        }
+    }
+    
+    renderAdminComplaintsUI(area);
+}
+
+function renderAdminComplaintsUI(area) {
+    const all = _complaintAdminState.complaints;
+    const filter = _complaintAdminState.complaintFilter;
+    const search = _complaintAdminState.complaintSearch.toLowerCase().trim();
+    
+    let filtered = all.slice();
+    if (filter === 'pending') filtered = filtered.filter(c => c.status === 'pending');
+    else if (filter === 'replied') filtered = filtered.filter(c => c.status === 'replied');
+    else if (filter === 'complaint') filtered = filtered.filter(c => c.type === 'complaint');
+    else if (filter === 'suggestion') filtered = filtered.filter(c => c.type === 'suggestion');
+    
+    if (search) {
+        filtered = filtered.filter(c =>
+            (c.guardianName || '').toLowerCase().includes(search) ||
+            (c.studentName || '').toLowerCase().includes(search) ||
+            (c.studentId || '').toLowerCase().includes(search) ||
+            (c.message || '').toLowerCase().includes(search)
+        );
+    }
+    
+    const pendingCount = all.filter(c => c.status === 'pending').length;
+    const repliedCount = all.filter(c => c.status === 'replied').length;
+    const complaintCount = all.filter(c => c.type === 'complaint').length;
+    const suggestionCount = all.filter(c => c.type === 'suggestion').length;
+    
+    let cardsHTML = '';
+    
+    if (filtered.length === 0) {
+        cardsHTML = `
+            <div class="text-center py-12 bg-white rounded-xl border border-slate-200">
+                <i class="fa-solid fa-inbox text-5xl text-slate-300 mb-3"></i>
+                <p class="text-slate-600 font-bold">কোন অভিযোগ বা পরামর্শ নেই</p>
+                <p class="text-xs text-slate-400 mt-1">অভিভাবক পোর্টাল থেকে অভিযোগ বা পরামর্শ জমা দিলে এখানে দেখাবে।</p>
+            </div>
+        `;
+    } else {
+        filtered.forEach(c => {
+            cardsHTML += buildAdminComplaintCard(c);
+        });
+    }
+    
+    area.innerHTML = `
+        <div class="space-y-3">
+            <!-- স্ট্যাটস -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <p class="text-[10px] font-bold text-orange-800">মোট অভিযোগ</p>
+                    <p class="text-2xl font-bold text-orange-900">${complaintCount}</p>
                 </div>
-                <h4 class="font-bold text-slate-800 mb-2">অভিভাবক লগইন</h4>
-                <p class="text-xs text-slate-600 mb-3">প্রতিটি অভিভাবকের জন্য আলাদা লগইন অ্যাকাউন্ট। নিজের সন্তানের তথ্য, রেজাল্ট, ফি স্ট্যাটাস দেখতে পারবেন।</p>
-                <div class="bg-violet-50 border border-violet-200 rounded-lg p-3">
-                    <p class="text-xs text-violet-900"><i class="fa-solid fa-info-circle"></i> শীঘ্রই আসছে — অভিভাবকের মোবাইল নম্বর দিয়ে OTP লগইন।</p>
+                <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                    <p class="text-[10px] font-bold text-emerald-800">মোট পরামর্শ</p>
+                    <p class="text-2xl font-bold text-emerald-900">${suggestionCount}</p>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p class="text-[10px] font-bold text-amber-800">অপেক্ষমাণ</p>
+                    <p class="text-2xl font-bold text-amber-900">${pendingCount}</p>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-[10px] font-bold text-blue-800">মন্তব্যকৃত</p>
+                    <p class="text-2xl font-bold text-blue-900">${repliedCount}</p>
                 </div>
             </div>
             
-            <div class="bg-white rounded-xl border border-slate-200 p-4">
-                <div class="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center text-green-700 text-2xl mb-3">
-                    <i class="fa-solid fa-mobile-screen"></i>
+            <!-- ফিল্টার + সার্চ -->
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex flex-wrap gap-2 items-center">
+                <label class="text-xs font-bold text-slate-600"><i class="fa-solid fa-filter"></i> ফিল্টার:</label>
+                <select onchange="_complaintAdminState.complaintFilter=this.value; renderAdminComplaintsUI(document.getElementById('ca-content-area'));"
+                        class="rounded border border-slate-300 p-1.5 text-xs">
+                    <option value="all" ${filter === 'all' ? 'selected' : ''}>সব (${all.length})</option>
+                    <option value="pending" ${filter === 'pending' ? 'selected' : ''}>অপেক্ষমাণ (${pendingCount})</option>
+                    <option value="replied" ${filter === 'replied' ? 'selected' : ''}>মন্তব্যকৃত (${repliedCount})</option>
+                    <option value="complaint" ${filter === 'complaint' ? 'selected' : ''}>শুধু অভিযোগ (${complaintCount})</option>
+                    <option value="suggestion" ${filter === 'suggestion' ? 'selected' : ''}>শুধু পরামর্শ (${suggestionCount})</option>
+                </select>
+                <input type="text" value="${_complaintAdminState.complaintSearch}"
+                       oninput="_complaintAdminState.complaintSearch=this.value; renderAdminComplaintsUI(document.getElementById('ca-content-area'));"
+                       placeholder="🔍 অভিভাবক/ছাত্র/আইডি/বার্তা"
+                       class="flex-1 min-w-[200px] rounded border border-slate-300 p-1.5 text-xs">
+            </div>
+            
+            <!-- কার্ড লিস্ট -->
+            <div class="space-y-2">${cardsHTML}</div>
+        </div>
+    `;
+}
+
+function buildAdminComplaintCard(c) {
+    const isComplaint = c.type === 'complaint';
+    const isPending = c.status === 'pending';
+    
+    const colorScheme = isComplaint
+        ? { bg: '#fee2e2', border: '#dc2626', text: '#991b1b', label: '🔴 অভিযোগ', icon: 'fa-exclamation-circle' }
+        : { bg: '#dcfce7', border: '#16a34a', text: '#14532d', label: '🟢 পরামর্শ', icon: 'fa-lightbulb' };
+    
+    const dateStr = c.createdAt?.seconds
+        ? new Date(c.createdAt.seconds * 1000).toLocaleString('bn-BD')
+        : '---';
+    
+    const statusBadge = isPending
+        ? '<span class="badge bg-amber-100 text-amber-800 text-[10px] font-bold">⏳ অপেক্ষমাণ</span>'
+        : '<span class="badge bg-blue-100 text-blue-800 text-[10px] font-bold">✅ মন্তব্যকৃত</span>';
+    
+    // ★ বেনামী চেক
+    const guardianDisplay = c.isAnonymous
+        ? '<i>বেনামী অভিভাবক</i>'
+        : (c.guardianName || '---');
+    
+    return `
+        <div class="bg-white rounded-xl shadow-sm border-2 overflow-hidden" style="border-color:${colorScheme.border}40;">
+            <!-- হেডার -->
+            <div class="px-4 py-2 flex items-center justify-between flex-wrap gap-2 border-b" style="background:${colorScheme.bg}; border-color:${colorScheme.border}30;">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="badge text-[10px] font-bold" style="background:${colorScheme.border}; color:white;">
+                        <i class="fa-solid ${colorScheme.icon}"></i> ${colorScheme.label}
+                    </span>
+                    ${statusBadge}
                 </div>
-                <h4 class="font-bold text-slate-800 mb-2">অনলাইন ফি পেমেন্ট</h4>
-                <p class="text-xs text-slate-600 mb-3">বিকাশ, নগদ, রকেট দিয়ে অনলাইন ফি পেমেন্ট। অভিভাবক ঘরে বসেই ফি দিতে পারবেন।</p>
-                <div class="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <p class="text-xs text-green-900"><i class="fa-solid fa-info-circle"></i> শীঘ্রই আসছে — বিকাশ/নগদ পেমেন্ট গেটওয়ে ইন্টিগ্রেশন।</p>
+                <span class="text-[10px] text-slate-600"><i class="fa-regular fa-clock"></i> ${dateStr}</span>
+            </div>
+            
+            <!-- অভিভাবক ও ছাত্রের পরিচয় -->
+            <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 text-xs">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-1">
+                    <div>
+                        <strong class="text-slate-600">অভিভাবক:</strong>
+                        <span class="font-bold" style="color:${colorScheme.text};">${guardianDisplay}</span>
+                        ${c.guardianMobile ? `<span class="text-slate-500 font-mono ml-1">(${c.guardianMobile})</span>` : ''}
+                    </div>
+                    <div>
+                        <strong class="text-slate-600">শিক্ষার্থী:</strong>
+                        <span class="font-bold">${c.studentName || '---'}</span>
+                        <span class="text-slate-500 font-arabic ml-1">(${c.className || '---'})</span>
+                        ${c.studentId ? `<span class="text-slate-500 font-mono ml-1">আইডি: ${c.studentId}</span>` : ''}
+                    </div>
                 </div>
             </div>
             
-            <div class="bg-white rounded-xl border border-slate-200 p-4 md:col-span-2">
-                <h4 class="font-bold text-slate-800 mb-3"><i class="fa-solid fa-users"></i> অভিভাবক তালিকা</h4>
-                <div class="overflow-x-auto max-h-[400px]">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead class="bg-violet-700 text-white sticky top-0">
-                            <tr>
-                                <th class="p-2">অভিভাবক</th>
-                                <th class="p-2">মোবাইল</th>
-                                <th class="p-2">সন্তান</th>
-                                <th class="p-2">জামাত</th>
-                                <th class="p-2 text-center">লগইন</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${(studentsCache || []).filter(s => s.guardian && s.mobile1).slice(0, 100).map(s => `
-                                <tr class="border-b hover:bg-violet-50">
-                                    <td class="p-2 font-bold">${s.guardian}</td>
-                                    <td class="p-2 font-mono">${s.mobile1}</td>
-                                    <td class="p-2">${s.name}</td>
-                                    <td class="p-2 font-arabic">${s.className}</td>
-                                    <td class="p-2 text-center">
-                                        <button onclick="showToast('🔒 পোর্টাল লগইন শীঘ্রই আসছে','info')" class="px-2 py-1 bg-violet-600 text-white text-[10px] font-bold rounded">লগইন</button>
-                                    </td>
-                                </tr>
-                            `).join('') || '<tr><td colspan="5" class="p-4 text-center text-slate-400">কোন অভিভাবক নেই</td></tr>'}
-                        </tbody>
-                    </table>
-                </div>
+            <!-- মূল বার্তা -->
+            <div class="px-4 py-3">
+                <div class="text-sm text-slate-800 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(c.message || '')}</div>
+            </div>
+            
+            <!-- মন্তব্য/রিপ্লাই সেকশন -->
+            <div class="px-4 py-2 border-t border-slate-200" style="background:${isPending ? '#fffbeb' : '#f0f9ff'};">
+                ${isPending ? `
+                    <button onclick="openAdminReplyModal('${c.id}')" class="w-full py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg shadow flex items-center justify-center gap-2 transition">
+                        <i class="fa-solid fa-reply"></i> মন্তব্য / রিপ্লাই দিন
+                    </button>
+                ` : `
+                    <div class="text-xs">
+                        <div class="flex items-center justify-between mb-1">
+                            <strong class="text-blue-800"><i class="fa-solid fa-reply-all"></i> প্রতিষ্ঠানের মন্তব্য:</strong>
+                            <button onclick="openAdminReplyModal('${c.id}')" class="text-blue-600 hover:underline text-[10px] font-bold">
+                                <i class="fa-solid fa-pen"></i> এডিট
+                            </button>
+                        </div>
+                        <div class="text-slate-700 leading-relaxed bg-white p-2 rounded border border-blue-200" style="white-space: pre-wrap;">${escapeHtml(c.adminReply || '')}</div>
+                        <p class="text-[10px] text-slate-500 mt-1">
+                            — ${c.repliedBy || 'এডমিন'} 
+                            ${c.repliedAt?.seconds ? `| ${new Date(c.repliedAt.seconds * 1000).toLocaleString('bn-BD')}` : ''}
+                        </p>
+                    </div>
+                `}
             </div>
         </div>
     `;
 }
+
+// ★★★ HTML escape helper ★★★
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 【 মন্তব্য / রিপ্লাই মডাল 】
+// ═══════════════════════════════════════════════════════════════
+window.openAdminReplyModal = function(complaintId) {
+    const c = _complaintAdminState.complaints.find(x => x.id === complaintId);
+    if (!c) return showToast('❌ অভিযোগ পাওয়া যায়নি', 'error');
+    
+    document.getElementById('ca-reply-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'ca-reply-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div class="bg-blue-700 text-white p-4 flex items-center justify-between">
+                <h3 class="text-base font-bold"><i class="fa-solid fa-reply"></i> মন্তব্য / রিপ্লাই দিন</h3>
+                <button onclick="document.getElementById('ca-reply-modal').remove()" class="text-white text-2xl">×</button>
+            </div>
+            <div class="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <p class="text-[10px] font-bold text-slate-500 mb-1">অভিভাবকের ${c.type === 'complaint' ? 'অভিযোগ' : 'পরামর্শ'}:</p>
+                    <p class="text-xs text-slate-700 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(c.message || '')}</p>
+                    <p class="text-[10px] text-slate-500 mt-2">— ${c.isAnonymous ? 'বেনামী অভিভাবক' : c.guardianName} (${c.studentName})</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">আপনার মন্তব্য / রিপ্লাই <span class="text-red-500">*</span></label>
+                    <textarea id="ca-reply-text" rows="5" 
+                              placeholder="অভিভাবকের প্রতি আপনার মন্তব্য লিখুন..."
+                              class="w-full rounded-lg border border-slate-300 p-2.5 text-sm resize-none">${c.adminReply || ''}</textarea>
+                </div>
+            </div>
+            <div class="p-3 border-t bg-slate-50 flex justify-end gap-2">
+                <button onclick="document.getElementById('ca-reply-modal').remove()" class="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded">বাতিল</button>
+                <button onclick="saveAdminComplaintReply('${complaintId}')" class="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded shadow">
+                    <i class="fa-solid fa-save"></i> সেভ করুন
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    setTimeout(() => document.getElementById('ca-reply-text')?.focus(), 200);
+};
+
+window.saveAdminComplaintReply = async function(complaintId) {
+    const text = document.getElementById('ca-reply-text').value.trim();
+    if (!text) return showToast('⚠️ মন্তব্য লিখুন', 'warn');
+    
+    try {
+        const { doc, updateDoc, serverTimestamp } = window.fbFuncs;
+        const repliedBy = (typeof getContactName === 'function' && getContactName('principal')) || currentUserData?.name || 'এডমিন';
+        
+        await updateDoc(doc(window.fbDB, 'complaints', complaintId), {
+            adminReply: text,
+            status: 'replied',
+            repliedBy: repliedBy,
+            repliedAt: serverTimestamp(),
+            repliedByUid: currentUser?.uid || 'unknown'
+        });
+        
+        document.getElementById('ca-reply-modal')?.remove();
+        showToast('✅ মন্তব্য পাঠানো হয়েছে', 'success');
+        
+        // ★ UI রিফ্রেশ
+        await renderAdminComplaintsList(document.getElementById('ca-content-area'));
+        
+    } catch (err) {
+        console.error('❌ saveAdminComplaintReply:', err);
+        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 【 ট্যাব ২: প্রতিষ্ঠানের বিশেষ বার্তা 】
+// ═══════════════════════════════════════════════════════════════
+async function renderAdminMessagesPanel(area) {
+    area.innerHTML = `<div class="text-center py-12 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i><p>লোড হচ্ছে...</p></div>`;
+    
+    // ★ ছাত্র লিস্ট নিশ্চিত করি
+    if (typeof studentsCache === 'undefined' || !studentsCache || studentsCache.length === 0) {
+        if (typeof loadStudentsFromFirestore === 'function') {
+            await loadStudentsFromFirestore();
+        }
+    }
+    
+    // ★ পাঠানো বার্তার তালিকা লোড করি
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, 'adminMessages'));
+        _complaintAdminState.messages = [];
+        snap.forEach(d => _complaintAdminState.messages.push({ id: d.id, ...d.data() }));
+        _complaintAdminState.messages.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    } catch (err) {
+        console.warn('Messages load:', err);
+        _complaintAdminState.messages = [];
+    }
+    
+    renderAdminMessagesUI(area);
+}
+
+function renderAdminMessagesUI(area) {
+    const depts = configData?.departments || [];
+    
+    // ★ পাঠানো বার্তা তালিকা
+    let historyHTML = '';
+    if (_complaintAdminState.messages.length === 0) {
+        historyHTML = `<p class="text-xs text-slate-400 text-center py-3 italic">এখনো কোনো বার্তা পাঠানো হয়নি</p>`;
+    } else {
+        historyHTML = _complaintAdminState.messages.slice(0, 10).map(m => {
+            const dateStr = m.createdAt?.seconds
+                ? new Date(m.createdAt.seconds * 1000).toLocaleString('bn-BD')
+                : '---';
+            return `
+                <div class="border border-emerald-200 rounded-lg p-3 bg-emerald-50">
+                    <div class="flex items-center justify-between mb-1 flex-wrap gap-2">
+                        <span class="badge bg-emerald-600 text-white text-[10px] font-bold">
+                            <i class="fa-solid fa-users"></i> ${m.sentToCount || 0} জন অভিভাবককে
+                        </span>
+                        <span class="text-[10px] text-slate-600">${dateStr}</span>
+                    </div>
+                    <p class="text-xs text-slate-800 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(m.message || '')}</p>
+                    <p class="text-[10px] text-slate-500 mt-1">— ${m.sentBy || 'এডমিন'}</p>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    area.innerHTML = `
+        <div class="space-y-4">
+            <!-- ★ নতুন বার্তা পাঠানোর ফরম -->
+            <div class="bg-white rounded-xl shadow-md border border-emerald-200 p-4">
+                <h3 class="text-base font-bold text-emerald-900 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> নতুন বিশেষ বার্তা পাঠান
+                </h3>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 text-xs text-blue-900">
+                    <i class="fa-solid fa-info-circle"></i>
+                    দুই পদ্ধতিতে অভিভাবক নির্বাচন করতে পারবেন — <strong>১)</strong> বিভাগ ও শ্রেণি দিয়ে একাধিক ছাত্র সিলেক্ট, অথবা <strong>২)</strong> সরাসরি আইডি নম্বর দিয়ে। শেষে <strong>প্রেরণ</strong> করুন।
+                </div>
+                
+                <!-- পদ্ধতি ১: বিভাগ-শ্রেণি-ছাত্র -->
+                <div class="bg-slate-50 rounded-lg p-3 mb-3 border border-slate-200">
+                    <p class="text-xs font-bold text-slate-700 mb-2"><i class="fa-solid fa-user-check"></i> পদ্ধতি ১: ছাত্র সিলেক্ট করে</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-1">বিভাগ</label>
+                            <select id="ca-msg-dept" onchange="onMsgDeptChange()" class="w-full rounded border border-slate-300 p-2 text-sm bg-white">
+                                <option value="">-- বিভাগ --</option>
+                                ${depts.map(d => `<option value="${d.key}">${d.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-1">শ্রেণি</label>
+                            <select id="ca-msg-class" onchange="onMsgClassChange()" class="w-full rounded border border-slate-300 p-2 text-sm bg-white font-arabic">
+                                <option value="">-- শ্রেণি --</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="toggleMsgSelectAll()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded">
+                                <i class="fa-solid fa-check-double"></i> সব সিলেক্ট
+                            </button>
+                        </div>
+                    </div>
+                    <div id="ca-msg-students-wrap" class="bg-white border border-slate-300 rounded p-2 max-h-40 overflow-y-auto text-xs">
+                        <p class="text-slate-400 text-center py-2 italic">বিভাগ ও শ্রেণি সিলেক্ট করুন</p>
+                    </div>
+                </div>
+                
+                <!-- পদ্ধতি ২: আইডি দিয়ে -->
+                <div class="bg-slate-50 rounded-lg p-3 mb-3 border border-slate-200">
+                    <p class="text-xs font-bold text-slate-700 mb-2"><i class="fa-solid fa-keyboard"></i> পদ্ধতি ২: আইডি দিয়ে</p>
+                    <input type="text" id="ca-msg-ids" placeholder="আইডি নম্বর লিখুন, একাধিক হলে কমা (,) দিয়ে (যেমন: ১০১, ১০২, ২০৩)"
+                           class="w-full rounded border border-slate-300 p-2 text-sm">
+                    <p class="text-[10px] text-slate-500 mt-1">
+                        <i class="fa-solid fa-info-circle"></i> টাইপ করা আইডির শিক্ষার্থীদের অভিভাবকদের কাছে বার্তা যাবে (পদ্ধতি ১ এর সাথে একসাথে কাজ করে)
+                    </p>
+                </div>
+                
+                <!-- বার্তা -->
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        বার্তা <span class="text-red-500">*</span>
+                    </label>
+                    <textarea id="ca-msg-text" rows="4" 
+                              placeholder="অভিভাবকদের কাছে পাঠানোর বার্তা লিখুন..."
+                              class="w-full rounded-lg border border-slate-300 p-2.5 text-sm resize-none"></textarea>
+                </div>
+                
+                <!-- অ্যাকশন -->
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                    <button onclick="previewAdminMessage()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow flex items-center gap-2">
+                        <i class="fa-solid fa-eye"></i> প্রিভিউ
+                    </button>
+                    <button onclick="sendAdminBulkMessage()" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold rounded-lg shadow flex items-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> প্রেরণ করুন
+                    </button>
+                </div>
+            </div>
+            
+            <!-- ★ পাঠানো বার্তার তালিকা -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-history"></i> পূর্বে পাঠানো বার্তা (সর্বশেষ ১০টি)
+                </h3>
+                <div class="space-y-2">${historyHTML}</div>
+            </div>
+        </div>
+    `;
+}
+
+// ★★★ বার্তা — বিভাগ/শ্রেণি হ্যান্ডলার ★★★
+window.onMsgDeptChange = function() {
+    const dept = document.getElementById('ca-msg-dept').value;
+    const classSel = document.getElementById('ca-msg-class');
+    classSel.innerHTML = '<option value="">-- শ্রেণি --</option>';
+    if (dept && typeof getClassesForDept === 'function') {
+        const classes = getClassesForDept(dept);
+        classes.forEach(c => {
+            classSel.innerHTML += `<option value="${c}">${c}</option>`;
+        });
+    }
+    document.getElementById('ca-msg-students-wrap').innerHTML = '<p class="text-slate-400 text-center py-2 italic">শ্রেণি সিলেক্ট করুন</p>';
+};
+
+window.onMsgClassChange = function() {
+    const dept = document.getElementById('ca-msg-dept').value;
+    const className = document.getElementById('ca-msg-class').value;
+    const wrap = document.getElementById('ca-msg-students-wrap');
+    
+    if (!dept || !className) {
+        wrap.innerHTML = '<p class="text-slate-400 text-center py-2 italic">বিভাগ ও শ্রেণি সিলেক্ট করুন</p>';
+        return;
+    }
+    
+    // ★ এই ক্লাসের সক্রিয় ছাত্রদের নিই
+    const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+    const students = (studentsCache || []).filter(s =>
+        s.dept === dept &&
+        s.className === className &&
+        !excludedRemarks.includes((s.remark?.type || '').trim())
+    );
+    
+    if (students.length === 0) {
+        wrap.innerHTML = '<p class="text-slate-400 text-center py-2 italic">এই শ্রেণিতে কোন ছাত্র নেই</p>';
+        return;
+    }
+    
+    // ★ চেকবক্স লিস্ট তৈরি
+    wrap.innerHTML = students.map(s => `
+        <label class="flex items-center gap-2 p-1.5 border-b border-slate-100 hover:bg-emerald-50 rounded cursor-pointer">
+            <input type="checkbox" class="ca-msg-student-cb w-4 h-4 rounded text-emerald-600" 
+                   value="${s.id}" 
+                   data-name="${(s.name || '').replace(/"/g, '&quot;')}"
+                   data-student-id="${(s.studentId || '').replace(/"/g, '&quot;')}"
+                   data-guardian-mobile="${(s.mobile1 || '').replace(/"/g, '&quot;')}">
+            <span class="text-xs font-bold text-slate-800">${s.name || '-'}</span>
+            <span class="text-[10px] text-slate-500 font-mono">(${s.studentId || '-'})</span>
+        </label>
+    `).join('');
+};
+
+// ★★★ সব সিলেক্ট / ডিসিলেক্ট টগল ★★★
+window.toggleMsgSelectAll = function() {
+    const checkboxes = document.querySelectorAll('.ca-msg-student-cb');
+    if (checkboxes.length === 0) {
+        showToast('⚠️ আগে বিভাগ ও শ্রেণি সিলেক্ট করুন', 'warn');
+        return;
+    }
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+    showToast(allChecked ? '✅ সব সিলেক্ট বাতিল হয়েছে' : '✅ সব সিলেক্ট হয়েছে', 'info');
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 【 প্রিভিউ — কোন অভিভাবকরা বার্তা পাবে তা দেখানো 】
+// ═══════════════════════════════════════════════════════════════
+window.previewAdminMessage = function() {
+    const recipients = collectMessageRecipients();
+    const text = document.getElementById('ca-msg-text').value.trim();
+    
+    if (!text) return showToast('⚠️ বার্তা লিখুন', 'warn');
+    if (recipients.length === 0) return showToast('⚠️ কমপক্ষে একজন অভিভাবক সিলেক্ট করুন', 'warn');
+    
+    document.getElementById('ca-msg-preview-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'ca-msg-preview-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    
+    const recipientsHTML = recipients.map((r, i) => `
+        <div class="flex items-center justify-between p-2 border-b border-slate-100 text-xs">
+            <div class="flex-1">
+                <span class="font-bold text-slate-800">${r.studentName}</span>
+                <span class="text-[10px] text-slate-500 font-mono ml-1">(${r.studentId})</span>
+                <span class="text-[10px] text-slate-500 font-arabic ml-1">${r.className}</span>
+            </div>
+            <div class="text-right text-[10px]">
+                <div class="font-bold text-emerald-700">${r.guardianName || '---'}</div>
+                <div class="text-slate-500 font-mono">${r.guardianMobile || 'মোবাইল নেই'}</div>
+            </div>
+        </div>
+    `).join('');
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div class="bg-indigo-700 text-white p-4 flex items-center justify-between">
+                <h3 class="text-base font-bold"><i class="fa-solid fa-eye"></i> বার্তা প্রিভিউ</h3>
+                <button onclick="document.getElementById('ca-msg-preview-modal').remove()" class="text-white text-2xl">×</button>
+            </div>
+            <div class="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
+                <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                    <p class="text-[10px] font-bold text-emerald-800 mb-1">বার্তা:</p>
+                    <p class="text-sm text-emerald-900 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(text)}</p>
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-xs font-bold text-blue-900 mb-2">
+                        <i class="fa-solid fa-users"></i> মোট ${recipients.length} জন অভিভাবকের কাছে যাবে:
+                    </p>
+                    <div class="max-h-60 overflow-y-auto bg-white rounded border border-blue-100">
+                        ${recipientsHTML}
+                    </div>
+                </div>
+            </div>
+            <div class="p-3 border-t bg-slate-50 flex justify-end gap-2">
+                <button onclick="document.getElementById('ca-msg-preview-modal').remove()" class="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded">বাতিল</button>
+                <button onclick="document.getElementById('ca-msg-preview-modal').remove(); sendAdminBulkMessage();" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded shadow">
+                    <i class="fa-solid fa-paper-plane"></i> প্রেরণ করুন
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 【 অভিভাবক সংগ্রহ — চেকবক্স + আইডি ইনপুট 】
+// ═══════════════════════════════════════════════════════════════
+function collectMessageRecipients() {
+    const recipients = [];
+    const seenStudentIds = new Set();
+    const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+    
+    // ★ পদ্ধতি ১: চেকবক্স থেকে
+    document.querySelectorAll('.ca-msg-student-cb:checked').forEach(cb => {
+        const s = (studentsCache || []).find(x => x.id === cb.value);
+        if (!s) return;
+        if (seenStudentIds.has(s.studentId || s.id)) return;
+        seenStudentIds.add(s.studentId || s.id);
+        
+        recipients.push({
+            studentDbId: s.id,
+            studentName: s.name || '',
+            studentId: s.studentId || '',
+            className: s.className || '',
+            dept: s.dept || '',
+            guardianName: s.guardian || s.fatherName || '',
+            guardianMobile: s.mobile1 || ''
+        });
+    });
+    
+    // ★ পদ্ধতি ২: আইডি ইনপুট থেকে
+    const idsInput = document.getElementById('ca-msg-ids')?.value.trim() || '';
+    if (idsInput) {
+        // ★ বাংলা/আরবি সংখ্যাকে ইংরেজিতে কনভার্ট
+        const convertToEng = (str) => {
+            const map = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9',
+                          '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9' };
+            return String(str).replace(/[০-৯٠-٩]/g, d => map[d] || d);
+        };
+        
+        const cleanIds = convertToEng(idsInput)
+            .split(/[,\s\n]+/)
+            .map(x => x.trim())
+            .filter(Boolean);
+        
+        cleanIds.forEach(rawId => {
+            // studentsCache এ খুঁজি
+            const s = (studentsCache || []).find(x => {
+                if (excludedRemarks.includes((x.remark?.type || '').trim())) return false;
+                const dbId = convertToEng(String(x.studentId || '')).trim();
+                return dbId === rawId;
+            });
+            if (!s) return;
+            if (seenStudentIds.has(s.studentId || s.id)) return;
+            seenStudentIds.add(s.studentId || s.id);
+            
+            recipients.push({
+                studentDbId: s.id,
+                studentName: s.name || '',
+                studentId: s.studentId || '',
+                className: s.className || '',
+                dept: s.dept || '',
+                guardianName: s.guardian || s.fatherName || '',
+                guardianMobile: s.mobile1 || ''
+            });
+        });
+    }
+    
+    return recipients;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 【 বার্তা প্রেরণ — Firestore-এ সেভ 】
+// ═══════════════════════════════════════════════════════════════
+window.sendAdminBulkMessage = async function() {
+    const text = document.getElementById('ca-msg-text').value.trim();
+    if (!text) return showToast('⚠️ বার্তা লিখুন', 'warn');
+    
+    const recipients = collectMessageRecipients();
+    if (recipients.length === 0) {
+        return showToast('⚠️ কমপক্ষে একজন অভিভাবক সিলেক্ট করুন', 'warn');
+    }
+    
+    if (!confirm(`${recipients.length} জন অভিভাবকের কাছে বার্তা পাঠাবেন?\n\n"${text.slice(0, 80)}${text.length > 80 ? '...' : ''}"`)) return;
+    
+    showToast('⏳ বার্তা পাঠানো হচ্ছে...', 'info');
+    
+    try {
+        const { addDoc, collection, serverTimestamp } = window.fbFuncs;
+        const sentBy = (typeof getContactName === 'function' && getContactName('principal')) || currentUserData?.name || 'এডমিন';
+        
+        await addDoc(collection(window.fbDB, 'adminMessages'), {
+            message: text,
+            recipients: recipients,
+            sentToCount: recipients.length,
+            sentBy: sentBy,
+            sentByUid: currentUser?.uid || 'unknown',
+            academicYear: (typeof getCurrentYear === 'function' ? getCurrentYear() : '') || '',
+            createdAt: serverTimestamp()
+        });
+        
+        showToast(`✅ ${recipients.length} জন অভিভাবকের কাছে বার্তা পাঠানো হয়েছে`, 'success');
+        
+        // ★ ফরম রিসেট
+        document.getElementById('ca-msg-text').value = '';
+        document.getElementById('ca-msg-ids').value = '';
+        document.querySelectorAll('.ca-msg-student-cb').forEach(cb => cb.checked = false);
+        
+        // ★ লিস্ট রিফ্রেশ
+        await renderAdminMessagesPanel(document.getElementById('ca-content-area'));
+        
+    } catch (err) {
+        console.error('❌ sendAdminBulkMessage:', err);
+        showToast('❌ পাঠানো ব্যর্থ: ' + err.message, 'error');
+    }
+};
+
+console.log('✅ এডমিন — অভিযোগ ও প্রতিষ্ঠানের বার্তা মডিউল লোড হয়েছে');
 
 // ═══════════════════════════════════════════════════════════════
 // ★★★ মূল অ্যাপের গার্ডিয়ান ট্যাব — ছুটির আবেদন ম্যানেজমেন্ট ★★★
@@ -52389,6 +53106,8 @@ window.logoutGuardian = function() {
     location.reload(); 
 };
 
+window.comingSoonHTML = `<div class="text-center py-12 bg-white rounded-xl border border-slate-200"><i class="fa-solid fa-tools text-5xl text-slate-300 mb-3"></i><p class="text-slate-600 font-bold text-sm">এই সেকশনটি শীঘ্রই আসছে</p></div>`;
+
 window.switchGpTab = async function(tab) {
     const content = document.getElementById('gp-tab-content');
     if (!content) return;
@@ -52444,13 +53163,13 @@ window.switchGpTab = async function(tab) {
         await renderGpHomework(pageBody);
     }
     else if (tab === 'complaint') {
-        pageBody.innerHTML = comingSoonHTML;
+        renderGpComplaintPage(pageBody);
     }
     else if (tab === 'notices') {
         await renderGpNotices(pageBody);
     }
     else if (tab === 'rules') {
-        pageBody.innerHTML = comingSoonHTML;
+        await renderGpRules(pageBody);
     }
     else if (tab === 'attendance') {
         pageBody.innerHTML = comingSoonHTML;
@@ -56347,6 +57066,925 @@ async function renderGpHomework(container) {
         container.innerHTML = `<p class="text-center text-red-500 py-6">হোমওয়ার্ক লোড ব্যর্থ হয়েছে</p>`;
     }
 }
+// ═══════════════════════════════════════════════════════════════
+// ★★★ নিয়মকানুন (Rules) মডিউল — সম্পূর্ণ নতুন ★★★
+// ═══════════════════════════════════════════════════════════════
+
+const RULES_MAIN_CONFIG = {
+    admission:    { name: 'ভর্তি',                icon: 'fa-user-plus',         color: 'emerald', hasSubTabs: false },
+    darul_iqama:  { name: 'দারুল ইকামা',          icon: 'fa-hotel',             color: 'indigo',  hasSubTabs: true,
+                    defaultSubs: ['ছুটির নীতিমালা', 'নেযামুল আওকাত', 'হোস্টেলে অবস্থানের নীতিমালা', 'বিদায় সংক্রান্ত নীতিমালা'] },
+    talimat:      { name: 'তালিমাত',              icon: 'fa-graduation-cap',    color: 'amber',   hasSubTabs: true,
+                    defaultSubs: ['পাঠ্যবই সংক্রান্ত নীতিমালা', 'শরাহ শরুহাত ক্রয় সংক্রান্ত নীতিমালা', 'অনুপস্থিতির বিধান', 'অকৃতকার্য বিধান', 'ক্লাস সংক্রান্ত নীতিমালা', 'তাকরার সংক্রান্ত নীতিমালা'] },
+    maktaba:      { name: 'মাকতাবা (লাইব্রেরি)',  icon: 'fa-book',              color: 'rose',    hasSubTabs: true,
+                    defaultSubs: ['বই ইস্যু ও ফেরতের নিয়ম', 'লাইব্রেরি ব্যবহারের নীতিমালা', 'বই ক্ষতিগ্রস্ত হলে করণীয়', 'লাইব্রেরির সময়সূচি'] },
+    matbakh:      { name: 'মাতবাখ (বোডিং)',       icon: 'fa-utensils',          color: 'teal',    hasSubTabs: true,
+                    defaultSubs: ['খাবারের তালিকা ও সময়সূচি', 'খাবারের মান নিয়ন্ত্রণ', 'পরিষ্কার-পরিচ্ছন্নতার নিয়ম', 'অতিরিক্ত খাবারের বিধান'] }
+};
+
+const RULES_BOX_COLORS = [
+    { bg: '#fef3c7', border: '#f59e0b', text: '#78350f' }, // amber
+    { bg: '#ffedd5', border: '#ea580c', text: '#7c2d12' }, // orange
+    { bg: '#fef9c3', border: '#ca8a04', text: '#713f12' }, // yellow
+    { bg: '#f5f5f4', border: '#a8a29e', text: '#44403c' }, // stone
+    { bg: '#fdf2f8', border: '#db2777', text: '#831843' }, // pink
+    { bg: '#f0fdf4', border: '#16a34a', text: '#14532d' }  // green
+];
+
+// ★ স্টেট
+let _rulesState = {
+    currentPage: '',      // 'admission' | 'darul_iqama' | ...
+    currentSubTab: '',    // সাব ট্যাবের নাম
+    data: {}              // পুরো rules config data
+};
+
+// ★★★ Rules ডাটা লোড ★★★
+async function loadRulesData() {
+    try {
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, 'config', 'madrasaRules'));
+        if (snap.exists() && snap.data().data) {
+            _rulesState.data = snap.data().data;
+        } else {
+            // ডিফল্ট স্ট্রাকচার তৈরি করি
+            _rulesState.data = {};
+            Object.keys(RULES_MAIN_CONFIG).forEach(key => {
+                const cfg = RULES_MAIN_CONFIG[key];
+                if (cfg.hasSubTabs) {
+                    _rulesState.data[key] = { subTabs: {} };
+                    cfg.defaultSubs.forEach(subName => {
+                        _rulesState.data[key].subTabs[subName] = { sections: [] };
+                    });
+                } else {
+                    _rulesState.data[key] = { sections: [] };
+                }
+            });
+        }
+    } catch (err) {
+        console.error('❌ loadRulesData:', err);
+        _rulesState.data = {};
+    }
+}
+
+// ★★★ Rules ডাটা সেভ ★★★
+async function saveRulesData() {
+    try {
+        const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+        await setDoc(doc(window.fbDB, 'config', 'madrasaRules'), {
+            data: _rulesState.data,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser?.uid || 'unknown'
+        }, { merge: true });
+        return true;
+    } catch (err) {
+        console.error('❌ saveRulesData:', err);
+        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
+        return false;
+    }
+}
+
+// ★★★ মূল পেজে ফিরে যাওয়া ★★★
+window.backToRulesMenu = function() {
+    const mainMenu = document.getElementById('rules-main-menu');
+    const categoryPage = document.getElementById('rules-category-page');
+    
+    if (mainMenu) mainMenu.classList.remove('hidden');
+    if (categoryPage) categoryPage.classList.add('hidden');
+    
+    _rulesState.currentPage = '';
+    _rulesState.currentSubTab = '';
+};
+
+// ★★★ একটি Rules পেজ ওপেন করা (যেমন: ভর্তি, দারুল ইকামা ইত্যাদি) ★★★
+window.openRulesCategory = window.openRulesPage = async function(pageKey) {
+    _rulesState.currentPage = pageKey;
+    _rulesState.currentSubTab = '';
+    
+    // ডাটা লোড করি
+    if (!_rulesState.data || Object.keys(_rulesState.data).length === 0) {
+        await loadRulesData();
+    }
+    
+    // ★★★ আপনার নতুন HTML এর আইডি অনুযায়ী ঠিক করা হলো ★★★
+    const mainMenu = document.getElementById('rules-main-menu');
+    const categoryPage = document.getElementById('rules-category-page');
+    
+    if (mainMenu) mainMenu.classList.add('hidden');
+    if (categoryPage) categoryPage.classList.remove('hidden');
+    
+    renderRulesPage();
+};
+
+// ★★★ Rules পেজ রেন্ডার ★★★
+function renderRulesPage() {
+    // ★★★ নতুন HTML এর ৩টি কন্টেইনার খুঁজছি ★★★
+    const headerContainer = document.getElementById('rules-cat-header');
+    const subtabsContainer = document.getElementById('rules-subtabs-bar');
+    const contentContainer = document.getElementById('rules-sections-content');
+    
+    if (!headerContainer || !contentContainer) {
+        console.error('❌ Rules UI কন্টেইনার পাওয়া যায়নি! HTML চেক করুন।');
+        return;
+    }
+    
+    const pageKey = _rulesState.currentPage;
+    const cfg = RULES_MAIN_CONFIG[pageKey];
+    if (!cfg) return;
+    
+    const isAdmin = currentUserData?.role === 'admin';
+    const pageData = _rulesState.data[pageKey];
+    if (!pageData) return;
+    
+    // ─── ১. হেডার রেন্ডার ───
+    headerContainer.innerHTML = `
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center justify-between flex-wrap gap-2">
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid ${cfg.icon} text-${cfg.color}-600"></i>
+                ${cfg.name} — নিয়মকানুন
+            </h2>
+            <div class="flex gap-2">
+                <button onclick="backToRulesMenu()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+                ${isAdmin && !cfg.hasSubTabs ? `
+                    <button onclick="addRulesSection()" class="px-4 py-2 bg-${cfg.color}-600 hover:bg-${cfg.color}-700 text-white text-xs font-bold rounded-lg shadow flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> নতুন শিরোনাম
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    // ─── ২. সাব-ট্যাব বার রেন্ডার ───
+    if (cfg.hasSubTabs) {
+        const subTabs = Object.keys(pageData.subTabs || {});
+        
+        if (!_rulesState.currentSubTab && subTabs.length > 0) {
+            _rulesState.currentSubTab = subTabs[0];
+        }
+        
+        let subTabsHTML = `<div class="bg-slate-100 rounded-lg p-2 flex flex-wrap gap-2">`;
+        subTabs.forEach(subName => {
+            const isActive = _rulesState.currentSubTab === subName;
+            subTabsHTML += `
+                <div class="relative group">
+                    <button onclick="switchRulesSubTab('${subName.replace(/'/g, "\\'")}')" 
+                            class="px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition ${isActive ? `bg-${cfg.color}-700 text-white shadow` : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'}">
+                        ${subName}
+                    </button>
+                    ${isAdmin ? `
+                        <button onclick="event.stopPropagation(); deleteRulesSubTab('${subName.replace(/'/g, "\\'")}')" 
+                                class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center" title="সাব-ট্যাব ডিলিট">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        });
+        
+        if (isAdmin) {
+            subTabsHTML += `
+                <button onclick="addRulesSubTab()" class="px-3 py-2 bg-white hover:bg-${cfg.color}-50 border-2 border-dashed border-${cfg.color}-400 text-${cfg.color}-700 rounded-lg text-xs font-bold flex items-center gap-1">
+                    <i class="fa-solid fa-plus"></i> নতুন সাব-ট্যাব
+                </button>
+            `;
+        }
+        subTabsHTML += `</div>`;
+        
+        if (subtabsContainer) subtabsContainer.innerHTML = subTabsHTML;
+    } else {
+        if (subtabsContainer) subtabsContainer.innerHTML = '';
+    }
+    
+    // ─── ৩. সেকশন রেন্ডার ───
+    let sectionsHeaderHTML = '';
+    let sectionsHTML = '';
+    
+    if (cfg.hasSubTabs) {
+        const currentSubData = pageData.subTabs[_rulesState.currentSubTab];
+        
+        sectionsHeaderHTML = `
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2 mt-4">
+                <h3 class="text-sm font-bold text-${cfg.color}-800">
+                    <i class="fa-solid fa-list-check"></i> ${_rulesState.currentSubTab || 'কোন সাব-ট্যাব নেই'}
+                </h3>
+                ${isAdmin && currentSubData ? `
+                    <button onclick="addRulesSection()" class="px-3 py-1.5 bg-${cfg.color}-600 hover:bg-${cfg.color}-700 text-white text-xs font-bold rounded-lg shadow flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> নতুন শিরোনাম
+                    </button>
+                ` : ''}
+            </div>
+        `;
+        
+        if (currentSubData && currentSubData.sections) {
+            sectionsHTML = buildRulesSectionsHTML(currentSubData.sections, isAdmin);
+        }
+    } else {
+        if (pageData.sections) {
+            sectionsHTML = buildRulesSectionsHTML(pageData.sections, isAdmin);
+        }
+    }
+    
+    if (!sectionsHTML) {
+        sectionsHTML = `
+            <div class="text-center py-12 text-slate-400 bg-slate-50 rounded-lg border-2 border-dashed border-slate-300">
+                <i class="fa-solid fa-inbox text-4xl mb-2"></i>
+                <p class="text-sm font-bold text-slate-600">কোন শিরোনাম নেই</p>
+                ${isAdmin ? `<p class="text-xs mt-1">উপরের "নতুন শিরোনাম" বাটনে ক্লিক করুন</p>` : ''}
+            </div>
+        `;
+    }
+    
+    // ─── ৪. ফাইনাল রেন্ডার ───
+    contentContainer.innerHTML = sectionsHeaderHTML + sectionsHTML;
+}
+
+// ★★★ সেকশন কার্ড তৈরি ★★★
+function buildRulesSectionsHTML(sections, isAdmin) {
+    if (!sections || sections.length === 0) return '';
+    
+    return sections.map((sec, idx) => {
+        const color = RULES_BOX_COLORS[idx % RULES_BOX_COLORS.length];
+        return `
+            <div class="rounded-xl p-4 mb-3 border-2 shadow-sm" style="background:${color.bg}; border-color:${color.border};">
+                <div class="flex items-start justify-between gap-2 mb-2 pb-2 border-b-2" style="border-color:${color.border}40;">
+                    <h3 class="text-sm md:text-base font-bold" style="color:${color.text};">
+                        <i class="fa-solid fa-bookmark"></i> ${sec.title || 'শিরোনাম নেই'}
+                    </h3>
+                    ${isAdmin ? `
+                        <div class="flex gap-1 flex-shrink-0">
+                            <button onclick="editRulesSection(${idx})" class="p-1.5 bg-white/60 hover:bg-white rounded text-blue-700 shadow-sm" title="এডিট">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="deleteRulesSection(${idx})" class="p-1.5 bg-white/60 hover:bg-white rounded text-red-700 shadow-sm" title="ডিলিট">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="text-sm leading-relaxed" style="color:${color.text}; white-space: pre-wrap; text-align: justify;">${sec.content || '<em class="opacity-60">এখনো কোনো নিয়ম যোগ করা হয়নি</em>'}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ★★★ সাব-ট্যাব সুইচ ★★★
+window.switchRulesSubTab = function(subName) {
+    _rulesState.currentSubTab = subName;
+    renderRulesPage();
+};
+
+// ★★★ নতুন শিরোনাম (সেকশন) যোগ ★★★
+window.addRulesSection = function() {
+    if (currentUserData?.role !== 'admin') {
+        showToast('🔒 শুধু এডমিন এই কাজ করতে পারবেন', 'warn');
+        return;
+    }
+    
+    const title = prompt('শিরোনাম লিখুন (যেমন: ভর্তির জন্য প্রয়োজন):');
+    if (!title || !title.trim()) return;
+    
+    const pageKey = _rulesState.currentPage;
+    const cfg = RULES_MAIN_CONFIG[pageKey];
+    const pageData = _rulesState.data[pageKey];
+    
+    const newSection = { title: title.trim(), content: '' };
+    
+    if (cfg.hasSubTabs) {
+        const subData = pageData.subTabs[_rulesState.currentSubTab];
+        if (!subData.sections) subData.sections = [];
+        subData.sections.push(newSection);
+    } else {
+        if (!pageData.sections) pageData.sections = [];
+        pageData.sections.push(newSection);
+    }
+    
+    saveRulesData().then(ok => {
+        if (ok) {
+            showToast('✅ শিরোনাম যোগ হয়েছে', 'success');
+            renderRulesPage();
+            // সাথে সাথে এডিট মোড খুলি
+            const newIdx = cfg.hasSubTabs 
+                ? pageData.subTabs[_rulesState.currentSubTab].sections.length - 1
+                : pageData.sections.length - 1;
+            setTimeout(() => editRulesSection(newIdx), 100);
+        }
+    });
+};
+
+// ★★★ সেকশন এডিট ★★★
+window.editRulesSection = function(idx) {
+    if (currentUserData?.role !== 'admin') return;
+    
+    const pageKey = _rulesState.currentPage;
+    const cfg = RULES_MAIN_CONFIG[pageKey];
+    const pageData = _rulesState.data[pageKey];
+    
+    let section;
+    if (cfg.hasSubTabs) {
+        section = pageData.subTabs[_rulesState.currentSubTab].sections[idx];
+    } else {
+        section = pageData.sections[idx];
+    }
+    
+    if (!section) return;
+    
+    // মডাল দেখাই
+    openRulesEditorModal(section, idx);
+};
+
+// ★★★ সেকশন ডিলিট ★★★
+window.deleteRulesSection = async function(idx) {
+    if (currentUserData?.role !== 'admin') {
+        showToast('🔒 শুধু এডমিন এই কাজ করতে পারবেন', 'warn');
+        return;
+    }
+    
+    if (!confirm('এই শিরোনাম ও এর ভেতরের সব নিয়ম মুছে ফেলবেন?')) return;
+    
+    const pageKey = _rulesState.currentPage;
+    const cfg = RULES_MAIN_CONFIG[pageKey];
+    const pageData = _rulesState.data[pageKey];
+    
+    if (cfg.hasSubTabs) {
+        pageData.subTabs[_rulesState.currentSubTab].sections.splice(idx, 1);
+    } else {
+        pageData.sections.splice(idx, 1);
+    }
+    
+    const ok = await saveRulesData();
+    if (ok) {
+        showToast('🗑️ শিরোনাম মুছে ফেলা হয়েছে', 'info');
+        renderRulesPage();
+    }
+};
+
+// ★★★ এডিটর মডাল ★★★
+function openRulesEditorModal(section, idx) {
+    document.getElementById('rules-editor-modal')?.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'rules-editor-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col">
+            <div class="bg-slate-800 text-white p-4 flex items-center justify-between">
+                <h3 class="text-base font-bold"><i class="fa-solid fa-pen-to-square"></i> শিরোনাম এডিট করুন</h3>
+                <button onclick="document.getElementById('rules-editor-modal').remove()" class="text-white/80 hover:text-white text-2xl">×</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1 space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">শিরোনাম</label>
+                    <input type="text" id="rules-editor-title" value="${(section.title || '').replace(/"/g, '&quot;')}" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">নিয়মকানুন (লিখুন বা পেস্ট করুন)</label>
+                    <textarea id="rules-editor-content" rows="14" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm font-sans resize-none" placeholder="এখানে নিয়মকানুন লিখুন বা পেস্ট করুন...">${section.content || ''}</textarea>
+                </div>
+            </div>
+            <div class="p-3 bg-slate-50 border-t flex justify-end gap-2">
+                <button onclick="document.getElementById('rules-editor-modal').remove()" class="px-4 py-2 bg-slate-200 text-slate-700 text-sm font-bold rounded-lg">বাতিল</button>
+                <button onclick="saveRulesSectionEdit(${idx})" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold rounded-lg shadow">
+                    <i class="fa-solid fa-save"></i> সেভ
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+window.saveRulesSectionEdit = async function(idx) {
+    const title = document.getElementById('rules-editor-title').value.trim();
+    const content = document.getElementById('rules-editor-content').value;
+    
+    if (!title) { showToast('⚠️ শিরোনাম দিন', 'warn'); return; }
+    
+    const pageKey = _rulesState.currentPage;
+    const cfg = RULES_MAIN_CONFIG[pageKey];
+    const pageData = _rulesState.data[pageKey];
+    
+    if (cfg.hasSubTabs) {
+        pageData.subTabs[_rulesState.currentSubTab].sections[idx] = { title, content };
+    } else {
+        pageData.sections[idx] = { title, content };
+    }
+    
+    const ok = await saveRulesData();
+    if (ok) {
+        document.getElementById('rules-editor-modal').remove();
+        showToast('✅ সেভ হয়েছে', 'success');
+        renderRulesPage();
+    }
+};
+
+// ★★★ নতুন সাব-ট্যাব যোগ ★★★
+window.addRulesSubTab = async function() {
+    if (currentUserData?.role !== 'admin') {
+        showToast('🔒 শুধু এডমিন এই কাজ করতে পারবেন', 'warn');
+        return;
+    }
+    
+    const name = prompt('নতুন সাব-ট্যাবের নাম:');
+    if (!name || !name.trim()) return;
+    
+    const pageData = _rulesState.data[_rulesState.currentPage];
+    if (!pageData.subTabs) pageData.subTabs = {};
+    
+    if (pageData.subTabs[name.trim()]) {
+        showToast('⚠️ এই নামে সাব-ট্যাব আগেই আছে', 'warn');
+        return;
+    }
+    
+    pageData.subTabs[name.trim()] = { sections: [] };
+    
+    const ok = await saveRulesData();
+    if (ok) {
+        _rulesState.currentSubTab = name.trim();
+        showToast('✅ নতুন সাব-ট্যাব যোগ হয়েছে', 'success');
+        renderRulesPage();
+    }
+};
+
+// ★★★ সাব-ট্যাব ডিলিট ★★★
+window.deleteRulesSubTab = async function(subName) {
+    if (currentUserData?.role !== 'admin') {
+        showToast('🔒 শুধু এডমিন এই কাজ করতে পারবেন', 'warn');
+        return;
+    }
+    
+    if (!confirm(`"${subName}" সাব-ট্যাব এবং এর ভেতরের সব শিরোনাম মুছে ফেলবেন?`)) return;
+    
+    const pageData = _rulesState.data[_rulesState.currentPage];
+    if (pageData.subTabs && pageData.subTabs[subName]) {
+        delete pageData.subTabs[subName];
+        
+        // বর্তমান সাব-ট্যাব ডিলিট হলে প্রথমটায় ফিরি
+        if (_rulesState.currentSubTab === subName) {
+            const remaining = Object.keys(pageData.subTabs);
+            _rulesState.currentSubTab = remaining.length > 0 ? remaining[0] : '';
+        }
+        
+        const ok = await saveRulesData();
+        if (ok) {
+            showToast('🗑️ সাব-ট্যাব মুছে ফেলা হয়েছে', 'info');
+            renderRulesPage();
+        }
+    }
+};
+
+console.log('✅ নিয়মকানুন মডিউল লোড হয়েছে');
+// ═══════════════════════════════════════════════════════════════
+// ★★★ গার্ডিয়ান পোর্টাল — নিয়মকানুন (রিড-অনলি) ★★★
+// ═══════════════════════════════════════════════════════════════
+async function renderGpRules(container) {
+    container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>`;
+    
+    try {
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, 'config', 'madrasaRules'));
+        
+        let rulesData = {};
+        if (snap.exists() && snap.data().data) {
+            rulesData = snap.data().data;
+        }
+        
+        let pagesHTML = '';
+        
+        Object.keys(RULES_MAIN_CONFIG).forEach(pageKey => {
+            const cfg = RULES_MAIN_CONFIG[pageKey];
+            const pageData = rulesData[pageKey];
+            if (!pageData) return;
+            
+            let sectionsContent = '';
+            
+            if (cfg.hasSubTabs) {
+                // সাব-ট্যাব থাকলে
+                const subTabs = pageData.subTabs || {};
+                Object.keys(subTabs).forEach(subName => {
+                    const subData = subTabs[subName];
+                    if (!subData.sections || subData.sections.length === 0) return;
+                    
+                    sectionsContent += `
+                        <h4 class="text-sm font-bold text-${cfg.color}-800 mt-3 mb-2 border-b border-${cfg.color}-200 pb-1">
+                            <i class="fa-solid fa-folder-open"></i> ${subName}
+                        </h4>
+                        ${buildRulesSectionsHTML(subData.sections, false)}
+                    `;
+                });
+            } else {
+                // সাব-ট্যাব নেই
+                if (pageData.sections && pageData.sections.length > 0) {
+                    sectionsContent = buildRulesSectionsHTML(pageData.sections, false);
+                }
+            }
+            
+            if (!sectionsContent) return; // কিছু না থাকলে বাদ
+            
+            pagesHTML += `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+                    <h3 class="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid ${cfg.icon} text-${cfg.color}-600"></i>
+                        ${cfg.name}
+                    </h3>
+                    ${sectionsContent}
+                </div>
+            `;
+        });
+        
+        if (!pagesHTML) {
+            pagesHTML = `
+                <div class="text-center py-12 bg-white rounded-xl text-slate-400">
+                    <i class="fa-solid fa-scroll text-4xl mb-2"></i>
+                    <p class="text-sm font-bold">এখনো কোনো নিয়মকানুন যোগ করা হয়নি</p>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = `<div class="space-y-3 pb-10">${pagesHTML}</div>`;
+        
+    } catch (err) {
+        console.error('❌ renderGpRules:', err);
+        container.innerHTML = `<p class="text-center text-red-500 py-6">নিয়মকানুন লোড ব্যর্থ</p>`;
+    }
+}
+// ═══════════════════════════════════════════════════════════════
+// ★★★ গার্ডিয়ান পোর্টাল — অভিযোগ ও বার্তা (সম্পূর্ণ নতুন) ★★★
+// ═══════════════════════════════════════════════════════════════
+
+let _gpComplaintState = {
+    activeTab: 'my', // 'my' | 'replies' | 'messages'
+    complaintType: 'complaint', // 'complaint' | 'suggestion'
+    isAnonymous: false
+};
+
+async function renderGpComplaintPage(container) {
+    // ★ অভিভাবক সেশন চেক
+    if (!_guardianSession) {
+        container.innerHTML = `<div class="text-center py-10 text-red-500 font-bold">সেশন এক্সপায়ার — আবার লগইন করুন</div>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-2 mb-4">
+            <div class="flex flex-wrap gap-1.5">
+                <button onclick="switchGpComplaintTab('my')" id="gpc-tab-my"
+                        class="flex-1 px-2 py-2.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-pen-to-square"></i> আমার অভিযোগ
+                </button>
+                <button onclick="switchGpComplaintTab('replies')" id="gpc-tab-replies"
+                        class="flex-1 px-2 py-2.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-reply-all"></i> প্রতিষ্ঠানের মন্তব্য
+                </button>
+                <button onclick="switchGpComplaintTab('messages')" id="gpc-tab-messages"
+                        class="flex-1 px-2 py-2.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-bullhorn"></i> প্রতিষ্ঠানের বার্তা
+                </button>
+            </div>
+        </div>
+        <div id="gpc-content-area">
+            <div class="text-center py-12 text-slate-400">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i>
+                <p>লোড হচ্ছে...</p>
+            </div>
+        </div>
+    `;
+
+    switchGpComplaintTab(_gpComplaintState.activeTab);
+}
+
+window.switchGpComplaintTab = function(tab) {
+    _gpComplaintState.activeTab = tab;
+
+    // বাটন হাইলাইট
+    ['my', 'replies', 'messages'].forEach(t => {
+        const btn = document.getElementById('gpc-tab-' + t);
+        if (!btn) return;
+        if (t === tab) {
+            btn.className = 'flex-1 px-2 py-2.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-orange-600 text-white shadow';
+        } else {
+            btn.className = 'flex-1 px-2 py-2.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-white text-slate-600 hover:bg-slate-100 border border-slate-200';
+        }
+    });
+
+    const area = document.getElementById('gpc-content-area');
+    if (!area) return;
+
+    if (tab === 'my') renderGpComplaintSubmit(area);
+    else if (tab === 'replies') renderGpComplaintReplies(area);
+    else if (tab === 'messages') renderGpAdminMessages(area);
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 【 ট্যাব ১: আমার অভিযোগ / পরামর্শ (জমা দেওয়ার ফরম) 】
+// ═══════════════════════════════════════════════════════════════
+function renderGpComplaintSubmit(area) {
+    const student = _guardianSession;
+    
+    area.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4">
+            <h3 class="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-pen-to-square text-orange-500"></i> নতুন অভিযোগ / পরামর্শ জমা দিন
+            </h3>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs text-blue-900">
+                <i class="fa-solid fa-info-circle"></i>
+                আপনার যেকোনো অভিযোগ বা পরামর্শ সঠিকভাবে লিখুন। প্রতিষ্ঠান দ্রুত সমাধান বা উত্তর দেওয়ার চেষ্টা করবে।
+            </div>
+
+            <!-- ধরন সিলেকশন -->
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-700 mb-2">আপনি কী জানাতে চান? <span class="text-red-500">*</span></label>
+                <div class="flex gap-2">
+                    <button onclick="setGpComplaintType('complaint')" id="gpc-btn-type-complaint"
+                            class="flex-1 py-2.5 rounded-lg border-2 font-bold text-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-exclamation-circle"></i> অভিযোগ
+                    </button>
+                    <button onclick="setGpComplaintType('suggestion')" id="gpc-btn-type-suggestion"
+                            class="flex-1 py-2.5 rounded-lg border-2 font-bold text-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-lightbulb"></i> পরামর্শ
+                    </button>
+                </div>
+            </div>
+
+            <!-- বেনামী অপশন -->
+            <div class="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="gpc-is-anonymous" onchange="_gpComplaintState.isAnonymous=this.checked" class="w-4 h-4 rounded text-slate-700">
+                    <span class="text-sm font-bold text-slate-700"><i class="fa-solid fa-user-secret text-slate-500"></i> বেনামীভাবে জমা দিন</span>
+                </label>
+                <p class="text-[10px] text-slate-500 mt-1 ml-6">টিক দিলে আপনার নাম ও পরিচয় প্রতিষ্ঠান দেখতে পাবে না।</p>
+            </div>
+
+            <!-- বার্তা -->
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-700 mb-1">বিস্তারিত লিখুন <span class="text-red-500">*</span></label>
+                <textarea id="gpc-message" rows="5" 
+                          placeholder="অভিযোগ বা পরামর্শ বিস্তারিতভাবে লিখুন..."
+                          class="w-full rounded-lg border border-slate-300 p-3 text-sm resize-none focus:ring-2 focus:ring-orange-500"></textarea>
+            </div>
+
+            <!-- জমা বাটন -->
+            <div class="flex justify-end pt-3 border-t border-slate-200">
+                <button onclick="submitGpComplaint()" id="gpc-submit-btn" class="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-lg shadow-md transition flex items-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> জমা দিন
+                </button>
+            </div>
+        </div>
+    `;
+    
+    setGpComplaintType(_gpComplaintState.complaintType || 'complaint');
+}
+
+window.setGpComplaintType = function(type) {
+    _gpComplaintState.complaintType = type;
+    const btnC = document.getElementById('gpc-btn-type-complaint');
+    const btnS = document.getElementById('gpc-btn-type-suggestion');
+    if (!btnC || !btnS) return;
+    
+    if (type === 'complaint') {
+        btnC.className = 'flex-1 py-2.5 rounded-lg border-2 font-bold text-sm transition flex items-center justify-center gap-2 bg-red-50 border-red-500 text-red-700 shadow-sm';
+        btnS.className = 'flex-1 py-2.5 rounded-lg border-2 font-bold text-sm transition flex items-center justify-center gap-2 bg-white border-slate-300 text-slate-500 hover:bg-slate-50';
+    } else {
+        btnS.className = 'flex-1 py-2.5 rounded-lg border-2 font-bold text-sm transition flex items-center justify-center gap-2 bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm';
+        btnC.className = 'flex-1 py-2.5 rounded-lg border-2 font-bold text-sm transition flex items-center justify-center gap-2 bg-white border-slate-300 text-slate-500 hover:bg-slate-50';
+    }
+};
+
+window.submitGpComplaint = async function() {
+    const student = _guardianSession;
+    const type = _gpComplaintState.complaintType;
+    const isAnonymous = _gpComplaintState.isAnonymous;
+    const message = document.getElementById('gpc-message').value.trim();
+    const btn = document.getElementById('gpc-submit-btn');
+
+    if (!message) return showToast('⚠️ বিস্তারিত লিখুন', 'warn');
+    if (message.length < 10) return showToast('⚠️ অন্তত ১০ অক্ষরের বার্তা লিখুন', 'warn');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> জমা হচ্ছে...';
+
+    try {
+        const { addDoc, collection, serverTimestamp } = window.fbFuncs;
+        
+        const payload = {
+            type: type,
+            message: message,
+            isAnonymous: isAnonymous,
+            studentDbId: student.id,
+            studentName: isAnonymous ? 'বেনামী শিক্ষার্থী' : (student.name || ''),
+            studentId: isAnonymous ? '' : (student.studentId || ''),
+            className: isAnonymous ? '' : (student.className || ''),
+            dept: isAnonymous ? '' : (student.dept || ''),
+            guardianName: isAnonymous ? 'বেনামী অভিভাবক' : (student.guardian || student.fatherName || ''),
+            guardianMobile: isAnonymous ? '' : (student.mobile1 || ''),
+            status: 'pending',
+            createdAt: serverTimestamp(),
+            createdBy: 'guardian'
+        };
+
+        await addDoc(collection(window.fbDB, 'complaints'), payload);
+
+        showToast('✅ সফলভাবে জমা হয়েছে', 'success');
+        document.getElementById('gpc-message').value = '';
+        
+        // জমা দেওয়ার পর 'প্রতিষ্ঠানের মন্তব্য' ট্যাবে চলে যাওয়ার অপশন
+        setTimeout(() => {
+            if(confirm('অভিযোগটি জমা হয়েছে। আপনি কি প্রতিষ্ঠানের মন্তব্যের জন্য "প্রতিষ্ঠানের মন্তব্য" ট্যাবে যেতে চান?')) {
+                switchGpComplaintTab('replies');
+            }
+        }, 800);
+
+    } catch (err) {
+        console.error('❌ submitGpComplaint:', err);
+        showToast('❌ জমা ব্যর্থ: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> জমা দিন';
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 【 ট্যাব ২: প্রতিষ্ঠানের মন্তব্য (এডমিনের রিপ্লাই) 】
+// ═══════════════════════════════════════════════════════════════
+async function renderGpComplaintReplies(area) {
+    area.innerHTML = `<div class="text-center py-12 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i><p>লোড হচ্ছে...</p></div>`;
+    const student = _guardianSession;
+
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        
+        // এই অভিভাবকের জমা দেওয়া সব অভিযোগ
+        const q = query(
+            collection(window.fbDB, 'complaints'),
+            where('studentDbId', '==', student.id)
+        );
+        const snap = await getDocs(q);
+        const complaints = [];
+        snap.forEach(d => complaints.push({ id: d.id, ...d.data() }));
+
+        // নতুন আগে
+        complaints.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+        if (complaints.length === 0) {
+            area.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-10 text-center">
+                    <i class="fa-solid fa-inbox text-5xl text-slate-300 mb-3"></i>
+                    <p class="text-slate-600 font-bold text-sm">আপনি এখনো কোনো অভিযোগ বা পরামর্শ জমা দেননি</p>
+                    <p class="text-xs text-slate-400 mt-1">উপরের "আমার অভিযোগ" ট্যাব থেকে জমা দিন।</p>
+                </div>
+            `;
+            return;
+        }
+
+        let cardsHTML = complaints.map(c => {
+            const isComplaint = c.type === 'complaint';
+            const colorScheme = isComplaint
+                ? { bg: '#fee2e2', border: '#dc2626', text: '#991b1b', label: '🔴 আপনার অভিযোগ' }
+                : { bg: '#dcfce7', border: '#16a34a', text: '#14532d', label: '🟢 আপনার পরামর্শ' };
+            
+            const dateStr = c.createdAt?.seconds
+                ? new Date(c.createdAt.seconds * 1000).toLocaleString('bn-BD')
+                : '---';
+
+            const replyDateStr = c.repliedAt?.seconds
+                ? new Date(c.repliedAt.seconds * 1000).toLocaleString('bn-BD')
+                : '';
+
+            return `
+                <div class="bg-white rounded-xl shadow-sm border-2 overflow-hidden mb-3" style="border-color:${colorScheme.border}40;">
+                    <div class="px-4 py-2 border-b" style="background:${colorScheme.bg}; border-color:${colorScheme.border}30;">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <span class="badge text-[10px] font-bold" style="background:${colorScheme.border}; color:white;">
+                                ${colorScheme.label}
+                            </span>
+                            <span class="text-[10px] text-slate-600"><i class="fa-regular fa-clock"></i> ${dateStr}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="px-4 py-3">
+                        <p class="text-sm text-slate-800 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(c.message || '')}</p>
+                    </div>
+                    
+                    <div class="px-4 py-3 border-t border-slate-200" style="background:${c.status === 'pending' ? '#fffbeb' : '#f0f9ff'};">
+                        ${c.status === 'pending' 
+                            ? `<div class="flex items-center gap-2 text-xs text-amber-700 font-bold bg-amber-100 p-2 rounded-lg"><i class="fa-solid fa-hourglass-half"></i> প্রতিষ্ঠানের মন্তব্যের অপেক্ষায় আছে...</div>`
+                            : `<div class="text-xs">
+                                <strong class="text-blue-800 block mb-1"><i class="fa-solid fa-reply-all"></i> প্রতিষ্ঠানের মন্তব্য:</strong>
+                                <div class="text-slate-700 leading-relaxed bg-white p-2.5 rounded border border-blue-200" style="white-space: pre-wrap;">${escapeHtml(c.adminReply || '')}</div>
+                                <p class="text-[10px] text-slate-500 mt-2">— ${c.repliedBy || 'প্রতিষ্ঠান'} ${replyDateStr ? ` | ${replyDateStr}` : ''}</p>
+                               </div>`
+                        }
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        area.innerHTML = `
+            <div class="space-y-3">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-2 flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-reply-all text-blue-600"></i> প্রতিষ্ঠানের মন্তব্যসমূহ</h3>
+                    <span class="badge bg-blue-100 text-blue-800 text-[10px]">মোট ${complaints.length}টি</span>
+                </div>
+                ${cardsHTML}
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('❌ renderGpComplaintReplies:', err);
+        area.innerHTML = `<div class="bg-red-50 p-6 rounded-xl text-center text-red-600 font-bold text-sm">লোড ব্যর্থ: ${err.message}</div>`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 【 ট্যাব ৩: প্রতিষ্ঠানের বিশেষ বার্তা 】
+// ═══════════════════════════════════════════════════════════════
+async function renderGpAdminMessages(area) {
+    area.innerHTML = `<div class="text-center py-12 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i><p>বার্তা লোড হচ্ছে...</p></div>`;
+    const student = _guardianSession;
+
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, 'adminMessages'));
+        
+        const myMessages = [];
+        
+        snap.forEach(d => {
+            const data = d.data();
+            if (!data.recipients || !Array.isArray(data.recipients)) return;
+            
+            // ★ চেক করা এই অভিভাবকের সন্তান রিসিপিয়েন্টের মধ্যে আছে কিনা
+            const isForMe = data.recipients.some(r => 
+                String(r.studentDbId) === String(student.id) || 
+                (r.studentId && String(r.studentId) === String(student.studentId))
+            );
+
+            if (isForMe) {
+                myMessages.push({ id: d.id, ...data });
+            }
+        });
+
+        // নতুন আগে
+        myMessages.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+        if (myMessages.length === 0) {
+            area.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-10 text-center">
+                    <i class="fa-solid fa-envelope-open-text text-5xl text-slate-300 mb-3"></i>
+                    <p class="text-slate-600 font-bold text-sm">আপনার জন্য কোনো বিশেষ বার্তা নেই</p>
+                    <p class="text-xs text-slate-400 mt-1">প্রতিষ্ঠান থেকে বার্তা পাঠানো হলে এখানে দেখতে পাবেন।</p>
+                </div>
+            `;
+            return;
+        }
+
+        let messagesHTML = myMessages.map(m => {
+            const dateStr = m.createdAt?.seconds
+                ? new Date(m.createdAt.seconds * 1000).toLocaleString('bn-BD')
+                : '---';
+                
+            // চেক করা এই বার্তাটি কি শুধু এই ছাত্রের জন্য, নাকি গ্রুপ বার্তা
+            const isGroupMessage = m.recipients.length > 1;
+
+            return `
+                <div class="bg-white rounded-xl shadow-sm border-2 border-emerald-300 overflow-hidden mb-3">
+                    <div class="px-4 py-2 bg-emerald-50 border-b border-emerald-200">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <span class="badge bg-emerald-600 text-white text-[10px] font-bold">
+                                <i class="fa-solid fa-bullhorn"></i> প্রতিষ্ঠানের বার্তা
+                            </span>
+                            <span class="text-[10px] text-slate-600"><i class="fa-regular fa-clock"></i> ${dateStr}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="px-4 py-3">
+                        <p class="text-sm text-slate-800 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(m.message || '')}</p>
+                    </div>
+                    
+                    <div class="px-4 py-2 border-t border-slate-200 bg-slate-50 text-xs flex justify-between items-center">
+                        <span class="text-slate-600 font-bold"><i class="fa-solid fa-user-tie"></i> প্রেরক: ${m.sentBy || 'প্রতিষ্ঠান'}</span>
+                        ${isGroupMessage ? `<span class="text-[10px] text-slate-400">(সকলের জন্য)</span>` : `<span class="text-[10px] text-emerald-600 font-bold">(শুধু আপনার জন্য)</span>`}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        area.innerHTML = `
+            <div class="space-y-3">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-2 flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-bullhorn text-emerald-600"></i> প্রতিষ্ঠানের বিশেষ বার্তাসমূহ</h3>
+                    <span class="badge bg-emerald-100 text-emerald-800 text-[10px]">মোট ${myMessages.length}টি</span>
+                </div>
+                ${messagesHTML}
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('❌ renderGpAdminMessages:', err);
+        area.innerHTML = `<div class="bg-red-50 p-6 rounded-xl text-center text-red-600 font-bold text-sm">লোড ব্যর্থ: ${err.message}</div>`;
+    }
+}
+
+console.log('✅ অভিভাবক পোর্টাল — অভিযোগ ও বার্তা মডিউল লোড হয়েছে');
 </script>
 </body>
 </html>
