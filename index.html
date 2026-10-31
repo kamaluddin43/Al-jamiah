@@ -32618,6 +32618,16 @@ async function handleUserLogin(user) {
 
     // Pending ইউজার
     if (userData && userData.role === 'pending') {
+        console.log('⏳ Pending user found — loading screen hiding');
+        
+        // ★★★ loading-screen লুকাও ★★★
+        const ls = document.getElementById('loading-screen');
+        if (ls) {
+            ls.classList.add('hidden');
+            ls.classList.remove('flex');
+            ls.style.display = 'none';
+        }
+        
         showLoginHidden();
         document.getElementById('pending-card-display').textContent = userData.cardNumber || '---';
         document.getElementById('pending-card-share').textContent = userData.cardNumber || '---';
@@ -53826,11 +53836,39 @@ window.openTeacherFullApp = function(tab) {
     if (typeof switchTab === 'function') switchTab(tab);
 };
 
-// লগআউট
-window.logoutTeacher = function() {
+window.logoutTeacher = async function() {
     if (!confirm('লগআউট করতে চান?')) return;
-    document.getElementById('teacher-portal-view')?.remove();
-    location.reload();
+    
+    try {
+        // ১. ফায়ারবেস থেকে আসল লগআউট
+        await window.fbAuth.signOut();
+        console.log('✅ Firebase Auth logged out');
+        
+        // ২. লোকাল স্টোরেজ থেকে গার্ডিয়ানের সেশন (যদি থাকে) মুছে ফেলা
+        localStorage.removeItem('gp_student_id');
+        localStorage.removeItem('gp_mobile');
+        
+        // ৩. গ্লোবাল ভেরিয়েবল রিসেট
+        window.currentUser = null;
+        window.currentUserData = null;
+        if (typeof _guardianSession !== 'undefined') window._guardianSession = null;
+        
+        // ৪. শিক্ষক পোর্টালের UI মুছে ফেলা
+        document.getElementById('teacher-portal-view')?.remove();
+        document.getElementById('guardian-portal-view')?.remove();
+        
+        // ৫. সব স্ক্রিন লুকিয়ে রাখা
+        document.querySelectorAll('header, main, footer').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        
+        // ৬. পেজ রিলোড দেওয়া (সব ফ্রেশ করার জন্য)
+        location.reload();
+        
+    } catch (err) {
+        console.error('❌ Logout error:', err);
+        // কোনো কারণে ফায়ারবেস লগআউট ফেইল করলেও যাতে পেজ রিলোড হয়
+        location.reload();
+    }
 };
 
 window.showGuardianPortal = function() {
