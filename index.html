@@ -32577,6 +32577,7 @@ window.addEventListener('load', () => {
 
 async function handleUserLogin(user) {
     console.log('🔍 handleUserLogin শুরু — UID:', user.uid);
+    console.log('🔍 Email:', user.email);
     currentUser = user;
 
     // ★★★ আপনার এডমিন ইমেইলটি এখানে বসান ★★★
@@ -32628,30 +32629,41 @@ async function handleUserLogin(user) {
         document.getElementById('pending-screen').classList.add('flex');
         return;
     }
-
-    // ★ Case 3: admin / teacher → সরাসরি অ্যাপে ঢুকবে
+  
+    // ★★★ এখানে নতুন লজিক ★★★
     if (userData.role === 'admin' || userData.role === 'teacher') {
         currentUserData = userData;
+        console.log('✅ Role detected:', userData.role);
+        console.log('✅ userData:', userData);
+        
         try {
             await loadConfigFromFirestore();
             await loadRecordsFromFirestore();
             await syncYearsFromFirestore();
             await loadSettings();
+            console.log('✅ All data loaded');
         } catch (err) {
             console.error('❌ Load error:', err);
         }
         
-        // ★★★ এখানে নতুন লজিক ★★★
         if (userData.role === 'teacher') {
-            showTeacherPortal(); // শিক্ষক হলে পোর্টাল দেখাবে
+            console.log('🎓 Opening teacher portal...');
+            try {
+                showTeacherPortal();
+                console.log('✅ Teacher portal rendered');
+            } catch (err) {
+                console.error('❌ showTeacherPortal error:', err);
+                // Fallback: মূল অ্যাপ দেখাই
+                showApp();
+            }
         } else {
-            showApp(); // এডমিন হলে মূল অ্যাপ দেখাবে
+            showApp();
         }
         return;
     }
-
-    // ★ Case 4: অজানা রোল (নিরাপত্তার জন্য pending এ পাঠিয়ে দেব)
-    _pendingUid = user.uid;
+    
+    // ★ নতুন যোগ: অজানা রোল হলে
+    console.error('❌ Unknown role:', userData?.role);
     showLoginHidden();
     showCardVerifyModal();
 }
@@ -53500,16 +53512,28 @@ window.verifyGuardianLogin = async function() {
 // ★★★ শিক্ষক পোর্টাল (Teacher Portal) ★★★
 // ═══════════════════════════════════════════════════════════════
 window.showTeacherPortal = function() {
+    // ★ Safety check
+    if (!currentUserData || !currentUserData.role) {
+        console.error('❌ currentUserData নেই!');
+        showLogin();
+        return;
+    }
+    
+    if (!settings) settings = {};
+    
+    // ★ শিক্ষকের পূর্ণ তথ্য বের করুন
+    const teacherName = currentUserData.teacherName || currentUserData.name || 'শিক্ষক';
+    const teacherMeta = findTeacherByName(teacherName);
+    const teacherPost = teacherMeta?.post || currentUserData.post || 'শিক্ষক';
+    
+    console.log('🎓 Teacher Portal opening for:', teacherName, teacherPost);
+    
     // মূল অ্যাপ হাইড
     document.querySelectorAll('header, main, footer').forEach(el => el.style.display = 'none');
     const loginScreen = document.getElementById('login-screen');
     if (loginScreen) loginScreen.style.display = 'none';
     
-    // পুরনো পোর্টাল মুছে ফেলা
     document.getElementById('teacher-portal-view')?.remove();
-
-    const teacherName = currentUserData?.teacherName || currentUserData?.name || 'শিক্ষক';
-    const teacherPost = currentUserData?.post || 'শিক্ষক';
     
     const portalHTML = `
         <div id="teacher-portal-view" class="min-h-screen bg-slate-100 pb-20">
@@ -53640,19 +53664,41 @@ window.switchTpTab = async function(tab) {
     
     content.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-teal-600"></i></div>`;
     
-    // ★ এখানে আপনি শিক্ষক পোর্টালের ফাংশনগুলো কল করবেন (ভবিষ্যতে তৈরি করব)
+    const teacherName = currentUserData?.teacherName || currentUserData?.name;
+    
     if (tab === 'routine') {
-        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">শিক্ষকের ক্লাস রুটিন (শীঘ্রই আসছে)</div>`;
+        // শিক্ষকের রুটিন
+        const wrap = document.createElement('div');
+        content.innerHTML = `<div class="bg-white rounded-xl p-4 mb-3"><h3 class="font-bold text-sm">আমার ক্লাস রুটিন</h3><p class="text-xs text-slate-500">${teacherName}</p></div>`;
+        content.appendChild(wrap);
+        
     } else if (tab === 'students') {
-        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">দায়িত্বপ্রাপ্ত ছাত্র তালিকা (শীঘ্রই আসছে)</div>`;
+        const allowed = getTeacherAllowedClasses();
+        if (!allowed || allowed.length === 0) {
+            content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">আপনার কোনো জামাত assigned নেই। এডমিনের সাথে যোগাযোগ করুন।</div>`;
+            return;
+        }
+        content.innerHTML = `<div class="bg-white rounded-xl p-4"><h3 class="font-bold text-sm mb-2">আমার ছাত্র তালিকা</h3><p class="text-xs text-slate-500">${allowed.length}টি জামাত assigned</p></div>`;
+        
     } else if (tab === 'asbaq') {
-        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">মাকাদীরে আসবাক ডাটা এন্ট্রি (শীঘ্রই আসছে)</div>`;
+        content.innerHTML = `<div class="bg-white rounded-xl p-4"><h3 class="font-bold">মাকাদীরে আসবাক</h3></div>`;
+        
     } else if (tab === 'exam') {
-        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">পরীক্ষা ও মার্কস এন্ট্রি (শীঘ্রই আসছে)</div>`;
+        content.innerHTML = `<div class="bg-white rounded-xl p-4"><h3 class="font-bold">পরীক্ষা ও মার্কস</h3></div>`;
+        
     } else if (tab === 'homework') {
-        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">হোমওয়ার্ক এডিট (শীঘ্রই আসছে)</div>`;
+        // ★ আসল হোমওয়ার্ক ফাংশন কল
+        content.innerHTML = '';
+        const wrap = document.createElement('div');
+        content.appendChild(wrap);
+        await renderHomeworkPage(wrap);
+        
     } else if (tab === 'leave') {
-        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">ছুটির আবেদন (শীঘ্রই আসছে)</div>`;
+        // ★ আসল ছুটির আবেদন ফাংশন কল
+        content.innerHTML = '';
+        const wrap = document.createElement('div');
+        content.appendChild(wrap);
+        await renderGuardianLeaveManagement(wrap);
     }
 };
 
