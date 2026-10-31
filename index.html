@@ -1234,7 +1234,7 @@ header button {
 </div>
 
 <!-- ═══════════════════ APPROVE MODAL ═══════════════════ -->
-<div id="approve-modal" class="fixed inset-0 modal-backdrop z-[350] items-center justify-center p-4 hidden">
+<div id="approve-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[350] hidden items-end md:items-center justify-center sm:p-4" style="width:100vw; height:100vh; top:0; left:0; overflow-y:auto;">
     <div class="bg-white rounded-2xl shadow-2xl w-[95%] md:w-full max-w-2xl max-h-[90vh] flex flex-col modal-enter">
         <div class="bg-emerald-900 text-white p-4 rounded-t-2xl flex items-center justify-between">
             <h3 class="text-lg font-bold flex items-center gap-2">
@@ -1265,7 +1265,7 @@ header button {
                 <i class="fa-solid fa-graduation-cap text-emerald-600"></i> কোন কোন জামাতের দায়িত্ব দেবেন?
             </p>
             <p class="text-xs text-slate-500 mb-3">একাধিক জামাত নির্বাচন করা যাবে।</p>
-            <div id="ap-class-list" class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-80 overflow-y-auto"></div>
+            <div id="ap-class-list" class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[50vh] md:max-h-80 overflow-y-auto pb-4"></div>
         </div>
         
         <div class="p-4 border-t bg-slate-50 flex justify-end gap-2 rounded-b-2xl sticky bottom-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
@@ -36638,19 +36638,66 @@ window.renderAdminUsers = async function() {
                 </p>
             </div>
 
-            <div class="border border-slate-200 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
-                <table class="w-full text-left text-sm border-collapse">
-                    <thead class="bg-slate-100 sticky top-0">
-                        <tr>
-                            <th class="p-3 font-bold text-xs">নাম</th>
-                            <th class="p-3 font-bold text-xs">Email</th>
-                            <th class="p-3 font-bold text-xs">Role</th>
-                            <th class="p-3 font-bold text-xs">লিংকড শিক্ষক</th>
-                            <th class="p-3 font-bold text-xs text-center">অ্যাকশন</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
+            <!-- ★★★ মোবাইলে কার্ড ভিউ (md এর নিচে) ★★★ -->
+            <div class="md:hidden space-y-2">
+                ${adminUsersList.length === 0 ? `
+                    <div class="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400">
+                        <i class="fa-solid fa-user-slash text-4xl mb-2"></i>
+                        <p class="text-sm font-bold text-slate-600">কোন ইউজার নেই</p>
+                    </div>
+                ` : adminUsersList.map(u => {
+                    const roleBadge = u.role === 'admin' 
+                        ? '<span class="badge bg-amber-100 text-amber-800 text-[9px]">এডমিন</span>'
+                        : u.role === 'teacher'
+                        ? '<span class="badge bg-emerald-100 text-emerald-800 text-[9px]">শিক্ষক</span>'
+                        : '<span class="badge bg-slate-100 text-slate-600 text-[9px]">অপেক্ষমান</span>';
+                    return `
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-bold text-slate-800 truncate">${u.name || '---'}</p>
+                                    <p class="text-[10px] text-slate-500 mt-0.5 truncate">
+                                        <i class="fa-solid fa-envelope w-3"></i> ${u.email || '---'}
+                                    </p>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    ${roleBadge}
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-slate-600 mb-3 bg-slate-50 rounded p-2">
+                                <i class="fa-solid fa-chalkboard-user w-3"></i>
+                                <span class="font-semibold">লিংকড শিক্ষক:</span>
+                                <span class="text-slate-800">${u.teacherName || '-'}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="editAdminUser('${u.uid}')" class="flex-1 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-pen"></i> এডিট
+                                </button>
+                                <button onclick="deleteAdminUser('${u.uid}','${(u.name || '').replace(/'/g, "\\'")}')" class="flex-1 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-trash"></i> ডিলিট
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+
+            <!-- ★★★ ডেক্সটপ টেবিল (md এবং উপরে) — আগের মতোই ★★★ -->
+            <div class="hidden md:block border border-slate-200 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm border-collapse" style="min-width:700px;">
+                        <thead class="bg-slate-100 sticky top-0">
+                            <tr>
+                                <th class="p-3 font-bold text-xs whitespace-nowrap">নাম</th>
+                                <th class="p-3 font-bold text-xs whitespace-nowrap">Email</th>
+                                <th class="p-3 font-bold text-xs whitespace-nowrap">Role</th>
+                                <th class="p-3 font-bold text-xs whitespace-nowrap">লিংকড শিক্ষক</th>
+                                <th class="p-3 font-bold text-xs text-center whitespace-nowrap">অ্যাকশন</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
             </div>
         </div>
     `;
@@ -37589,20 +37636,93 @@ window.renderAdminApprovals = async function() {
                 </p>
             </div>` : ''}
 
-            <div class="border border-slate-200 rounded-lg overflow-hidden">
-                <table class="w-full text-left text-sm border-collapse">
-                    <thead class="bg-slate-100">
-                        <tr>
-                            <th class="p-3 font-bold text-xs">নাম</th>
-                            <th class="p-3 font-bold text-xs">কার্ড নম্বর</th>
-                            <th class="p-3 font-bold text-xs">Email</th>
-                            <th class="p-3 font-bold text-xs">বিভাগ</th>
-                            <th class="p-3 font-bold text-xs">অনুরোধের সময়</th>
-                            <th class="p-3 font-bold text-xs text-center">অ্যাকশন</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
+            <!-- ★★★ মোবাইলে কার্ড ভিউ, ডেক্সটপে টেবিল ★★★ -->
+            
+            <!-- মোবাইল কার্ড (md এর নিচে) -->
+            <div class="md:hidden space-y-2">
+                ${adminPendingUsers.length === 0 ? `
+                    <div class="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400">
+                        <i class="fa-solid fa-check-circle text-4xl mb-2 text-emerald-500"></i>
+                        <p class="text-sm font-bold text-slate-600">কোন অনুমোদনের অপেক্ষায় নেই</p>
+                    </div>
+                ` : adminPendingUsers.map((u, i) => {
+                    const reqDate = u.requestedAt?.seconds 
+                        ? new Date(u.requestedAt.seconds * 1000).toLocaleString('bn-BD')
+                        : '---';
+                    return `
+                        <div class="bg-white rounded-xl border border-amber-200 shadow-sm p-3">
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-bold text-slate-800 truncate">${u.name || '---'}</p>
+                                    <p class="text-[10px] text-slate-500 mt-0.5">
+                                        <i class="fa-solid fa-id-card"></i> ${u.cardNumber || '---'}
+                                    </p>
+                                </div>
+                                <span class="badge bg-amber-100 text-amber-800 text-[9px] flex-shrink-0">অপেক্ষমাণ</span>
+                            </div>
+                            <div class="space-y-1 text-[11px] text-slate-600 mb-3">
+                                <p class="truncate"><i class="fa-solid fa-envelope w-3"></i> ${u.email || '---'}</p>
+                                <p><i class="fa-solid fa-layer-group w-3"></i> ${u.dept || '---'}</p>
+                                <p class="text-slate-400"><i class="fa-regular fa-clock w-3"></i> ${reqDate}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="approveUser(${i})" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition">
+                                    <i class="fa-solid fa-check"></i> অনুমোদন
+                                </button>
+                                <button onclick="rejectUser(${i})" class="flex-1 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg transition">
+                                    <i class="fa-solid fa-xmark"></i> বাতিল
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+
+            <!-- ডেক্সটপ টেবিল (md এবং তার উপরে) -->
+            <div class="hidden md:block border border-slate-200 rounded-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm border-collapse" style="min-width:700px;">
+                        <thead class="bg-slate-100">
+                            <tr>
+                                <th class="p-3 font-bold text-xs whitespace-nowrap">নাম</th>
+                                <th class="p-3 font-bold text-xs whitespace-nowrap">কার্ড নম্বর</th>
+                                <th class="p-3 font-bold text-xs whitespace-nowrap">Email</th>
+                                <th class="p-3 font-bold text-xs whitespace-nowrap">বিভাগ</th>
+                                <th class="p-3 font-bold text-xs whitespace-nowrap">অনুরোধের সময়</th>
+                                <th class="p-3 font-bold text-xs text-center whitespace-nowrap">অ্যাকশন</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${adminPendingUsers.length === 0 ? `
+                                <tr><td colspan="6" class="p-8 text-center text-slate-400">
+                                    <i class="fa-solid fa-check-circle text-4xl mb-2 text-emerald-500"></i>
+                                    <p>কোন অনুমোদনের অপেক্ষায় নেই</p>
+                                </td></tr>
+                            ` : adminPendingUsers.map((u, i) => {
+                                const reqDate = u.requestedAt?.seconds 
+                                    ? new Date(u.requestedAt.seconds * 1000).toLocaleString('bn-BD')
+                                    : '---';
+                                return `
+                                    <tr class="hover:bg-amber-50 border-b">
+                                        <td class="p-3 text-sm font-bold whitespace-nowrap">${u.name || '---'}</td>
+                                        <td class="p-3 text-xs font-mono whitespace-nowrap">${u.cardNumber || '---'}</td>
+                                        <td class="p-3 text-xs font-mono whitespace-nowrap">${u.email || '---'}</td>
+                                        <td class="p-3 text-xs whitespace-nowrap">${u.dept || '---'}</td>
+                                        <td class="p-3 text-[10px] text-slate-500 whitespace-nowrap">${reqDate}</td>
+                                        <td class="p-3 text-center whitespace-nowrap">
+                                            <button onclick="approveUser(${i})" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition mr-1">
+                                                <i class="fa-solid fa-check"></i> অনুমোদন
+                                            </button>
+                                            <button onclick="rejectUser(${i})" class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg transition">
+                                                <i class="fa-solid fa-xmark"></i> বাতিল
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     `;
@@ -51687,14 +51807,10 @@ window.saveAdmFormConfig = async function() {
 
 // ═══════════════════ ১. ভর্তি কার্যক্রম (Programs) ═══════════════════
 function buildAdminProgramsHTML() {
-    // ★ Firestore-এর admissionPrograms কালেকশন আর ব্যবহার হবে না
-    // সব ডাটা আসবে configData.admissionFormConfig থেকে
-    
     const cfg = configData?.admissionFormConfig || window.DEFAULT_ADMISSION_FORM_CONFIG;
     const programInfo = cfg.programInfo || {};
     const depts = configData?.departments || [];
     
-    // ★ কোন কোন স্টেপ আছে তা বের করি
     const stepDefs = [
         { key: 'step2_primary',         label: 'ধাপ ২: প্রাথমিক তথ্য' },
         { key: 'step3_personal',        label: 'ধাপ ৩: ব্যক্তিগত তথ্য' },
@@ -51708,7 +51824,7 @@ function buildAdminProgramsHTML() {
         { key: 'step11_principal',      label: 'ধাপ ১১: প্রিন্সিপাল' }
     ];
     
-    // ★ ডিফল্ট তথ্য (সব স্টেপে একই)
+    // ডিফল্ট তথ্য
     let deptDisplay = 'সব বিভাগ';
     if (programInfo.dept && programInfo.dept !== 'all') {
         const deptObj = depts.find(d => d.key === programInfo.dept);
@@ -51717,16 +51833,13 @@ function buildAdminProgramsHTML() {
     const location = programInfo.location || '—';
     const time = programInfo.time || '—';
     
-    // ★ প্রতিটি স্টেপকে একটা সারি হিসেবে দেখাই
     let rowsHTML = '';
     stepDefs.forEach((step, idx) => {
         const stepData = cfg[step.key];
         if (!stepData) return;
-        
-        // ★ enabled না হলে দেখাব না
         if (stepData.enabled === false) return;
         
-        // ★ এই স্টেপের দায়িত্বশীল (একাধিক)
+        // ★ দায়িত্বশীলদের তালিকা (array নরমালাইজ)
         let incharges = [];
         if (Array.isArray(stepData.incharge)) {
             incharges = stepData.incharge;
@@ -51734,9 +51847,20 @@ function buildAdminProgramsHTML() {
             incharges = [stepData.incharge];
         }
         
+        // ★★★ প্রতিটি দায়িত্বশীলের পাশে ✕ বাটন ★★★
         const inchargeDisplay = incharges.length > 0
-            ? incharges.map(n => `<span class="badge bg-emerald-100 text-emerald-800 text-[10px] mr-1 mb-1">${n}</span>`).join('')
-            : '<span class="text-red-500 text-[10px] font-bold">⚠️ দায়িত্বশীল নেই</span>';
+            ? incharges.map(name => `
+                <span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full mr-1 mb-1 border border-emerald-200">
+                    <i class="fa-solid fa-user-tie text-[8px]"></i>
+                    ${name}
+                    <button onclick="removeInchargeFromStep('${step.key}', '${name.replace(/'/g, "\\'")}')" 
+                            class="text-red-600 hover:text-red-800 hover:bg-red-100 rounded-full w-4 h-4 flex items-center justify-center transition ml-0.5"
+                            title="${name} কে এই ধাপ থেকে সরান">
+                        <i class="fa-solid fa-xmark text-[9px]"></i>
+                    </button>
+                </span>
+            `).join('')
+            : '<span class="text-red-500 text-[10px] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> দায়িত্বশীল নেই</span>';
         
         rowsHTML += `
             <tr class="border-b hover:bg-emerald-50">
@@ -51750,7 +51874,7 @@ function buildAdminProgramsHTML() {
                 </td>
                 <td class="p-2 text-xs text-slate-600">${location}</td>
                 <td class="p-2 text-xs text-slate-600">${time}</td>
-                <td class="p-2 text-xs">${inchargeDisplay}</td>
+                <td class="p-2 text-xs leading-relaxed">${inchargeDisplay}</td>
                 <td class="p-2 text-center">
                     <span class="badge bg-emerald-100 text-emerald-800 text-[10px]">
                         <i class="fa-solid fa-check"></i> সক্রিয়
@@ -51770,36 +51894,38 @@ function buildAdminProgramsHTML() {
     
     return `
         <div class="space-y-4">
-            <!-- ★ তথ্য বার -->
+            <!-- তথ্য বার -->
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
                 <i class="fa-solid fa-info-circle text-blue-600 text-lg mt-0.5 flex-shrink-0"></i>
                 <div class="text-xs text-blue-900">
                     <strong>এই তালিকা শুধু দেখার জন্য।</strong> 
-                    কার্যক্রমের তথ্য (নাম, বিভাগ, স্থান, সময়, দায়িত্বশীল) সম্পূর্ণভাবে 
+                    কার্যক্রমের তথ্য (নাম, বিভাগ, স্থান, সময়) সম্পূর্ণভাবে 
                     <strong>"ফরম কনফিগ ও দায়িত্বশীল"</strong> ট্যাব থেকে নিয়ন্ত্রিত হয়। 
-                    পরিবর্তন করতে চাইলে সেখানে যান।
+                    তবে <strong class="text-red-700">প্রতিটি দায়িত্বশীলের পাশে ✕ বাটনে ক্লিক করে</strong> সরাসরি সরাতে পারবেন।
                 </div>
             </div>
             
-            <!-- ★ টেবিল -->
-            <div class="overflow-x-auto border border-slate-200 rounded-lg">
-                <table class="w-full text-left border-collapse text-xs" style="min-width:800px;">
-                    <thead class="bg-emerald-700 text-white">
-                        <tr>
-                            <th class="p-2 text-[11px] text-center w-12">#</th>
-                            <th class="p-2 text-[11px]">কার্যক্রম (স্টেপ)</th>
-                            <th class="p-2 text-[11px]">বিভাগ</th>
-                            <th class="p-2 text-[11px]">স্থান</th>
-                            <th class="p-2 text-[11px]">সময়</th>
-                            <th class="p-2 text-[11px]">দায়িত্বশীল</th>
-                            <th class="p-2 text-[11px] text-center">স্ট্যাটাস</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rowsHTML}</tbody>
-                </table>
+            <!-- টেবিল — overflow-x-auto সহ -->
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs" style="min-width:800px;">
+                        <thead class="bg-emerald-700 text-white">
+                            <tr>
+                                <th class="p-2 text-[11px] text-center w-12 whitespace-nowrap">#</th>
+                                <th class="p-2 text-[11px] whitespace-nowrap">কার্যক্রম (স্টেপ)</th>
+                                <th class="p-2 text-[11px] whitespace-nowrap">বিভাগ</th>
+                                <th class="p-2 text-[11px] whitespace-nowrap">স্থান</th>
+                                <th class="p-2 text-[11px] whitespace-nowrap">সময়</th>
+                                <th class="p-2 text-[11px] whitespace-nowrap">দায়িত্বশীল</th>
+                                <th class="p-2 text-[11px] text-center whitespace-nowrap">স্ট্যাটাস</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHTML}</tbody>
+                    </table>
+                </div>
             </div>
             
-            <!-- ★ ফুটার -->
+            <!-- ফুটার -->
             <div class="flex justify-end">
                 <button onclick="_admAdminState.activeTab='formconfig'; renderAdminAdmission();" 
                         class="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-lg shadow flex items-center gap-2">
@@ -51809,6 +51935,85 @@ function buildAdminProgramsHTML() {
         </div>
     `;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ দায়িত্বশীল সরানোর ফাংশন (কার্যক্রম ট্যাব থেকে) ★★★
+// ═══════════════════════════════════════════════════════════════
+window.removeInchargeFromStep = async function(stepKey, teacherName) {
+    // ★ কনফার্মেশন
+    const stepNames = {
+        step2_primary: 'প্রাথমিক তথ্য',
+        step3_personal: 'ব্যক্তিগত তথ্য',
+        step4_guardian: 'অভিভাবকের তথ্য',
+        step5_studentPromise: 'শিক্ষার্থীর অঙ্গীকার',
+        step6_guardianPromise: 'অভিভাবকের প্রতিশ্রুতি',
+        step7_exam: 'ভর্তি পরীক্ষা',
+        step8_eduSec: 'শিক্ষাসচিব',
+        step9_admissionFees: 'ভর্তিকালীন ফি',
+        step10_monthlyFees: 'মাসিক ফি',
+        step11_principal: 'প্রিন্সিপাল'
+    };
+    
+    const stepLabel = stepNames[stepKey] || stepKey;
+    if (!confirm(`"${teacherName}" কে "${stepLabel}" ধাপের দায়িত্বশীল থেকে সরিয়ে দেবেন?\n\nএটি Firebase থেকেও স্থায়ীভাবে মুছে যাবে এবং "ভর্তি → দায়িত্বশীল" ট্যাবেও আর দেখাবে না।`)) {
+        return;
+    }
+    
+    showToast('⏳ সরানো হচ্ছে...', 'info');
+    
+    try {
+        // ★ ১. কনফিগ থেকে শিক্ষকের নাম সরাই
+        if (!configData.admissionFormConfig) {
+            configData.admissionFormConfig = JSON.parse(JSON.stringify(window.DEFAULT_ADMISSION_FORM_CONFIG));
+        }
+        
+        const stepData = configData.admissionFormConfig[stepKey];
+        if (!stepData) {
+            showToast('❌ স্টেপ ডাটা পাওয়া যায়নি', 'error');
+            return;
+        }
+        
+        // ★ incharge array নরমালাইজ
+        let incharges = [];
+        if (Array.isArray(stepData.incharge)) {
+            incharges = stepData.incharge;
+        } else if (stepData.incharge) {
+            incharges = [stepData.incharge];
+        }
+        
+        // ★ শিক্ষকের নাম বাদ দিই
+        const newIncharges = incharges.filter(n => n !== teacherName);
+        
+        if (newIncharges.length === incharges.length) {
+            showToast('⚠️ এই শিক্ষক এই ধাপে দায়িত্বশীল ছিলেন না', 'warn');
+            return;
+        }
+        
+        stepData.incharge = newIncharges;
+        
+        // ★ ২. Firestore-এ সেভ করি (merge: true — শুধু বদলানো ফিল্ড আপডেট হবে)
+        const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+        
+        await setDoc(doc(window.fbDB, 'config', CONFIG_DOC_ID), {
+            ...configData,
+            admissionFormConfig: configData.admissionFormConfig,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser?.uid || 'admin'
+        }, { merge: true });
+        
+        // ★ ৩. লোকাল ক্যাশ আপডেট
+        localStorage.setItem('madrasa_config_cache_v3', JSON.stringify(configData));
+        
+        // ★ ৪. UI রিফ্রেশ (কার্যক্রম ট্যাব আবার রেন্ডার হবে)
+        renderAdminAdmission();
+        
+        showToast(`✅ "${teacherName}" কে "${stepLabel}" থেকে সরানো হয়েছে`, 'success');
+        
+    } catch (err) {
+        console.error('❌ removeInchargeFromStep:', err);
+        showToast('❌ সরানো ব্যর্থ: ' + err.message, 'error');
+    }
+};
 
 // ═══════════════════ ২. ফরম সেটআপ (Form Settings) ═══════════════════
 function buildAdminFormSettingsHTML() {
@@ -52031,14 +52236,63 @@ async function renderAdmissionProgramsFrontend(container) {
     </div>`;
 
     try {
-        const { collection, getDocs, query, where } = window.fbFuncs;
+        // ★★★ পরিবর্তন ১: admissionPrograms কালেকশনের বদলে config/main থেকে লোড ★★★
+        const { doc, getDoc } = window.fbFuncs;
+        const configSnap = await getDoc(doc(window.fbDB, 'config', 'main'));
         
-        // শুধুমাত্র সক্রিয় (active) কার্যক্রমগুলো নিয়ে আসা
-        const q = query(collection(window.fbDB, 'admissionPrograms'), where('status', '==', 'active'));
-        const snap = await getDocs(q);
-        
+        if (!configSnap.exists()) {
+            container.innerHTML = `
+                <div class="bg-white rounded-xl shadow-md p-12 text-center">
+                    <i class="fa-solid fa-list-check text-5xl text-slate-300 mb-3"></i>
+                    <h3 class="text-lg font-bold text-slate-700">কোন ভর্তি কার্যক্রম নেই</h3>
+                    <p class="text-sm text-slate-500 mt-2">কনফিগ ডাটা লোড করা যায়নি।</p>
+                </div>`;
+            return;
+        }
+
+        const configDataFromFS = configSnap.data();
+        const cfg = configDataFromFS.admissionFormConfig || {};
+        const programInfo = cfg.programInfo || {};
+        const depts = configDataFromFS.departments || [];
+
+        // ★★★ পরিবর্তন ২: admissionFormConfig থেকে programs synthesize করি ★★★
+        const stepDefs = [
+            { key: 'step2_primary',         label: 'ধাপ ২: প্রাথমিক তথ্য' },
+            { key: 'step3_personal',        label: 'ধাপ ৩: ব্যক্তিগত তথ্য' },
+            { key: 'step4_guardian',        label: 'ধাপ ৪: অভিভাবকের তথ্য' },
+            { key: 'step5_studentPromise',  label: 'ধাপ ৫: শিক্ষার্থীর অঙ্গীকার' },
+            { key: 'step6_guardianPromise', label: 'ধাপ ৬: অভিভাবকের প্রতিশ্রুতি' },
+            { key: 'step7_exam',            label: 'ধাপ ৭: ভর্তি পরীক্ষা' },
+            { key: 'step8_eduSec',          label: 'ধাপ ৮: শিক্ষাসচিব' },
+            { key: 'step9_admissionFees',   label: 'ধাপ ৯: ভর্তিকালীন ফি' },
+            { key: 'step10_monthlyFees',    label: 'ধাপ ১০: মাসিক ফি' },
+            { key: 'step11_principal',      label: 'ধাপ ১১: প্রিন্সিপাল' }
+        ];
+
         const programs = [];
-        snap.forEach(d => programs.push({ id: d.id, ...d.data() }));
+        stepDefs.forEach(step => {
+            const stepData = cfg[step.key];
+            if (!stepData) return;
+            if (stepData.enabled === false) return;
+
+            // incharge array নরমালাইজ
+            let incharges = [];
+            if (Array.isArray(stepData.incharge)) {
+                incharges = stepData.incharge;
+            } else if (stepData.incharge) {
+                incharges = [stepData.incharge];
+            }
+
+            programs.push({
+                id: step.key,
+                title: stepData.title || step.label,
+                dept: programInfo.dept || 'all',
+                location: programInfo.location || '',
+                time: programInfo.time || '',
+                inchargeNames: incharges,
+                status: 'active'
+            });
+        });
 
         // যদি কোনো কার্যক্রম না থাকে
         if (programs.length === 0) {
@@ -52046,22 +52300,21 @@ async function renderAdmissionProgramsFrontend(container) {
                 <div class="bg-white rounded-xl shadow-md p-12 text-center">
                     <i class="fa-solid fa-list-check text-5xl text-slate-300 mb-3"></i>
                     <h3 class="text-lg font-bold text-slate-700">কোন ভর্তি কার্যক্রম নেই</h3>
-                    <p class="text-sm text-slate-500 mt-2">বর্তমানে ভর্তি চলছে না, অথবা এডমিন প্যানেল থেকে কার্যক্রম যোগ করা হয়নি।</p>
+                    <p class="text-sm text-slate-500 mt-2">বর্তমানে ভর্তি চলছে না, অথবা এডমিন প্যানেল থেকে কার্যক্রম যোগ করা হয়নি।</p>
                 </div>`;
             return;
         }
 
-        // কার্যক্রমের কার্ড তৈরি করা
+        // ★★★ বাকি সব কোড আপনার মতোই — কোনো পরিবর্তন নেই ★★★
         let cardsHTML = '';
         programs.forEach(p => {
-            // দায়িত্বশীলদের নাম সুন্দরভাবে দেখানোর জন্য (কমা দিয়ে)
             const inchargeDisplay = p.inchargeNames && p.inchargeNames.length > 0 
                 ? p.inchargeNames.join(', ') 
                 : '—';
-            // ★ বিভাগের নাম বের করা
+
             let deptDisplay = 'সব বিভাগ';
             if (p.dept && p.dept !== 'all') {
-                const deptObj = (configData?.departments || []).find(d => d.key === p.dept);
+                const deptObj = depts.find(d => d.key === p.dept);
                 if (deptObj) deptDisplay = deptObj.name;
             }
 
@@ -52102,7 +52355,7 @@ async function renderAdmissionProgramsFrontend(container) {
                             </div>
                         </div>
 
-                        <!-- দায়িত্বশীল -->
+                        <!-- দায়িত্বশীল -->
                         <div class="flex items-start gap-3">
                             <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0 text-emerald-600">
                                 <i class="fa-solid fa-user-tie text-lg"></i>
@@ -52144,6 +52397,7 @@ async function renderAdmissionProgramsFrontend(container) {
             </div>`;
     }
 }
+
 // ═══════════════════════════════════════════════════════════════
 // ★★★ ফ্রন্টএন্ড — ভর্তির দায়িত্বশীল (Incharge View) ★★★
 // ═══════════════════════════════════════════════════════════════
@@ -53174,6 +53428,9 @@ window.switchGpTab = async function(tab) {
     else if (tab === 'attendance') {
         pageBody.innerHTML = comingSoonHTML;
     }
+    else if (tab === 'admission-programs') {
+        await renderGpAdmissionPrograms(pageBody);
+    }
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -53733,6 +53990,13 @@ function renderGpDashboard(container) {
                     <i class="fa-solid fa-calendar-check"></i>
                 </div>
                 <span class="text-sm font-bold text-center">উপস্থিতি</span>
+            </button>
+            <!-- ১৩. ভর্তি কার্যক্রম ★ নতুন -->
+            <button onclick="switchGpTab('admission-programs')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-emerald-400 transition text-emerald-600">
+                <div class="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-list-check"></i>
+                </div>
+                <span class="text-sm font-bold text-center">ভর্তি কার্যক্রম</span>
             </button>
         </div>
     `;
@@ -57066,6 +57330,7 @@ async function renderGpHomework(container) {
         container.innerHTML = `<p class="text-center text-red-500 py-6">হোমওয়ার্ক লোড ব্যর্থ হয়েছে</p>`;
     }
 }
+
 // ═══════════════════════════════════════════════════════════════
 // ★★★ নিয়মকানুন (Rules) মডিউল — সম্পূর্ণ নতুন ★★★
 // ═══════════════════════════════════════════════════════════════
@@ -57985,6 +58250,174 @@ async function renderGpAdminMessages(area) {
 }
 
 console.log('✅ অভিভাবক পোর্টাল — অভিযোগ ও বার্তা মডিউল লোড হয়েছে');
+// ═══════════════════════════════════════════════════════════════
+// ★★★ গার্ডিয়ান পোর্টাল — ভর্তি কার্যক্রম (রিড-অনলি) ★★★
+// ═══════════════════════════════════════════════════════════════
+async function renderGpAdmissionPrograms(container) {
+    container.innerHTML = `<div class="text-center py-10 text-slate-400">
+        <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
+    </div>`;
+
+    try {
+        // ★ ফায়ারবেস থেকে লেটেস্ট কনফিগ আনি
+        const { doc, getDoc } = window.fbFuncs;
+        const configSnap = await getDoc(doc(window.fbDB, 'config', 'main'));
+        
+        let cfg = {};
+        if (configSnap.exists()) {
+            const data = configSnap.data();
+            cfg = data.admissionFormConfig || {};
+        }
+
+        const programInfo = cfg.programInfo || {};
+        const depts = configData?.departments || [];
+        
+        // ★ স্টেপ ডেফিনিশন
+        const stepDefs = [
+            { key: 'step2_primary',         label: 'ধাপ ২: প্রাথমিক তথ্য' },
+            { key: 'step3_personal',        label: 'ধাপ ৩: ব্যক্তিগত তথ্য' },
+            { key: 'step4_guardian',        label: 'ধাপ ৪: অভিভাবকের তথ্য' },
+            { key: 'step5_studentPromise',  label: 'ধাপ ৫: শিক্ষার্থীর অঙ্গীকার' },
+            { key: 'step6_guardianPromise', label: 'ধাপ ৬: অভিভাবকের প্রতিশ্রুতি' },
+            { key: 'step7_exam',            label: 'ধাপ ৭: ভর্তি পরীক্ষা' },
+            { key: 'step8_eduSec',          label: 'ধাপ ৮: শিক্ষাসচিব' },
+            { key: 'step9_admissionFees',   label: 'ধাপ ৯: ভর্তিকালীন ফি' },
+            { key: 'step10_monthlyFees',    label: 'ধাপ ১০: মাসিক ফি' },
+            { key: 'step11_principal',      label: 'ধাপ ১১: প্রিন্সিপাল' }
+        ];
+        
+        // ★ ডিফল্ট তথ্য
+        let deptDisplay = 'সব বিভাগ';
+        if (programInfo.dept && programInfo.dept !== 'all') {
+            const deptObj = depts.find(d => d.key === programInfo.dept);
+            if (deptObj) deptDisplay = deptObj.name;
+        }
+        const location = programInfo.location || '—';
+        const time = programInfo.time || '—';
+        
+        // ★ প্রতিটি স্টেপের সারি
+        let rowsHTML = '';
+        let activeStepsCount = 0;
+        
+        stepDefs.forEach((step) => {
+            const stepData = cfg[step.key];
+            if (!stepData) return;
+            if (stepData.enabled === false) return;
+            
+            activeStepsCount++;
+            
+            // দায়িত্বশীল
+            let incharges = [];
+            if (Array.isArray(stepData.incharge)) {
+                incharges = stepData.incharge;
+            } else if (stepData.incharge) {
+                incharges = [stepData.incharge];
+            }
+            
+            const inchargeDisplay = incharges.length > 0
+                ? incharges.map(name => `
+                    <span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full mr-1 mb-1 border border-emerald-200">
+                        <i class="fa-solid fa-user-tie text-[8px]"></i>
+                        ${name}
+                    </span>
+                `).join('')
+                : '<span class="text-slate-400 text-[10px] italic">নির্ধারিত হয়নি</span>';
+            
+            rowsHTML += `
+                <tr class="border-b hover:bg-emerald-50">
+                    <td class="p-2 text-center text-xs font-bold text-slate-500">${activeStepsCount}</td>
+                    <td class="p-2 text-xs font-bold text-slate-800">
+                        <i class="fa-solid fa-circle-check text-emerald-600 text-[10px] mr-1"></i>
+                        ${stepData.title || step.label}
+                    </td>
+                    <td class="p-2 text-xs leading-relaxed">${inchargeDisplay}</td>
+                    <td class="p-2 text-xs text-slate-600">${location}</td>
+                    <td class="p-2 text-xs text-slate-600">${time}</td>
+                </tr>
+            `;
+        });
+        
+        // ★ কোনো কার্যক্রম না থাকলে
+        if (activeStepsCount === 0) {
+            container.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-10 text-center">
+                    <i class="fa-solid fa-list-check text-5xl text-slate-300 mb-3"></i>
+                    <p class="text-slate-600 font-bold text-sm">কোন ভর্তি কার্যক্রম নেই</p>
+                    <p class="text-xs text-slate-400 mt-1">বর্তমানে ভর্তি চলছে না।</p>
+                </div>`;
+            return;
+        }
+        
+        // ★ UI
+        container.innerHTML = `
+            <div class="space-y-3 pb-10">
+                <!-- হেডার -->
+                <div class="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white rounded-xl p-4 shadow-md">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
+                            <i class="fa-solid fa-list-check"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h2 class="text-lg font-bold leading-tight">ভর্তি কার্যক্রম</h2>
+                            <p class="text-xs opacity-90 mt-1">
+                                ${settings.madrasaName || 'মাদরাসা'} | ${deptDisplay}
+                            </p>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <p class="text-[10px] opacity-80">মোট</p>
+                            <p class="text-2xl font-bold">${activeStepsCount}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- নির্দেশনা -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+                    <i class="fa-solid fa-info-circle text-blue-600 text-lg mt-0.5 flex-shrink-0"></i>
+                    <div class="text-xs text-blue-900">
+                        ভর্তি সংক্রান্ত যেকোনো তথ্য জানতে সংশ্লিষ্ট দায়িত্বশীলের সাথে যোগাযোগ করুন। 
+                        নিচের তালিকায় প্রতিটি ধাপের দায়িত্বশীল, স্থান ও সময় দেওয়া আছে।
+                    </div>
+                </div>
+                
+                <!-- টেবিল -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs" style="min-width:700px;">
+                            <thead class="bg-emerald-700 text-white">
+                                <tr>
+                                    <th class="p-2 text-[10px] text-center w-10 whitespace-nowrap">#</th>
+                                    <th class="p-2 text-[10px] whitespace-nowrap">ধাপ</th>
+                                    <th class="p-2 text-[10px] whitespace-nowrap">দায়িত্বশীল</th>
+                                    <th class="p-2 text-[10px] whitespace-nowrap">স্থান</th>
+                                    <th class="p-2 text-[10px] whitespace-nowrap">সময়</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rowsHTML}</tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- ফুটার -->
+                <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-900">
+                    <i class="fa-solid fa-mosque"></i>
+                    <strong>মাদরাসার অফিস:</strong> ${settings.address || '—'}
+                </div>
+            </div>
+        `;
+        
+    } catch (err) {
+        console.error('❌ renderGpAdmissionPrograms:', err);
+        container.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                <i class="fa-solid fa-triangle-exclamation text-4xl text-red-400 mb-3"></i>
+                <p class="font-bold text-red-800">লোড ব্যর্থ</p>
+                <p class="text-xs text-red-600 mt-1">${err.message}</p>
+                <button onclick="switchGpTab('admission-programs')" class="mt-3 px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg">
+                    <i class="fa-solid fa-rotate"></i> আবার চেষ্টা করুন
+                </button>
+            </div>`;
+    }
+}
 </script>
 </body>
 </html>
