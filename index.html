@@ -32577,13 +32577,11 @@ window.addEventListener('load', () => {
 
 async function handleUserLogin(user) {
     console.log('🔍 handleUserLogin শুরু — UID:', user.uid);
-    console.log('🔍 Email:', user.email);
     currentUser = user;
 
-    // ★★★ আপনার এডমিন ইমেইলটি এখানে বসান ★★★
     const ADMIN_EMAIL = "n.mim6094@gmail.com"; 
-
     let userData = null;
+    
     try {
         const { doc, getDoc } = window.fbFuncs;
         const snap = await getDoc(doc(window.fbDB, 'users', user.uid));
@@ -32594,11 +32592,11 @@ async function handleUserLogin(user) {
         console.error('❌ userDoc error:', err);
     }
 
-    // ★ Case 1: সম্পূর্ণ নতুন ইউজার (userData null)
+    // নতুন ইউজার
     if (!userData) {
         if (user.email === ADMIN_EMAIL) {
             try {
-                const { doc, getDoc, setDoc, serverTimestamp } = window.fbFuncs;
+                const { doc, setDoc, serverTimestamp, getDoc } = window.fbFuncs;
                 await setDoc(doc(window.fbDB, 'users', user.uid), {
                     name: user.displayName || user.email.split('@')[0],
                     email: user.email,
@@ -32611,7 +32609,6 @@ async function handleUserLogin(user) {
                 console.error('❌ Admin auto-create failed:', err);
             }
         } else {
-            // সাধারণ নতুন ইউজার হলে কার্ড নম্বর চাইব
             _pendingUid = user.uid;
             showLoginHidden();
             showCardVerifyModal();
@@ -32619,7 +32616,7 @@ async function handleUserLogin(user) {
         }
     }
 
-    // ★ Case 2: Pending ইউজার
+    // Pending ইউজার
     if (userData && userData.role === 'pending') {
         showLoginHidden();
         document.getElementById('pending-card-display').textContent = userData.cardNumber || '---';
@@ -32628,42 +32625,55 @@ async function handleUserLogin(user) {
         document.getElementById('pending-screen').classList.add('flex');
         return;
     }
-  
-    // ★ Case 3: অনুমোদিত ইউজার (এডমিন বা শিক্ষক)
-    // ★★★ এখানে userData আবার চেক করা হলো যাতে null error না আসে ★★★
+
+    // এডমিন বা শিক্ষক লগইন সফল হলে
     if (userData && (userData.role === 'admin' || userData.role === 'teacher')) {
         currentUserData = userData;
-        console.log('✅ Role detected:', userData.role);
-        console.log('✅ userData:', userData);
         
+        // ১. ডাটা লোড করা
         try {
-            if (typeof loadConfigFromFirestore === 'function') await loadConfigFromFirestore();
-            if (typeof loadRecordsFromFirestore === 'function') await loadRecordsFromFirestore();
-            if (typeof syncYearsFromFirestore === 'function') await syncYearsFromFirestore();
-            if (typeof loadSettings === 'function') await loadSettings();
+            if(typeof loadConfigFromFirestore === 'function') await loadConfigFromFirestore();
+            if(typeof loadRecordsFromFirestore === 'function') await loadRecordsFromFirestore();
+            if(typeof syncYearsFromFirestore === 'function') await syncYearsFromFirestore();
+            if(typeof loadSettings === 'function') await loadSettings();
+            
+            // ★ ছাত্র ডাটা লোড
+            if(typeof loadStudentsFromFirestore === 'function') await loadStudentsFromFirestore(); 
+            
             console.log('✅ All data loaded');
         } catch (err) {
             console.error('❌ Load error:', err);
         }
         
+        // ২. রোল অনুযায়ী পোর্টাল বা অ্যাপ দেখানো
+        // ২. রোল অনুযায়ী পোর্টাল বা অ্যাপ দেখানো
         if (userData.role === 'teacher') {
-            console.log('🎓 Opening teacher portal...');
-            try {
-                showTeacherPortal();
-                console.log('✅ Teacher portal rendered');
-            } catch (err) {
-                console.error('❌ showTeacherPortal error:', err);
-                // Fallback: মূল অ্যাপ দেখাই
-                showApp();
+            
+            // ★★★ পরিবর্তন ১: loading-screen কে শুধু hidden না করে display: none ও করে দিন ★★★
+            const loadScreen = document.getElementById('loading-screen');
+            if (loadScreen) {
+                loadScreen.classList.add('hidden');
+                loadScreen.style.display = 'none';
             }
+            
+            // ★★★ পরিবর্তন ২: একটু ডিলে দিয়ে পোর্টাল কল করুন যাতে ডাটা রেডি থাকে ★★★
+            setTimeout(() => {
+                showTeacherPortal();
+            }, 100);
+            
         } else {
+            // ★★★ পরিবর্তন ৩: এডমিনের জন্যও লোডিং স্ক্রিন হাইড করা নিশ্চিত করুন ★★★
+            const loadScreen = document.getElementById('loading-screen');
+            if (loadScreen) {
+                loadScreen.classList.add('hidden');
+                loadScreen.style.display = 'none';
+            }
             showApp();
         }
         return;
     }
     
-    // ★ এরর হ্যান্ডলিং: অজানা রোল বা userData এখনো null
-    console.error('❌ Unknown role or userData is null. Role:', userData?.role);
+    // অজানা রোল
     showLoginHidden();
     showCardVerifyModal();
 }
@@ -32676,6 +32686,23 @@ function showLoginHidden() {
 }
 
 function showCardVerifyModal() {
+    // ★★★ loading-screen লুকাও (আটকে থাকা দূর করবে) ★★★
+    const ls = document.getElementById('loading-screen');
+    if (ls) {
+        ls.classList.add('hidden');
+        ls.classList.remove('flex');
+        ls.style.display = 'none';
+    }
+
+    // ★★★ login-screen-ও লুকাও ★★★
+    const loginScreen = document.getElementById('login-screen');
+    if (loginScreen) {
+        loginScreen.classList.add('hidden');
+        loginScreen.classList.remove('flex');
+        loginScreen.style.display = 'none';
+    }
+
+    // card-verify-modal দেখাও
     document.getElementById('card-verify-modal').classList.remove('hidden');
     document.getElementById('card-verify-modal').classList.add('flex');
     document.getElementById('cv-card-input').value = '';
