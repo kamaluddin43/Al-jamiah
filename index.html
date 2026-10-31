@@ -1196,6 +1196,11 @@ header button {
                 <span>Google দিয়ে সাইন-ইন করুন</span>
             </button>
 
+            <!-- ★★★ শিক্ষক লগইন বাটন ★★★ -->
+            <button onclick="showTeacherLogin()" class="w-full py-3 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 shadow-md">
+                <i class="fa-solid fa-chalkboard-user"></i> <span>শিক্ষক লগইন</span>
+            </button>
+
             <!-- গার্ডিয়ান লগইন বাটন -->
             <button onclick="showGuardianLogin()" class="w-full py-3 bg-violet-700 hover:bg-violet-800 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 shadow-md">
                 <i class="fa-solid fa-user-shield"></i> <span>গার্ডিয়ান লগইন</span>
@@ -1274,6 +1279,54 @@ header button {
             </button>
             <button onclick="confirmApprove()" class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold rounded-lg transition flex items-center gap-2">
                 <i class="fa-solid fa-check-double"></i> অনুমোদন দিন
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ TEACHER LOGIN MODAL ═══════════════════ -->
+<div id="teacher-login-modal" class="fixed inset-0 modal-backdrop z-[250] items-center justify-center p-4 hidden" style="width:100vw; height:100vh;">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden modal-enter">
+        <!-- হেডার -->
+        <div class="bg-teal-800 text-white p-4 text-center relative">
+            <button onclick="closeTeacherLogin()" class="absolute top-3 right-3 text-white/80 hover:text-white text-2xl leading-none">×</button>
+            <i class="fa-solid fa-chalkboard-user text-3xl mb-2"></i>
+            <h3 class="text-lg font-bold">শিক্ষক লগইন</h3>
+            <p class="text-xs text-teal-200 mt-1">আপনার শিক্ষক অ্যাকাউন্টে প্রবেশ করুন</p>
+        </div>
+        
+        <div class="p-6 space-y-4">
+            <!-- Google Login -->
+            <button onclick="doTeacherGoogleLogin()" id="teacher-google-btn" class="w-full py-3 bg-white hover:bg-slate-50 border-2 border-slate-300 text-slate-800 font-bold rounded-lg transition flex items-center justify-center gap-3 shadow-sm">
+                <svg class="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                <span>Google দিয়ে সাইন-ইন করুন</span>
+            </button>
+
+            <div class="flex items-center gap-3 my-2">
+                <div class="flex-1 h-px bg-slate-200"></div>
+                <span class="text-xs text-slate-500 font-semibold">অথবা</span>
+                <div class="flex-1 h-px bg-slate-200"></div>
+            </div>
+
+            <!-- Email/Password Login -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+                <input type="email" id="teacher-login-email" placeholder="teacher@madrasa.com" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-teal-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                <input type="password" id="teacher-login-password" placeholder="••••••••" class="w-full rounded-lg border-slate-300 border p-2.5 text-sm focus:ring-2 focus:ring-teal-500">
+            </div>
+
+            <p id="teacher-login-error" class="text-xs text-red-600 text-center hidden"></p>
+
+            <button onclick="doTeacherEmailLogin()" id="teacher-email-btn" class="w-full py-3 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 shadow-md">
+                <i class="fa-solid fa-sign-in-alt"></i> <span>লগইন করুন</span>
             </button>
         </div>
     </div>
@@ -1999,12 +2052,7 @@ header button {
 <!-- ═══════════════════ TAB 0: HOME ═══════════════════ -->
 <section id="tab-home" class="tab-content space-y-6">
     <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-10">
-        <div class="text-center mb-8">
-            <h2 class="text-2xl md:text-3xl font-bold text-emerald-900 mb-2">স্বাগতম</h2>
-            <p class="text-sm text-slate-500" id="home-madrasa-name">আল-জামিয়াহ সিস্টেমে আপনাকে স্বাগতম</p>
-        </div>
-
-                <!-- ★ ১১টা বাটনের গ্রিড — ডেক্সটপে ৪+৪+৩, মোবাইলে ২×৬ -->
+        <!-- ★ ১১টা বাটনের গ্রিড — ডেক্সটপে ৪+৪+৩, মোবাইলে ২×৬ -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 max-w-5xl mx-auto">
 
             <!-- ★★★ ১. ভর্তি (একদম প্রথমে) ★★★ -->
@@ -2106,12 +2154,11 @@ header button {
     </div>
 
     <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
-        <div class="text-center mb-6">
-            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-sky-500 to-sky-700 rounded-2xl flex items-center justify-center text-white text-4xl mb-4 shadow-lg">
+        <div class="flex items-center justify-center gap-2 mb-6">
+            <div class="w-8 h-8 bg-gradient-to-br from-sky-500 to-sky-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
                 <i class="fa-solid fa-chalkboard-user"></i>
             </div>
-            <h2 class="text-2xl md:text-3xl font-bold text-sky-900 mb-2">শিক্ষক তালিকা</h2>
-            <p class="text-sm text-slate-500">বিভাগ অনুযায়ী শিক্ষকদের তথ্য</p>
+            <h2 class="text-xl md:text-2xl font-bold text-sky-900 leading-none">শিক্ষক তালিকা</h2>
         </div>
 
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 max-w-3xl mx-auto">
@@ -2188,12 +2235,11 @@ header button {
     </div>
 
     <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
-        <div class="text-center mb-6">
-            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-fuchsia-500 to-fuchsia-700 rounded-2xl flex items-center justify-center text-white text-4xl mb-4 shadow-lg">
+        <div class="flex items-center justify-center gap-2 mb-6">
+            <div class="w-8 h-8 bg-gradient-to-br from-fuchsia-500 to-fuchsia-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
                 <i class="fa-solid fa-user-graduate"></i>
             </div>
-            <h2 class="text-2xl md:text-3xl font-bold text-fuchsia-900 mb-2">শিক্ষার্থী তালিকা</h2>
-            <p class="text-sm text-slate-500">বিভাগ ও জামাত অনুযায়ী শিক্ষার্থীদের তথ্য</p>
+            <h2 class="text-xl md:text-2xl font-bold text-fuchsia-900 leading-none">শিক্ষার্থী তালিকা</h2>
         </div>
 
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 max-w-5xl mx-auto">
@@ -2341,12 +2387,11 @@ header button {
 
     <!-- ★ মূল মেনু -->
     <div id="admission-main-menu" class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
-        <div class="text-center mb-8">
-            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-green-500 to-green-700 rounded-2xl flex items-center justify-center text-white text-4xl mb-4 shadow-lg">
+        <div class="flex items-center justify-center gap-2 mb-6">
+            <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-green-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
                 <i class="fa-solid fa-user-plus"></i>
             </div>
-            <h2 class="text-2xl md:text-3xl font-bold text-green-900 mb-2">ভর্তি ব্যবস্থাপনা</h2>
-            <p class="text-sm text-slate-500">ভর্তি কার্যক্রম, দায়িত্বশীল ও ফরম ব্যবস্থাপনা</p>
+            <h2 class="text-xl md:text-2xl font-bold text-green-900 leading-none">ভর্তি ব্যবস্থাপনা</h2>
         </div>
 
         <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 max-w-6xl mx-auto">
@@ -2416,12 +2461,11 @@ header button {
 
     <!-- ★ মূল মেনু (৮টি বাটন) -->
     <div id="acct-main-menu" class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
-        <div class="text-center mb-8">
-            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-2xl flex items-center justify-center text-white text-4xl mb-4 shadow-lg">
+        <div class="flex items-center justify-center gap-2 mb-6">
+            <div class="w-8 h-8 bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
                 <i class="fa-solid fa-calculator"></i>
             </div>
-            <h2 class="text-2xl md:text-3xl font-bold text-cyan-900 mb-2">হিসাব বিভাগ</h2>
-            <p class="text-sm text-slate-500">আয়-ব্যয়, বেতন, ফি ও সম্পূর্ণ হিসাব ব্যবস্থাপনা</p>
+            <h2 class="text-xl md:text-2xl font-bold text-cyan-900 leading-none">হিসাব বিভাগ</h2>
         </div>
 
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 max-w-5xl mx-auto">
@@ -2492,12 +2536,11 @@ header button {
     </div>
 
     <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
-        <div class="text-center mb-6">
-            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-violet-500 to-violet-700 rounded-2xl flex items-center justify-center text-white text-4xl mb-4 shadow-lg">
+        <div class="flex items-center justify-center gap-2 mb-6">
+            <div class="w-8 h-8 bg-gradient-to-br from-violet-500 to-violet-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
                 <i class="fa-solid fa-user-friends"></i>
             </div>
-            <h2 class="text-2xl md:text-3xl font-bold text-violet-900 mb-2">গার্ডিয়ান ব্যবস্থাপনা</h2>
-            <p class="text-sm text-slate-500">অভিভাবক তথ্য, ফি, যোগাযোগ ও অগ্রগতি</p>
+            <h2 class="text-xl md:text-2xl font-bold text-violet-900 leading-none">গার্ডিয়ান ব্যবস্থাপনা</h2>
         </div>
 
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 max-w-5xl mx-auto">
@@ -2573,12 +2616,11 @@ header button {
 
     <!-- ★ মূল মেনু (৫টি বাটন) -->
     <div id="rules-main-menu" class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
-        <div class="text-center mb-6">
-            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-slate-500 to-slate-700 rounded-2xl flex items-center justify-center text-white text-4xl mb-4 shadow-lg">
+        <div class="flex items-center justify-center gap-2 mb-6">
+            <div class="w-8 h-8 bg-gradient-to-br from-slate-500 to-slate-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
                 <i class="fa-solid fa-scroll"></i>
             </div>
-            <h2 class="text-2xl md:text-3xl font-bold text-slate-800 mb-2">মাদরাসার নিয়মকানুন</h2>
-            <p class="text-sm text-slate-500">বিভাগ নির্বাচন করে বিস্তারিত নিয়মাবলী দেখুন</p>
+            <h2 class="text-xl md:text-2xl font-bold text-slate-800 leading-none">মাদরাসার নিয়মকানুন</h2>
         </div>
 
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 max-w-5xl mx-auto">
@@ -3731,12 +3773,11 @@ header button {
 
     <!-- ★ হেডার কার্ড (মূল মেনু) -->
     <div id="exam-main-menu" class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
-        <div class="text-center mb-8">
-            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-orange-500 to-orange-700 rounded-2xl flex items-center justify-center text-white text-4xl mb-4 shadow-lg">
+        <div class="flex items-center justify-center gap-2 mb-6">
+            <div class="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
                 <i class="fa-solid fa-clipboard-question"></i>
             </div>
-            <h2 class="text-2xl md:text-3xl font-bold text-orange-900 mb-2">পরীক্ষা ব্যবস্থাপনা</h2>
-            <p class="text-sm text-slate-500">প্রশ্ন মেকার, পরীক্ষার রুটিন, ফলাফল ও আরও</p>
+            <h2 class="text-xl md:text-2xl font-bold text-orange-900 leading-none">পরীক্ষা ব্যবস্থাপনা</h2>
         </div>
 
         <!-- ★★★ সাব-মেনু কার্ড গ্রিড (৭টি) ★★★ -->
@@ -32599,7 +32640,13 @@ async function handleUserLogin(user) {
         } catch (err) {
             console.error('❌ Load error:', err);
         }
-        showApp();
+        
+        // ★★★ এখানে নতুন লজিক ★★★
+        if (userData.role === 'teacher') {
+            showTeacherPortal(); // শিক্ষক হলে পোর্টাল দেখাবে
+        } else {
+            showApp(); // এডমিন হলে মূল অ্যাপ দেখাবে
+        }
         return;
     }
 
@@ -32766,12 +32813,6 @@ function showApp() {
     const madrasaEl = document.getElementById('header-madrasa-name');
     if (madrasaEl && settings.madrasaName) {
         madrasaEl.textContent = settings.madrasaName;
-    }
-
-    // ★ হোম পেইজেও মাদরাসার নাম দেখাই
-    const homeMadrasa = document.getElementById('home-madrasa-name');
-    if (homeMadrasa && settings.madrasaName) {
-        homeMadrasa.textContent = settings.madrasaName + ' — আল-জামিয়াহ সিস্টেমে স্বাগতম';
     }
 
     const isAdmin = currentUserData?.role === 'admin';
@@ -44772,6 +44813,69 @@ async function renderAdminMessagesPanel(area) {
     renderAdminMessagesUI(area);
 }
 
+// ★★★ বার্তা ডিলিট করার ফাংশন ★★★
+window.deleteAdminMessage = async function(messageId) {
+    if (!confirm('আপনি কি নিশ্চিত যে এই বার্তাটি ডিলিট করতে চান?\n\nএটি ডাটাবেস থেকে স্থায়ীভাবে মুছে যাবে এবং অভিভাবকদের পোর্টাল থেকেও আর দেখা যাবে না।')) return;
+    
+    showToast('⏳ ডিলিট হচ্ছে...', 'info');
+    
+    try {
+        const { doc, deleteDoc } = window.fbFuncs;
+        await deleteDoc(doc(window.fbDB, 'adminMessages', messageId));
+        
+        showToast('✅ বার্তাটি সফলভাবে ডিলিট হয়েছে', 'success');
+        
+        // UI রিফ্রেশ করা
+        const area = document.getElementById('ca-content-area');
+        if (area) renderAdminMessagesPanel(area);
+        
+    } catch (err) {
+        console.error('❌ deleteAdminMessage error:', err);
+        showToast('❌ ডিলিট ব্যর্থ: ' + err.message, 'error');
+    }
+};
+
+// ★★★ বার্তা এডিট করার ফাংশন ★★★
+window.editAdminMessage = async function(messageId) {
+    try {
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, 'adminMessages', messageId));
+        
+        if (!snap.exists()) {
+            showToast('❌ বার্তাটি পাওয়া যায়নি', 'error');
+            return;
+        }
+        
+        const data = snap.data();
+        
+        // প্রম্পট দিয়ে নতুন টেক্সট নেওয়া
+        const newMessage = prompt('বার্তাটি এডিট করুন:', data.message);
+        
+        // যদি ইউজার ক্যানসেল করে বা খালি সাবমিট করে
+        if (newMessage === null || newMessage.trim() === '' || newMessage === data.message) {
+            return;
+        }
+        
+        showToast('⏳ আপডেট হচ্ছে...', 'info');
+        
+        const { updateDoc, serverTimestamp } = window.fbFuncs;
+        await updateDoc(doc(window.fbDB, 'adminMessages', messageId), {
+            message: newMessage.trim(),
+            updatedAt: serverTimestamp()
+        });
+        
+        showToast('✅ বার্তাটি সফলভাবে আপডেট হয়েছে', 'success');
+        
+        // UI রিফ্রেশ করা
+        const area = document.getElementById('ca-content-area');
+        if (area) renderAdminMessagesPanel(area);
+        
+    } catch (err) {
+        console.error('❌ editAdminMessage error:', err);
+        showToast('❌ এডিট ব্যর্থ: ' + err.message, 'error');
+    }
+};
+
 function renderAdminMessagesUI(area) {
     const depts = configData?.departments || [];
     
@@ -44785,15 +44889,29 @@ function renderAdminMessagesUI(area) {
                 ? new Date(m.createdAt.seconds * 1000).toLocaleString('bn-BD')
                 : '---';
             return `
-                <div class="border border-emerald-200 rounded-lg p-3 bg-emerald-50">
-                    <div class="flex items-center justify-between mb-1 flex-wrap gap-2">
-                        <span class="badge bg-emerald-600 text-white text-[10px] font-bold">
-                            <i class="fa-solid fa-users"></i> ${m.sentToCount || 0} জন অভিভাবককে
-                        </span>
-                        <span class="text-[10px] text-slate-600">${dateStr}</span>
+                <div class="border border-emerald-200 rounded-lg p-3 bg-emerald-50 mb-2">
+                    <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="badge bg-emerald-600 text-white text-[10px] font-bold">
+                                <i class="fa-solid fa-users"></i> ${m.sentToCount || 0} জন অভিভাবককে
+                            </span>
+                            <span class="text-[10px] text-slate-600">${dateStr}</span>
+                        </div>
+                        
+                        <!-- ★★★ এডিট ও ডিলিট বাটন ★★★ -->
+                        <div class="flex gap-1">
+                            <button onclick="editAdminMessage('${m.id}')" class="w-6 h-6 bg-white border border-emerald-300 text-emerald-600 hover:bg-emerald-100 rounded flex items-center justify-center transition" title="এডিট করুন">
+                                <i class="fa-solid fa-pen text-[10px]"></i>
+                            </button>
+                            <button onclick="deleteAdminMessage('${m.id}')" class="w-6 h-6 bg-white border border-red-300 text-red-600 hover:bg-red-100 rounded flex items-center justify-center transition" title="ডিলিট করুন">
+                                <i class="fa-solid fa-trash text-[10px]"></i>
+                            </button>
+                        </div>
                     </div>
+                    
+                    <!-- বার্তার মূল অংশ -->
                     <p class="text-xs text-slate-800 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(m.message || '')}</p>
-                    <p class="text-[10px] text-slate-500 mt-1">— ${m.sentBy || 'এডমিন'}</p>
+                    <p class="text-[10px] text-slate-500 mt-2">— ${m.sentBy || 'এডমিন'}</p>
                 </div>
             `;
         }).join('');
@@ -45274,18 +45392,34 @@ async function renderGuardianLeaveManagement(container) {
                                 <div class="flex gap-2 pt-1">
                                     <button onclick="approveLeaveMgmt('${app.id}', '${app.type}')" class="flex-1 py-2 bg-emerald-600 text-white rounded text-xs font-bold shadow">অনুমোদন</button>
                                     <button onclick="rejectLeaveMgmt('${app.id}')" class="flex-1 py-2 bg-red-100 text-red-700 rounded text-xs font-bold">প্রত্যাখ্যান</button>
+                                    <!-- ★★★ নতুন ডিলিট বাটন ★★★ -->
+                                    <button onclick="deleteLeaveApplication('${app.id}')" class="px-3 py-2 bg-slate-800 text-white rounded text-xs font-bold shadow" title="আবেদনটি মুছে ফেলুন">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
                                 </div>
                             </div>
                         `}
                     </div>` : app.status === 'approved' ? `
-                    <div class="p-3 bg-emerald-50 border-t border-emerald-200 text-xs">
+                    <div class="p-3 bg-emerald-50 border-t border-emerald-200 text-xs relative">
                         <p><b>অনুমোদিত:</b> ${app.approvedStartDate ? new Date(app.approvedStartDate).toLocaleDateString('bn-BD') : ''} থেকে ${app.approvedEndDate ? new Date(app.approvedEndDate).toLocaleDateString('bn-BD') : ''}</p>
                         <p><b>মন্তব্য:</b> ${app.adminComment}</p>
                         <p><b>অনুমোদনকারী:</b> ${app.approvedBy} <span class="ml-2">${app.approvedDate ? new Date(app.approvedDate.seconds * 1000).toLocaleDateString('bn-BD') : ''}</span></p>
                         ${app.approverSignature ? `<img src="${app.approverSignature}" class="h-8 mt-1">` : ''}
+                        <!-- ★★★ ডিলিট বাটন (অনুমোদিত অবস্থায়) ★★★ -->
+                        <div class="absolute top-2 right-2">
+                             <button onclick="deleteLeaveApplication('${app.id}')" class="text-red-500 hover:text-red-700 p-1" title="আবেদনটি মুছে ফেলুন">
+                                 <i class="fa-solid fa-trash"></i>
+                             </button>
+                        </div>
                     </div>` : app.status === 'rejected' ? `
-                    <div class="p-3 bg-red-50 border-t border-red-200 text-xs">
+                    <div class="p-3 bg-red-50 border-t border-red-200 text-xs relative">
                         <p><b>প্রত্যাখ্যানের কারণ:</b> ${app.adminComment}</p>
+                        <!-- ★★★ ডিলিট বাটন (প্রত্যাখ্যাত অবস্থায়) ★★★ -->
+                        <div class="absolute top-2 right-2">
+                             <button onclick="deleteLeaveApplication('${app.id}')" class="text-red-500 hover:text-red-700 p-1" title="আবেদনটি মুছে ফেলুন">
+                                 <i class="fa-solid fa-trash"></i>
+                             </button>
+                        </div>
                     </div>` : ''}
                 </div>
             `;
@@ -45374,6 +45508,36 @@ window.rejectLeaveMgmt = async function(appId) {
     } catch (e) { showToast('❌ এরর', 'error'); }
 };
 console.log('✅ গার্ডিয়ান মডিউল লোড হয়েছে');
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ছুটির আবেদন ডিলিট করার ফাংশন ★★★
+// ═══════════════════════════════════════════════════════════════
+window.deleteLeaveApplication = async function(appId) {
+    if (!confirm('আপনি কি নিশ্চিত যে এই ছুটির আবেদনটি ডিলিট করতে চান?\n\nএটি ডাটাবেস থেকে স্থায়ীভাবে মুছে যাবে।')) {
+        return;
+    }
+
+    showToast('⏳ ডিলিট হচ্ছে...', 'info');
+
+    try {
+        const { doc, deleteDoc } = window.fbFuncs;
+        
+        // ফায়ারবেস থেকে ডকুমেন্ট ডিলিট করা
+        await deleteDoc(doc(window.fbDB, 'leaveApplications', appId));
+        
+        showToast('✅ আবেদনটি সফলভাবে মুছে ফেলা হয়েছে', 'success');
+        
+        // UI রিফ্রেশ করা
+        const container = document.getElementById('guardian-detail-content');
+        if (container) {
+            renderGuardianLeaveManagement(container);
+        }
+        
+    } catch (err) {
+        console.error('❌ deleteLeaveApplication error:', err);
+        showToast('❌ ডিলিট ব্যর্থ: ' + err.message, 'error');
+    }
+};
 
 // ═══════════════════════════════════════════════════════════════
 // ★★★ হিসাব বিভাগ — সম্পূর্ণ মডিউল ★★★
@@ -52939,6 +53103,100 @@ window.saveTeacherRemark = async function() {
       }
     });
 });
+
+// ═══════════════════ শিক্ষক লগইন মডাল ওপেন/ক্লোজ ═══════════════════
+window.showTeacherLogin = function() {
+    const modal = document.getElementById('teacher-login-modal');
+    if (!modal) return;
+    
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    // ফিল্ড খালি করি
+    document.getElementById('teacher-login-email').value = '';
+    document.getElementById('teacher-login-password').value = '';
+    document.getElementById('teacher-login-error').classList.add('hidden');
+    
+    // বাটন রিসেট
+    const emailBtn = document.getElementById('teacher-email-btn');
+    if (emailBtn) {
+        emailBtn.disabled = false;
+        emailBtn.innerHTML = '<i class="fa-solid fa-sign-in-alt"></i> <span>লগইন করুন</span>';
+    }
+    const googleBtn = document.getElementById('teacher-google-btn');
+    if (googleBtn) {
+        googleBtn.disabled = false;
+    }
+};
+
+window.closeTeacherLogin = function() {
+    const modal = document.getElementById('teacher-login-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+};
+
+// ═══════════════════ শিক্ষক Google লগইন ═══════════════════
+window.doTeacherGoogleLogin = async function() {
+    const errEl = document.getElementById('teacher-login-error');
+    const btn = document.getElementById('teacher-google-btn');
+    errEl.classList.add('hidden');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> সাইন-ইন হচ্ছে...';
+
+    try {
+        const { getAuth, GoogleAuthProvider, signInWithPopup } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        
+        // ★ লগইন সফল হলে onAuthStateChanged ট্রিগার হবে (যা handleUserLogin কল করবে)
+        await signInWithPopup(window.fbAuth, provider);
+        closeTeacherLogin();
+        
+    } catch (err) {
+        console.error('❌ Teacher Google Login error:', err);
+        errEl.textContent = 'লগইন ব্যর্থ: ' + (err.message || err.code);
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = `<svg class="w-5 h-5" viewBox="0 0 24 24">...</svg> <span>Google দিয়ে সাইন-ইন করুন</span>`; // simplified
+    }
+};
+
+// ═══════════════════ শিক্ষক Email/Password লগইন ═══════════════════
+window.doTeacherEmailLogin = async function() {
+    const email = document.getElementById('teacher-login-email').value.trim();
+    const pass = document.getElementById('teacher-login-password').value;
+    const errEl = document.getElementById('teacher-login-error');
+    const btn = document.getElementById('teacher-email-btn');
+
+    if (!email || !pass) {
+        errEl.textContent = 'Email ও Password দিন';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    errEl.classList.add('hidden');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> লগইন হচ্ছে...';
+
+    try {
+        const { signInWithEmailAndPassword } = window.fbFuncs;
+        await signInWithEmailAndPassword(window.fbAuth, email, pass);
+        closeTeacherLogin();
+        // onAuthStateChanged হ্যান্ডেল করবে
+    } catch (err) {
+        console.error('❌ Teacher Email Login error:', err);
+        let msg = 'লগইন ব্যর্থ';
+        if (err.code === 'auth/user-not-found') msg = 'এই Email দিয়ে কোনো অ্যাকাউন্ট নেই';
+        else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') msg = 'Password ভুল';
+        errEl.textContent = msg;
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-sign-in-alt"></i> <span>লগইন করুন</span>';
+    }
+};
+
 // ═══════════════════ গার্ডিয়ান লগইন লজিক ═══════════════════
 window._guardianSession = null; // গার্ডিয়ানের ডাটা জমা রাখার জন্য
 
@@ -53236,6 +53494,173 @@ window.verifyGuardianLogin = async function() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-sign-in-alt"></i> প্রবেশ করুন';
     }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল (Teacher Portal) ★★★
+// ═══════════════════════════════════════════════════════════════
+window.showTeacherPortal = function() {
+    // মূল অ্যাপ হাইড
+    document.querySelectorAll('header, main, footer').forEach(el => el.style.display = 'none');
+    const loginScreen = document.getElementById('login-screen');
+    if (loginScreen) loginScreen.style.display = 'none';
+    
+    // পুরনো পোর্টাল মুছে ফেলা
+    document.getElementById('teacher-portal-view')?.remove();
+
+    const teacherName = currentUserData?.teacherName || currentUserData?.name || 'শিক্ষক';
+    const teacherPost = currentUserData?.post || 'শিক্ষক';
+    
+    const portalHTML = `
+        <div id="teacher-portal-view" class="min-h-screen bg-slate-100 pb-20">
+            <!-- হেডার -->
+            <header class="bg-teal-900 text-white p-3 sticky top-0 z-50 shadow-lg border-b border-teal-700">
+                <div class="max-w-4xl mx-auto flex justify-between items-center">
+                    <!-- বাম: লোগো -->
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-amber-500/20 rounded-xl border border-amber-400/40 flex items-center justify-center text-amber-400 text-xl overflow-hidden flex-shrink-0">
+                            ${settings.logo 
+                                ? `<img src="${settings.logo}" alt="Logo" class="w-full h-full object-contain p-1 bg-white">` 
+                                : `<i class="fa-solid fa-book-open-reader"></i>`
+                            }
+                        </div>
+                        <div>
+                            <h1 class="text-sm md:text-base font-bold leading-tight">${settings.madrasaName || 'আল-জামিয়া'}</h1>
+                            <p class="text-[10px] text-teal-200">শিক্ষক পোর্টাল</p>
+                        </div>
+                    </div>
+
+                    <!-- ডান: শিক্ষকের নাম ও ড্রপডাউন -->
+                    <div class="flex items-center gap-3">
+                        <div class="text-right"> 
+                            <p class="text-[10px] text-teal-200 leading-tight">স্বাগতম,</p>
+                            <p class="text-xs font-bold text-white leading-tight">${teacherName}</p>
+                        </div>
+                        <div class="relative">
+                            <button onclick="document.getElementById('teacher-dropdown').classList.toggle('hidden')" class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition focus:outline-none">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                            </button>
+                            <div id="teacher-dropdown" class="hidden absolute right-0 mt-2 w-[85px] bg-white rounded-lg shadow-lg py-1 z-[100] border border-slate-200">
+                                <button onclick="logoutTeacher()" class="w-full text-center px-2 py-1.5 text-[10px] font-bold text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
+                                    <span>লগআউট</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- শিক্ষক প্রোফাইল কার্ড -->
+            <div class="max-w-4xl mx-auto px-4 pt-6">
+                <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 flex items-center gap-4 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-teal-50 rounded-bl-full -z-0"></div>
+                    
+                    <div class="w-16 h-16 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-3xl flex-shrink-0 z-10 overflow-hidden border-2 border-teal-300">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                    </div>
+
+                    <div class="z-10 flex-1">
+                        <h2 class="text-xl font-bold text-slate-800">${teacherName}</h2>
+                        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-slate-600 font-semibold">
+                            <span><i class="fa-solid fa-id-card"></i> ${teacherPost}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ★★★ ৬টি সাদা বাটন (গার্ডিয়ান পোর্টালের মতো) ★★★ -->
+            <div class="max-w-4xl mx-auto px-4 mt-6">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6 mt-2">
+                    <!-- ১. ক্লাস রুটিন -->
+                    <button onclick="switchTpTab('routine')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
+                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </div>
+                        <span class="text-sm font-bold">ক্লাস রুটিন</span>
+                    </button>
+
+                    <!-- ২. ছাত্র তালিকা -->
+                    <button onclick="switchTpTab('students')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
+                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <span class="text-sm font-bold text-center">ছাত্র তালিকা</span>
+                    </button>
+
+                    <!-- ৩. মাকাদীরে আসবাক -->
+                    <button onclick="switchTpTab('asbaq')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
+                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-book-open"></i>
+                        </div>
+                        <span class="text-sm font-bold text-center">মাকাদীরে আসবাক</span>
+                    </button>
+
+                    <!-- ৪. পরীক্ষা ও মার্কস -->
+                    <button onclick="switchTpTab('exam')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
+                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-clipboard-question"></i>
+                        </div>
+                        <span class="text-sm font-bold text-center">পরীক্ষা</span>
+                    </button>
+
+                    <!-- ৫. হোমওয়ার্ক -->
+                    <button onclick="switchTpTab('homework')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
+                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-book-open-reader"></i>
+                        </div>
+                        <span class="text-sm font-bold text-center">হোমওয়ার্ক</span>
+                    </button>
+
+                    <!-- ৬. ছুটির আবেদন -->
+                    <button onclick="switchTpTab('leave')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
+                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-plane-departure"></i>
+                        </div>
+                        <span class="text-sm font-bold text-center">ছুটির আবেদন</span>
+                    </button>
+                </div>
+
+                <!-- ট্যাব কন্টেন্ট এরিয়া -->
+                <div id="tp-tab-content"></div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', portalHTML);
+    
+    // ★ প্রথমে ড্যাশবোর্ড লোড করার দরকার নেই, সরাসরি একটি ওপেন করি
+    switchTpTab('routine');
+};
+
+// ট্যাব কনটেন্ট ডিসপ্যাচার (গার্ডিয়ানের মতো)
+window.switchTpTab = async function(tab) {
+    const content = document.getElementById('tp-tab-content');
+    if (!content) return;
+    
+    content.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-teal-600"></i></div>`;
+    
+    // ★ এখানে আপনি শিক্ষক পোর্টালের ফাংশনগুলো কল করবেন (ভবিষ্যতে তৈরি করব)
+    if (tab === 'routine') {
+        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">শিক্ষকের ক্লাস রুটিন (শীঘ্রই আসছে)</div>`;
+    } else if (tab === 'students') {
+        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">দায়িত্বপ্রাপ্ত ছাত্র তালিকা (শীঘ্রই আসছে)</div>`;
+    } else if (tab === 'asbaq') {
+        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">মাকাদীরে আসবাক ডাটা এন্ট্রি (শীঘ্রই আসছে)</div>`;
+    } else if (tab === 'exam') {
+        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">পরীক্ষা ও মার্কস এন্ট্রি (শীঘ্রই আসছে)</div>`;
+    } else if (tab === 'homework') {
+        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">হোমওয়ার্ক এডিট (শীঘ্রই আসছে)</div>`;
+    } else if (tab === 'leave') {
+        content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">ছুটির আবেদন (শীঘ্রই আসছে)</div>`;
+    }
+};
+
+// লগআউট
+window.logoutTeacher = function() {
+    if (!confirm('লগআউট করতে চান?')) return;
+    document.getElementById('teacher-portal-view')?.remove();
+    location.reload();
 };
 
 window.showGuardianPortal = function() {
@@ -53734,7 +54159,6 @@ async function renderGpHome(container) {
                         </div>
                     `}
                 </div>
-                ${buildGpRemarkSection(student)}
             </div>
         `;
 
@@ -53784,112 +54208,9 @@ async function renderGpHome(container) {
                     <i class="fa-solid fa-triangle-exclamation"></i> টাইম লোড করতে সমস্যা হয়েছে
                     <p class="text-xs mt-1 font-normal">${err.message}</p>
                 </div>
-                ${buildGpRemarkSection(student)}
             </div>
         `;
     }
-}
-
-// ★★★ শিক্ষকের মন্তব্য সেকশন (আলাদা ফাংশন, যা আপনার আগের কোডেই ছিল) ★★★
-function buildGpRemarkSection(student) {
-    const sData = (studentsCache || []).find(s => s.id === student.id);
-    const remarks = sData?.remarksList || [];
-    
-    let remarksHTML = '<p class="text-xs text-slate-400 text-center italic py-3">কোন মন্তব্য নেই</p>';
-    
-    if (remarks.length > 0) {
-        remarksHTML = remarks.slice(-3).reverse().map(r => `
-            <div class="border-l-4 border-amber-400 bg-amber-50 p-2 mb-2 rounded-r-lg text-xs">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="font-bold text-amber-800">${r.type}</span>
-                    <span class="text-[10px] text-slate-500">${new Date(r.date).toLocaleDateString('bn-BD')}</span>
-                </div>
-                <p class="text-slate-700">${r.reason}</p>
-            </div>
-        `).join('');
-    }
-
-    return `
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-comment-dots text-blue-500"></i> শিক্ষকের মন্তব্য
-                </h3>
-                <button onclick="openGuardianRemarkModal('${student.id}')" class="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded font-bold transition">
-                    <i class="fa-solid fa-plus"></i> নতুন
-                </button>
-            </div>
-            ${remarksHTML}
-        </div>
-    `;
-}
-
-// শিক্ষকের মন্তব্য সেকশনটি আলাদা ফাংশন হিসেবে
-function buildGpRemarkSection(student) {
-    const sData = (studentsCache || []).find(s => s.id === student.id);
-    const remarks = sData?.remarksList || [];
-    
-    let remarksHTML = '<p class="text-xs text-slate-400 text-center italic py-3">কোন মন্তব্য নেই</p>';
-    
-    if (remarks.length > 0) {
-        remarksHTML = remarks.slice(-3).reverse().map(r => `
-            <div class="border-l-4 border-amber-400 bg-amber-50 p-2 mb-2 rounded-r-lg text-xs">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="font-bold text-amber-800">${r.type}</span>
-                    <span class="text-[10px] text-slate-500">${new Date(r.date).toLocaleDateString('bn-BD')}</span>
-                </div>
-                <p class="text-slate-700">${r.reason}</p>
-            </div>
-        `).join('');
-    }
-
-    return `
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-comment-dots text-blue-500"></i> শিক্ষকের মন্তব্য
-                </h3>
-                <button onclick="openGuardianRemarkModal('${student.id}')" class="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded font-bold transition">
-                    <i class="fa-solid fa-plus"></i> নতুন
-                </button>
-            </div>
-            ${remarksHTML}
-        </div>
-    `;
-}
-
-// ★★★ ৪. শিক্ষকের মন্তব্য সেকশনটি আলাদা ফাংশন হিসেবে নিচে রাখা হলো ★★★
-function buildGpRemarkSection(student) {
-    const sData = (studentsCache || []).find(s => s.id === student.id);
-    const remarks = sData?.remarksList || [];
-    
-    let remarksHTML = '<p class="text-xs text-slate-400 text-center italic py-3">কোন মন্তব্য নেই</p>';
-    
-    if (remarks.length > 0) {
-        remarksHTML = remarks.slice(-3).reverse().map(r => `
-            <div class="border-l-4 border-amber-400 bg-amber-50 p-2 mb-2 rounded-r-lg text-xs">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="font-bold text-amber-800">${r.type}</span>
-                    <span class="text-[10px] text-slate-500">${new Date(r.date).toLocaleDateString('bn-BD')}</span>
-                </div>
-                <p class="text-slate-700">${r.reason}</p>
-            </div>
-        `).join('');
-    }
-
-    return `
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-comment-dots text-blue-500"></i> শিক্ষকের মন্তব্য
-                </h3>
-                <button onclick="openGuardianRemarkModal('${student.id}')" class="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded font-bold transition">
-                    <i class="fa-solid fa-plus"></i> নতুন
-                </button>
-            </div>
-            ${remarksHTML}
-        </div>
-    `;
 }
 
 // ═══════════════════ মেইন ড্যাশবোর্ড (৫টি বাটন) ═══════════════════
@@ -54759,6 +55080,36 @@ window.onLeaveReasonChange = function() {
 function renderLeaveTemporaryForm() {
     const body = document.getElementById('gp-leave-form-body');
 
+    // ★ সম্বোধন (শুধু শ্রেণি শিক্ষক)
+    const addressingHTML = `
+        <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+                <i class="fa-solid fa-user-tie text-emerald-600"></i> কাকে সম্বোধন করে আবেদন? <span class="text-red-500">*</span>
+            </label>
+            <select id="lf-addressing" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm bg-slate-100 text-slate-600 cursor-not-allowed" readonly>
+                <option value="শ্রেণি শিক্ষক">শ্রেণি শিক্ষক</option>
+            </select>
+        </div>
+    `;
+
+    // ★ কারণ
+    const reasonOptions = LEAVE_REASONS.map(o => `<option value="${o}">${o}</option>`).join('');
+    const reasonHTML = `
+        <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+                <i class="fa-solid fa-circle-question text-amber-600"></i> ছুটির কারণ <span class="text-red-500">*</span>
+            </label>
+            <select id="lf-reason-select" onchange="onLeaveReasonChange()" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm">
+                ${reasonOptions}
+            </select>
+            <div id="lf-reason-manual-wrap" class="mt-2 hidden">
+                <input type="text" id="lf-reason-manual" placeholder="কারণ বিস্তারিত লিখুন..." 
+                       class="w-full rounded-lg border border-amber-300 p-2.5 text-sm bg-amber-50">
+            </div>
+        </div>
+    `;
+
+    // ★ ছুটির ধরন
     const durationOptions = [
         'সকাল (১ম ও ২য় ঘণ্টা)',
         'দুপুর (৩য় ও ৪র্থ ঘণ্টা)',
@@ -54770,7 +55121,10 @@ function renderLeaveTemporaryForm() {
     body.innerHTML = `
         ${buildLeaveFormHeaderHTML()}
         
-        ${buildAddressingAndReasonHTML()}
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+            ${addressingHTML}
+            ${reasonHTML}
+        </div>
 
         <!-- ছুটির ধরন ও সময় -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
@@ -54778,25 +55132,48 @@ function renderLeaveTemporaryForm() {
                 <label class="block text-xs font-bold text-slate-700 mb-1">
                     <i class="fa-solid fa-clock text-teal-600"></i> ছুটির ধরন <span class="text-red-500">*</span>
                 </label>
-                <select id="lf-duration-type" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm">
+                <select id="lf-duration-type" onchange="onTempDurationChange()" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm">
                     ${durationOptions}
                 </select>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
+            <!-- ★★★ শুরু ও শেষ সময় ★★★ -->
+            <div id="lf-time-section" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <!-- শুরু -->
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">
-                        <i class="fa-solid fa-calendar text-emerald-600"></i> তারিখ <span class="text-red-500">*</span>
+                        <i class="fa-solid fa-clock text-emerald-600"></i> শুরুর সময় <span class="text-red-500">*</span>
                     </label>
-                    <input type="date" id="lf-start-date" onchange="onTemporaryDateChange()" 
-                           class="w-full rounded-lg border border-slate-300 p-2.5 text-sm">
+                    <div class="relative">
+                        <input type="time" id="lf-time-start-clock" onchange="onTempTimeChange()" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm pr-10">
+                        <button type="button" onclick="toggleTempTimeManual('start')" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" title="ম্যানুয়ালি লিখুন">
+                            <i class="fa-solid fa-keyboard text-xs"></i>
+                        </button>
+                    </div>
+                    <input type="text" id="lf-time-start-manual" placeholder="যেমন: বাদ ফজর" oninput="document.getElementById('lf-time-start-clock').value=''; onTempTimeChange()" class="w-full mt-2 rounded-lg border border-slate-300 p-2.5 text-sm bg-slate-50 hidden">
                 </div>
+
+                <!-- শেষ -->
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">
-                        <i class="fa-solid fa-hourglass text-amber-600"></i> মোট দিন
+                        <i class="fa-solid fa-clock text-rose-600"></i> শেষের সময় <span class="text-red-500">*</span>
                     </label>
-                    <div id="lf-total-days" class="w-full rounded-lg border border-emerald-300 bg-emerald-50 p-2.5 text-sm text-center font-bold text-emerald-800">
-                        —
+                    <div class="relative">
+                        <input type="time" id="lf-time-end-clock" onchange="onTempTimeChange()" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm pr-10">
+                        <button type="button" onclick="toggleTempTimeManual('end')" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700" title="ম্যানুয়ালি লিখুন">
+                            <i class="fa-solid fa-keyboard text-xs"></i>
+                        </button>
+                    </div>
+                    <input type="text" id="lf-time-end-manual" placeholder="যেমন: বাদ ইশা" oninput="document.getElementById('lf-time-end-clock').value=''; onTempTimeChange()" class="w-full mt-2 rounded-lg border border-slate-300 p-2.5 text-sm bg-slate-50 hidden">
+                </div>
+
+                <!-- মোট হিসাব -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        <i class="fa-solid fa-hourglass text-amber-600"></i> মোট হিসাব
+                    </label>
+                    <div id="lf-total-hours" class="w-full rounded-lg border border-emerald-300 bg-emerald-50 p-2.5 text-sm text-center font-bold text-emerald-800 flex items-center justify-center h-[42px]">
+                        ০ ঘণ্টা
                     </div>
                 </div>
             </div>
@@ -54811,7 +55188,7 @@ function renderLeaveTemporaryForm() {
         </div>
 
         <!-- Actions -->
-        <div class="flex flex-wrap justify-end gap-2">
+        <div class="flex flex-wrap justify-end gap-2 mt-4">
             <button onclick="previewLeaveApplication()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow flex items-center gap-2">
                 <i class="fa-solid fa-eye"></i> প্রিভিউ
             </button>
@@ -54821,19 +55198,87 @@ function renderLeaveTemporaryForm() {
         </div>
     `;
 
-    // আজকের তারিখ ডিফল্ট
-    document.getElementById('lf-start-date').value = new Date().toISOString().split('T')[0];
-    onTemporaryDateChange();
+    // শুরুতে টাইম সেকশন দেখাই
+    document.getElementById('lf-time-section').style.display = 'grid';
 }
 
-window.onTemporaryDateChange = function() {
-    const val = document.getElementById('lf-start-date')?.value;
-    const totalEl = document.getElementById('lf-total-days');
-    if (!totalEl) return;
-    if (val) {
-        totalEl.textContent = '১ দিন';
+// ★ ম্যানুয়ালি লেখার ঘর টগল করা
+window.toggleTempTimeManual = function(type) {
+    const clockInput = document.getElementById(`lf-time-${type}-clock`);
+    const manualInput = document.getElementById(`lf-time-${type}-manual`);
+    
+    if (manualInput.classList.contains('hidden')) {
+        manualInput.classList.remove('hidden');
+        clockInput.classList.add('hidden');
+        manualInput.focus();
     } else {
-        totalEl.textContent = '—';
+        manualInput.classList.add('hidden');
+        clockInput.classList.remove('hidden');
+    }
+};
+
+// ★ ছুটির ধরন পরিবর্তন করলে
+window.onTempDurationChange = function() {
+    const duration = document.getElementById('lf-duration-type')?.value || '';
+    const timeSection = document.getElementById('lf-time-section');
+    const totalEl = document.getElementById('lf-total-hours');
+
+    if (duration.includes('বৃহস্পতিবার')) {
+        // বৃহস্পতিবার হলে টাইম সেকশন লুকাই এবং ১ দিন দেখাই
+        timeSection.style.display = 'none';
+        totalEl.textContent = '১ দিন';
+        totalEl.className = 'w-full rounded-lg border border-emerald-300 bg-emerald-50 p-2.5 text-sm text-center font-bold text-emerald-800 flex items-center justify-center h-[42px]';
+    } else {
+        // অন্য হলে টাইম সেকশন দেখাই
+        timeSection.style.display = 'grid';
+        onTempTimeChange();
+    }
+};
+
+// ★ সময় পরিবর্তন হলে হিসাব করা
+window.onTempTimeChange = function() {
+    const duration = document.getElementById('lf-duration-type')?.value || '';
+    if (duration.includes('বৃহস্পতিবার')) return; // বৃহস্পতিবার হলে কিছু করার নেই
+
+    const startClock = document.getElementById('lf-time-start-clock')?.value;
+    const startManual = document.getElementById('lf-time-start-manual')?.value;
+    
+    const endClock = document.getElementById('lf-time-end-clock')?.value;
+    const endManual = document.getElementById('lf-time-end-manual')?.value;
+
+    const totalEl = document.getElementById('lf-total-hours');
+    if (!totalEl) return;
+
+    // যদি ম্যানুয়াল লেখা থাকে, তবে সরাসরি সেটা দেখাই (হিসাব করা কঠিন)
+    if (startManual || endManual) {
+        if (startManual && endManual) {
+            totalEl.textContent = 'ম্যানুয়াল';
+        } else {
+            totalEl.textContent = '—';
+        }
+        return;
+    }
+
+    // যদি ঘড়ি থেকে টাইম দেওয়া থাকে, তবে হিসাব করি
+    if (startClock && endClock) {
+        const start = new Date(`2000-01-01T${startClock}`);
+        const end = new Date(`2000-01-01T${endClock}`);
+        
+        let diffMs = end - start;
+        if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000; // যদি রাত ১২টা পার হয়ে যায়
+
+        const diffHours = diffMs / (1000 * 60 * 60);
+        
+        // পূর্ণ ঘণ্টা বা ভগ্নাংশ দেখানো
+        if (diffHours % 1 === 0) {
+            totalEl.textContent = `${toBanglaNumber(diffHours)} ঘণ্টা`;
+        } else {
+            const h = Math.floor(diffHours);
+            const m = Math.round((diffHours - h) * 60);
+            totalEl.textContent = `${toBanglaNumber(h)} ঘণ্টা ${toBanglaNumber(m)} মিনিট`;
+        }
+    } else {
+        totalEl.textContent = '০ ঘণ্টা';
     }
 };
 
@@ -55116,7 +55561,7 @@ function collectLeaveFormData() {
     const subType = _gpLeaveState.subType;
     const data = {
         type: subType,
-        addressing: document.getElementById('lf-addressing')?.value || '',
+        reasonCategory: document.getElementById('lf-reason-select')?.value || '',
         reasonCategory: document.getElementById('lf-reason-select')?.value || '',
         reasonManual: document.getElementById('lf-reason-manual')?.value.trim() || '',
         extraNote: document.getElementById('lf-extra-note')?.value.trim() || '',
@@ -55128,11 +55573,40 @@ function collectLeaveFormData() {
         ? data.reasonManual 
         : data.reasonCategory;
 
-    if (subType === 'temporary') {
-        data.durationType = document.getElementById('lf-duration-type')?.value || '';
-        data.startDate = document.getElementById('lf-start-date')?.value || '';
-        data.endDate = data.startDate;
-        data.totalDays = data.startDate ? 1 : 0;
+        if (subType === 'temporary') {
+        const durationType = document.getElementById('lf-duration-type')?.value || '';
+        const startClock = document.getElementById('lf-time-start-clock')?.value || '';
+        const startManual = document.getElementById('lf-time-start-manual')?.value || '';
+        const endClock = document.getElementById('lf-time-end-clock')?.value || '';
+        const endManual = document.getElementById('lf-time-end-manual')?.value || '';
+
+        data.durationType = durationType;
+
+        if (durationType.includes('বৃহস্পতিবার')) {
+            data.time = 'সারাদিন';
+            data.totalDays = 1;
+            data.totalHours = 24; // ১ দিন
+        } else {
+            let timeString = '';
+            if (startManual || endManual) {
+                timeString = `${startManual || '—'} থেকে ${endManual || '—'}`;
+            } else {
+                timeString = `${startClock || '—'} থেকে ${endClock || '—'}`;
+            }
+            data.time = timeString;
+            data.totalDays = 0; // দিন নেই, শুধু ঘণ্টা
+
+            // ঘণ্টা হিসাব
+            let hours = 0;
+            if (startClock && endClock) {
+                const start = new Date(`2000-01-01T${startClock}`);
+                const end = new Date(`2000-01-01T${endClock}`);
+                let diffMs = end - start;
+                if (diffMs < 0) diffMs += 24 * 60 * 60 * 1000;
+                hours = diffMs / (1000 * 60 * 60);
+            }
+            data.totalHours = hours;
+        }
     } else if (subType === 'partial') {
         data.durationType = document.getElementById('lf-partial-type')?.value || '';
         data.startDate = document.getElementById('lf-partial-start')?.value || '';
@@ -55261,6 +55735,8 @@ function buildLeaveLetterHTML(data) {
     let bodyContentHTML = '';
 
     if (data.type === 'temporary') {
+        const isFullDay = data.durationType.includes('বৃহস্পতিবার');
+        
         bodyContentHTML = `
             <p style="margin:0 0 12px;text-align:justify;line-height:1.9;">
                 জনাব, সবিনয় নিবেদন এই যে, আমি <strong>${student.name}</strong>, আপনার প্রতিষ্ঠানের <strong class="font-arabic">${student.className}</strong> শ্রেণির একজন ছাত্র। 
@@ -55269,7 +55745,9 @@ function buildLeaveLetterHTML(data) {
                 ${data.extraNote ? `<br>অতিরিক্ত বিবরণ: ${data.extraNote}` : ''}
             </p>
             <p style="margin:0 0 12px;line-height:1.9;">
-                ${dateRangeHTML} ${data.totalDays ? `(মোট ${toBanglaNumber(data.totalDays)} দিন)` : ''}
+                <strong>সময়:</strong> ${isFullDay ? 'সারাদিন' : data.time} 
+                ${!isFullDay && data.totalHours ? `(মোট ${toBanglaNumber(data.totalHours)} ঘণ্টা)` : ''}
+                ${isFullDay ? '(মোট ১ দিন)' : ''}
             </p>
             <p style="margin:0 0 12px;text-align:justify;line-height:1.9;">
                 তাই বিনীতভাবে অনুরোধ করছি, আমাকে সাময়িক ছুটির অনুমতি দান করে বাধিত করবেন।
