@@ -32544,7 +32544,33 @@ window.doLogout = async function() {
     }
 };
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+    // ★★★ ১. প্রথমেই চেক করি LocalStorage-এ শিক্ষকের সেশন আছে কিনা ★★★
+    const cachedTeacher = localStorage.getItem('teacher_session');
+    if (cachedTeacher) {
+        try {
+            // ডাটা থাকলে সরাসরি সেটা লোড করি
+            currentUserData = JSON.parse(cachedTeacher);
+            
+            // ব্যাকগ্রাউন্ডে ডাটা লোড করি (যাতে UI আটকে না থাকে)
+            if(typeof loadConfigFromFirestore === 'function') await loadConfigFromFirestore();
+            if(typeof loadStudentsFromFirestore === 'function') await loadStudentsFromFirestore();
+            if(typeof loadSettings === 'function') await loadSettings();
+            
+            // লোডিং স্ক্রিন লুকিয়ে সরাসরি শিক্ষক পোর্টাল দেখাই
+            const ls = document.getElementById('loading-screen');
+            if (ls) { ls.style.display = 'none'; ls.classList.add('hidden'); }
+            
+            showTeacherPortal();
+            return; // ফায়ারবেস চেক করার দরকার নেই, সোজা পোর্টালে যাই
+            
+        } catch(e) {
+            console.error("Session parse error", e);
+            localStorage.removeItem('teacher_session');
+        }
+    }
+
+    // ★★★ ২. যদি LocalStorage-এ না থাকে, তবে ফায়ারবেস চেক করি (আপনার আগের কোড) ★★★
     let authCheckDone = false;
     
     const checkFb = setInterval(() => {
@@ -32564,7 +32590,7 @@ window.addEventListener('load', () => {
                 }
             });
             
-            // ★ Fallback: ৩ সেকেন্ডেও Firebase respond না করলে login screen দেখাও
+            // ৩ সেকেন্ডেও ফায়ারবেস রেসপন্স না করলে লগইন স্ক্রিন দেখাই
             setTimeout(() => {
                 if (!authCheckDone) {
                     console.warn('⚠️ Firebase auth check timeout — showing login');
@@ -53549,6 +53575,9 @@ window.verifyGuardianLogin = async function() {
 // ★★★ শিক্ষক পোর্টাল (Teacher Portal) ★★★
 // ═══════════════════════════════════════════════════════════════
 window.showTeacherPortal = function() {
+    if (window.currentUserData) {
+        localStorage.setItem('teacher_session', JSON.stringify(window.currentUserData));
+    }
     // ★ Safety check
     if (!currentUserData || !currentUserData.role) {
         console.error('❌ currentUserData নেই!');
@@ -53847,6 +53876,8 @@ window.logoutTeacher = async function() {
         // ২. লোকাল স্টোরেজ থেকে গার্ডিয়ানের সেশন (যদি থাকে) মুছে ফেলা
         localStorage.removeItem('gp_student_id');
         localStorage.removeItem('gp_mobile');
+
+        localStorage.removeItem('teacher_session');
         
         // ৩. গ্লোবাল ভেরিয়েবল রিসেট
         window.currentUser = null;
