@@ -1054,6 +1054,18 @@ header button {
             document.head.appendChild(style);
         }
     </script>
+    <script>
+        (function() {
+            const isTeacher = localStorage.getItem('teacher_session');
+            const isGuardian = localStorage.getItem('gp_student_id');
+            
+            if (isTeacher || isGuardian) {
+                const style = document.createElement('style');
+                style.innerHTML = `body > header, body > main, body > footer { display: none !important; }`;
+                document.head.appendChild(style);
+            }
+        })();
+    </script>
 </head>
 <body class="min-h-screen text-slate-800 flex flex-col">
 
