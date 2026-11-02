@@ -53722,12 +53722,61 @@ window.showTeacherPortal = function() {
                         </div>
                         <span class="text-sm font-bold text-slate-700 text-center">ছুটির আবেদন</span>
                     </button>
-                </div>
-                <!-- ড্যাশবোর্ডের স্বাগতম বার্তা -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center mt-4">
-                    <i class="fa-solid fa-hand-wave text-4xl text-amber-400 mb-3"></i>
-                    <h3 class="text-lg font-bold text-slate-800">স্বাগতম, ${teacherName}!</h3>
-                    <p class="text-sm text-slate-500 mt-2">উপরের মেনু থেকে আপনার প্রয়োজনীয় অপশনটি নির্বাচন করুন।</p>
+                                        <!-- ৭. ভর্তি -->
+                    <button onclick="switchTpTab('admission')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-green-300 transition text-green-600">
+                        <div class="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700 text-center">ভর্তি</span>
+                    </button>
+
+                    <!-- ৮. লাইভ ইভেন্ট -->
+                    <button onclick="switchTpTab('live-events')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-indigo-300 transition text-indigo-600">
+                        <div class="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-calendar-star"></i>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700 text-center">লাইভ ইভেন্ট</span>
+                    </button>
+
+                    <!-- ৯. একাডেমিক ক্যালেন্ডার -->
+                    <button onclick="switchTpTab('academic-calendar')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-cyan-300 transition text-cyan-600">
+                        <div class="w-12 h-12 bg-cyan-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-calendar-alt"></i>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700 text-center">একাডেমিক ক্যালেন্ডার</span>
+                    </button>
+
+                    <!-- ১০. নোটিশ -->
+                    <button onclick="switchTpTab('notice')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-orange-300 transition text-orange-600">
+                        <div class="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-bullhorn"></i>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700 text-center">নোটিশ</span>
+                    </button>
+
+                    <!-- ১১. নীতিমালা -->
+                    <button onclick="switchTpTab('policies')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-violet-300 transition text-violet-600">
+                        <div class="w-12 h-12 bg-violet-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-scroll"></i>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700 text-center">নীতিমালা</span>
+                    </button>
+
+                    <!-- ১২. হাজিরা -->
+                    <button onclick="switchTpTab('attendance')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
+                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700 text-center">হাজিরা</span>
+                    </button>
+
+                    <!-- ১৩. হিসাব বিভাগ -->
+                    <button onclick="switchTpTab('accounting')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-cyan-300 transition text-cyan-600">
+                        <div class="w-12 h-12 bg-cyan-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-calculator"></i>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700 text-center">হিসাব বিভাগ</span>
+                    </button>
                 </div>
             </div>
 
@@ -53776,72 +53825,59 @@ window.switchTpTab = async function(tab) {
                 <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
                     <i class="fa-solid fa-arrow-left"></i> মেনু
                 </button>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-3">
-                    <h3 class="font-bold text-sm"><i class="fa-solid fa-calendar-days text-blue-600"></i> আমার ক্লাস রুটিন</h3>
-                    <p class="text-xs text-slate-500 mt-1">${teacherName}</p>
-                </div>
-                <div id="tp-routine-body" class="text-center py-10 text-slate-400 text-sm">রুটিন লোড হচ্ছে...</div>
-            `;
-            const routineBody = document.getElementById('tp-routine-body');
-            if (typeof loadTeacherRoutine === 'function') {
-                await loadTeacherRoutine(routineBody, teacherName);
-            } else {
-                routineBody.innerHTML = `<div class="bg-white rounded-xl p-6 text-center text-slate-500">রুটিন মডিউলটি এখনো যুক্ত করা হয়নি।</div>`;
-            }
-            
-        } else if (tab === 'students') {
-            const allowed = getTeacherAllowedClasses();
-            if (!allowed || allowed.length === 0) {
-                content.innerHTML = `
-                    <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
-                        <i class="fa-solid fa-arrow-left"></i> মেনু
-                    </button>
-                    <div class="bg-white rounded-xl p-8 text-center text-slate-500">আপনার কোনো জামাত assigned নেই। এডমিনের সাথে যোগাযোগ করুন।</div>
-                `;
-                return;
-            }
-            
-            if (typeof studentsCache === 'undefined' || studentsCache.length === 0) {
-                if (typeof loadStudentsFromFirestore === 'function') await loadStudentsFromFirestore();
-            }
-            
-            let studentsHTML = '';
-            allowed.forEach(key => {
-                const [dept, className] = key.split('::');
-                const classStudents = (studentsCache || []).filter(s => 
-                    s.dept === dept && s.className === className &&
-                    !['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'].includes((s.remark?.type || '').trim())
-                );
                 
-                studentsHTML += `
-                    <div class="bg-white rounded-xl border border-slate-200 mb-3 overflow-hidden">
-                        <div class="bg-emerald-50 px-4 py-2 border-b border-emerald-200 flex justify-between items-center">
-                            <span class="font-bold text-sm text-emerald-900 font-arabic">${className}</span>
-                            <span class="text-xs font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">${classStudents.length} জন</span>
-                        </div>
-                        <div class="p-2">
-                            ${classStudents.length === 0 ? `<p class="text-xs text-slate-400 text-center py-2">কোন ছাত্র নেই</p>` : 
-                                classStudents.map((s, i) => `
-                                    <div class="flex justify-between items-center border-b border-slate-100 py-2 px-2 last:border-0">
-                                        <div>
-                                            <span class="text-xs text-slate-400 mr-2">${i+1}.</span>
-                                            <span class="text-sm font-bold text-slate-800">${s.name}</span>
-                                            <span class="text-[10px] text-slate-500 font-mono ml-2">(ID: ${s.studentId || '-'})</span>
-                                        </div>
-                                    </div>
-                                `).join('')
-                            }
-                        </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
+                    <h3 class="font-bold text-sm text-slate-800 mb-3"><i class="fa-solid fa-calendar-days text-blue-600"></i> ক্লাস রুটিন</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="switchTpRoutineSub('my')" id="tp-rt-sub-my" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-blue-600 text-white shadow-md">
+                            <i class="fa-solid fa-user"></i> আমার ক্লাস রুটিন
+                        </button>
+                        <button onclick="switchTpRoutineSub('dept')" id="tp-rt-sub-dept" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50">
+                            <i class="fa-solid fa-table-cells-large"></i> বিভাগ ভিত্তিক ক্লাস রুটিন
+                        </button>
                     </div>
-                `;
-            });
+                </div>
+
+                <div id="tp-routine-view-wrap" class="bg-slate-100 rounded-xl p-3 min-h-[300px]">
+                    <div class="text-center py-10 text-slate-400">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p class="text-xs">রুটিন লোড হচ্ছে...</p>
+                    </div>
+                </div>
+            `;
+            // ডিফল্টভাবে শিক্ষকের নিজের রুটিন লোড হবে
+            window.switchTpRoutineSub('my');
+        } else if (tab === 'students') {
             content.innerHTML = `
                 <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
                     <i class="fa-solid fa-arrow-left"></i> মেনু
                 </button>
-                <div class="space-y-2">${studentsHTML}</div>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
+                    <h3 class="font-bold text-sm text-slate-800 mb-3"><i class="fa-solid fa-users text-emerald-600"></i> আমার ছাত্র তালিকা</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="switchTpStudentSub('all')" id="tp-st-sub-all" class="flex-1 md:flex-none px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition bg-emerald-600 text-white shadow-md">
+                            <i class="fa-solid fa-list"></i> সকল ভর্তি
+                        </button>
+                        <button onclick="switchTpStudentSub('current')" id="tp-st-sub-current" class="flex-1 md:flex-none px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50">
+                            <i class="fa-solid fa-user-check"></i> বর্তমান ছাত্র
+                        </button>
+                        <button onclick="switchTpStudentSub('left')" id="tp-st-sub-left" class="flex-1 md:flex-none px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50">
+                            <i class="fa-solid fa-door-open"></i> বিদায়/বহিষ্কৃত
+                        </button>
+                        <button onclick="switchTpStudentSub('accused')" id="tp-st-sub-accused" class="flex-1 md:flex-none px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50">
+                            <i class="fa-solid fa-gavel"></i> অভিযুক্ত
+                        </button>
+                    </div>
+                </div>
+
+                <div id="tp-students-wrap" class="min-h-[300px]">
+                    <!-- টেবিল এখানে লোড হবে -->
+                </div>
             `;
             
+            // ডিফল্টভাবে 'সকল ভর্তি' লোড হবে
+            window.switchTpStudentSub('all');
         } else if (tab === 'asbaq') {
             content.innerHTML = `
                 <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
@@ -53893,6 +53929,16 @@ window.switchTpTab = async function(tab) {
             } else {
                 wrap.innerHTML = `<div class="bg-white rounded-xl p-6 text-center text-slate-500">ছুটির আবেদন মডিউল পাওয়া যায়নি।</div>`;
             }
+        } else if (tab === 'admission' || tab === 'live-events' || tab === 'academic-calendar' || tab === 'notice' || tab === 'policies' || tab === 'attendance' || tab === 'accounting') {
+            content.innerHTML = `
+                <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+                <div class="text-center py-12 bg-white rounded-xl border border-slate-200">
+                    <i class="fa-solid fa-tools text-5xl text-slate-300 mb-3"></i>
+                    <p class="text-slate-600 font-bold text-sm">এই সেকশনটি শীঘ্রই আসছে</p>
+                </div>
+            `;
         }
     } catch (error) {
         console.error("Tab render error:", error);
@@ -53916,6 +53962,257 @@ window.backToTpDashboard = function() {
     
     if (dashboard) dashboard.style.display = 'block'; // ড্যাশবোর্ড আবার দেখাও
     if (content) content.innerHTML = ''; // ডাইনামিক পেইজ খালি করো
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল - রুটিন সাব-ভিউ লজিক ★★★
+// ═══════════════════════════════════════════════════════════════
+
+window._tpRoutineState = { sub: 'my', teacherName: '' };
+
+window.switchTpRoutineSub = async function(sub) {
+    window._tpRoutineState.sub = sub;
+    const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
+    window._tpRoutineState.teacherName = teacherName;
+
+    // বাটন হাইলাইট আপডেট
+    const btnMy = document.getElementById('tp-rt-sub-my');
+    const btnDept = document.getElementById('tp-rt-sub-dept');
+    if (btnMy && btnDept) {
+        if (sub === 'my') {
+            btnMy.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-blue-600 text-white shadow-md';
+            btnDept.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50';
+        } else {
+            btnDept.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-blue-600 text-white shadow-md';
+            btnMy.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50';
+        }
+    }
+
+    const wrap = document.getElementById('tp-routine-view-wrap');
+    if (!wrap) return;
+    wrap.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><p class="text-xs">রুটিন লোড হচ্ছে...</p></div>`;
+
+    try {
+        // ফায়ারবেস থেকে লেটেস্ট রুটিন লোড করি
+        const year = getCurrentYear();
+        if (!routinesCache || routinesCache.length === 0) {
+            // routinesCache গ্লোবাল ভেরিয়েবল থাকলে সেটা লোড হবে
+            if (typeof loadRoutinesForYear === 'function') {
+                // loadRoutinesForYear ফাংশনটি ক্যাশে ডাটা আপডেট করে
+                window.routineState = window.routineState || {};
+                window.routineState.academicYear = year;
+                await loadRoutinesForYear(); 
+            }
+        }
+
+        if (sub === 'my') {
+            // ─── ১. আমার রুটিন (শিক্ষকভিত্তিক) ───
+            // শিক্ষক মেটাডাটা বের করি
+            const teacherMeta = findTeacherByName(teacherName) || { dept: '' };
+            
+            // রুটিনের ডাটা ফিল্টার করি (শুধু এই শিক্ষকের এবং এই বছরের)
+            const myRoutines = (routinesCache || []).filter(r => 
+                r.teacherName === teacherName && r.academicYear === year
+            );
+
+            // শিক্ষকের বিভাগ থেকে রুটিন কনফিগ বের করি
+            const deptKeyMap = { 'শরীয়াহ': 'shariah', 'নূরানী-নাযেরা': 'noorani', 'অনাবাসিক': 'non_res', 'হিফযুল কুরআন': 'hifz' };
+            const deptKey = deptKeyMap[teacherMeta.dept] || 'shariah';
+            const season = 'winter'; // ডিফল্ট শীতকালীন
+            
+            // হেল্পার ফাংশন কল করে রুটিন রেন্ডার করি
+            const info = getRoutineDeptInfo(deptKey, season);
+            
+            if (typeof buildTeacherIndividualHTML === 'function') {
+                // মূল সেকশনের ফাংশনটি কল করি
+                const routineHTML = buildTeacherIndividualHTML(
+                    { name: teacherName }, 
+                    info, 
+                    myRoutines, 
+                    deptKey, 
+                    season, 
+                    year
+                );
+                wrap.innerHTML = `<div class="overflow-x-auto bg-white rounded-lg">${routineHTML}</div>`;
+            } else {
+                wrap.innerHTML = `<div class="text-center py-10 text-red-500">রুটিন ভিউ ফাংশন পাওয়া যায়নি</div>`;
+            }
+
+        } else if (sub === 'dept') {
+            // ─── ২. বিভাগ ভিত্তিক রুটিন (ম্যাক্স ভিউ) ───
+            const teacherMeta = findTeacherByName(teacherName) || { dept: '' };
+            const deptKeyMap = { 'শরীয়াহ': 'shariah', 'নূরানী-নাযেরা': 'noorani', 'অনাবাসিক': 'non_res', 'হিফযুল কুরআন': 'hifz' };
+            const deptKey = deptKeyMap[teacherMeta.dept] || 'shariah';
+            const season = 'winter';
+            const info = getRoutineDeptInfo(deptKey, season);
+            const deptRoutines = (routinesCache || []).filter(r => 
+                r.dept === deptKey && r.academicYear === year
+            );
+
+            // জামাতের তালিকা বের করি
+            const classes = getClassesForDept(deptKey);
+
+            let jamatHTML = '';
+            if (typeof buildJamatRoutineHTML === 'function') {
+                jamatHTML = classes.map(cls => {
+                    return buildJamatRoutineHTML(cls, info, deptRoutines, deptKey, season, year);
+                }).join('');
+                wrap.innerHTML = `<div class="overflow-x-auto">${jamatHTML}</div>`;
+            } else {
+                wrap.innerHTML = `<div class="text-center py-10 text-red-500">রুটিন ভিউ ফাংশন পাওয়া যায়নি</div>`;
+            }
+        }
+
+        // ★★★ প্রিন্ট বাটন যোগ ★★★
+        wrap.innerHTML = `
+            <div class="flex justify-end gap-2 mb-2 no-print">
+                <button onclick="printTpRoutine()" class="px-3 py-1.5 bg-teal-700 text-white text-xs font-bold rounded shadow flex items-center gap-1.5">
+                    <i class="fa-solid fa-print"></i> প্রিন্ট
+                </button>
+                <button onclick="shareTpRoutinePDF()" class="px-3 py-1.5 bg-amber-600 text-white text-xs font-bold rounded shadow flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </button>
+            </div>
+            <div id="tp-routine-print-area" class="bg-white p-2 rounded">
+                ${wrap.innerHTML}
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('❌ Routine Load Error:', err);
+        wrap.innerHTML = `<div class="text-center py-10 text-red-500">রুটিন লোড ব্যর্থ: ${err.message}</div>`;
+    }
+};
+
+// প্রিন্ট ফাংশন
+window.printTpRoutine = function() {
+    const el = document.getElementById('tp-routine-print-area');
+    if (!el) return;
+    const win = window.open('', '_blank');
+    win.document.write(`
+        <!DOCTYPE html><html><head>
+        <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { font-family: 'Hind Siliguri', 'Amiri', sans-serif; padding: 10mm; background: white; }
+            .no-print { display: none !important; }
+            @page { size: A4 landscape; margin: 8mm; }
+        </style></head><body>${el.innerHTML}</body></html>
+    `);
+    win.document.close();
+    setTimeout(() => { win.print(); win.close(); }, 600);
+};
+
+window.shareTpRoutinePDF = function() {
+    const el = document.getElementById('tp-routine-print-area');
+    if (!el) return;
+    showToast('📄 PDF তৈরি হচ্ছে...', 'info');
+    html2pdf().set({
+        margin: [8, 6, 10, 6],
+        filename: `Teacher_Routine_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'] }
+    }).from(el).save().then(() => {
+        showToast('✅ PDF ডাউনলোড হয়েছে', 'success');
+    }).catch(err => {
+        showToast('❌ PDF সমস্যা', 'error');
+    });
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল - ছাত্র তালিকা সাব-ভিউ লজিক ★★★
+// ═══════════════════════════════════════════════════════════════
+
+window._tpStudentState = { sub: 'all' };
+
+window.switchTpStudentSub = async function(sub) {
+    window._tpStudentState.sub = sub;
+    
+    // বাটন হাইলাইট আপডেট
+    const btns = { all: 'tp-st-sub-all', current: 'tp-st-sub-current', left: 'tp-st-sub-left', accused: 'tp-st-sub-accused' };
+    Object.keys(btns).forEach(k => {
+        const btn = document.getElementById(btns[k]);
+        if (!btn) return;
+        if (k === sub) {
+            btn.className = 'flex-1 md:flex-none px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition bg-emerald-600 text-white shadow-md';
+        } else {
+            btn.className = 'flex-1 md:flex-none px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50';
+        }
+    });
+
+    const wrap = document.getElementById('tp-students-wrap');
+    if (!wrap) return;
+    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-emerald-600"></i></div>`;
+
+    try {
+        // ★ ডাটা লোড নিশ্চিত করি
+        if (typeof studentsCache === 'undefined' || studentsCache.length === 0) {
+            if (typeof loadStudentsFromFirestore === 'function') await loadStudentsFromFirestore();
+        }
+
+        // ★ শিক্ষকের জন্য অনুমোদিত ক্লাসগুলো নিই
+        const allowedClasses = getTeacherAllowedClasses();
+        
+        if (!allowedClasses || allowedClasses.length === 0) {
+            wrap.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">আপনার কোনো জামাত assigned নেই। এডমিনের সাথে যোগাযোগ করুন।</div>`;
+            return;
+        }
+
+        // ★ এই শিক্ষকের অনুমোদিত ক্লাসের সব ছাত্র ফিল্টার করি
+        const myStudents = (studentsCache || []).filter(s => {
+            const key = s.dept + '::' + s.className;
+            return allowedClasses.includes(key);
+        });
+
+        // ★ সাব-বাটন অনুযায়ী ডাটা ফিল্টার
+        let filteredStudents = [];
+        
+        if (sub === 'all') {
+            // সকল ভর্তি (বিদায়, বহিষ্কৃত, অভিযুক্ত সবাই থাকবে)
+            filteredStudents = myStudents;
+        } else if (sub === 'current') {
+            // বর্তমান ছাত্র (যাদের কোনো মন্তব্য নেই)
+            filteredStudents = myStudents.filter(s => !s.remark || !s.remark.type);
+        } else if (sub === 'left') {
+            // বিদায় বা বহিষ্কৃত
+            const leftTypes = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+            filteredStudents = myStudents.filter(s => leftTypes.includes(s.remark?.type));
+        } else if (sub === 'accused') {
+            // অভিযুক্ত
+            filteredStudents = myStudents.filter(s => ['অভিযুক্ত', 'সতর্ক', 'নোটিশপ্রাপ্ত'].includes(s.remark?.type));
+        }
+
+        // ★ টেবিল রেন্ডার করি
+        if (filteredStudents.length === 0) {
+            wrap.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-10 text-center">
+                    <i class="fa-solid fa-user-slash text-5xl text-slate-300 mb-3"></i>
+                    <p class="font-bold text-slate-600">কোন ছাত্র পাওয়া যায়নি</p>
+                </div>`;
+            return;
+        }
+
+        // ★ মূল সেকশনের হুবহু ডিজাইন ব্যবহার করি
+        if (typeof buildStudentTableHTML === 'function') {
+            // buildStudentTableHTML মূল সেকশনের টেবিল তৈরি করার ফাংশন
+            const tableHTML = buildStudentTableHTML(filteredStudents, {
+                deptKey: 'all', 
+                className: 'teacher-view', 
+                titlePrefix: 'শিক্ষক তালিকা',
+                showClass: true // কোন জামাতের ছাত্র তা দেখানোর জন্য
+            });
+            wrap.innerHTML = tableHTML;
+        } else {
+            // Fallback: যদি ফাংশনটি না থাকে
+            wrap.innerHTML = `<div class="p-4 bg-white rounded-xl text-center text-red-500">টেবিল তৈরির ফাংশন পাওয়া যায়নি।</div>`;
+        }
+
+    } catch (err) {
+        console.error('❌ switchTpStudentSub Error:', err);
+        wrap.innerHTML = `<div class="text-center py-10 text-red-500">লোড ব্যর্থ: ${err.message}</div>`;
+    }
 };
 
 window.logoutTeacher = async function() {
