@@ -1055,16 +1055,14 @@ header button {
         }
     </script>
     <script>
-        (function() {
-            const isTeacher = localStorage.getItem('teacher_session');
-            const isGuardian = localStorage.getItem('gp_student_id');
-            
-            if (isTeacher || isGuardian) {
-                const style = document.createElement('style');
-                style.innerHTML = `body > header, body > main, body > footer { display: none !important; }`;
-                document.head.appendChild(style);
-            }
-        })();
+        if (localStorage.getItem('teacher_session')) {
+            const style = document.createElement('style');
+            style.id = 'hide-main-app-style-teacher';
+            style.innerHTML = `
+                body > header, body > main, body > footer { display: none !important; }
+            `;
+            document.head.appendChild(style);
+        }
     </script>
 </head>
 <body class="min-h-screen text-slate-800 flex flex-col">
@@ -53606,8 +53604,11 @@ window.showTeacherPortal = function() {
     
     console.log('🎓 Teacher Portal opening for:', teacherName, teacherPost);
     
-    // মূল অ্যাপ হাইড
-    document.querySelectorAll('header, main, footer').forEach(el => el.style.display = 'none');
+    // ★★★ মূল অ্যাপ পুরোপুরি লুকিয়ে ফেলা ★★★
+    document.querySelectorAll('header, main, footer').forEach(el => {
+        el.style.display = 'none';
+        el.classList.add('hidden'); // নিশ্চিত করার জন্য
+    });
     const loginScreen = document.getElementById('login-screen');
     if (loginScreen) loginScreen.style.display = 'none';
     
@@ -53671,61 +53672,67 @@ window.showTeacherPortal = function() {
                 </div>
             </div>
 
-            <!-- ★★★ ৬টি সাদা বাটন (গার্ডিয়ান পোর্টালের মতো) ★★★ -->
-            <div class="max-w-4xl mx-auto px-4 mt-6">
+            <!-- ★★★ ড্যাশবোর্ড এরিয়া (এখানে আইডি যোগ করা হলো) ★★★ -->
+            <div id="tp-dashboard-area" class="max-w-4xl mx-auto px-4 mt-6">
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6 mt-2">
                     <!-- ১. ক্লাস রুটিন -->
-                    <button onclick="switchTpTab('routine')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
-                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                    <button onclick="switchTpTab('routine')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-blue-300 transition text-blue-600">
+                        <div class="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-xl">
                             <i class="fa-solid fa-calendar-days"></i>
                         </div>
-                        <span class="text-sm font-bold">ক্লাস রুটিন</span>
+                        <span class="text-sm font-bold text-slate-700">ক্লাস রুটিন</span>
                     </button>
 
                     <!-- ২. ছাত্র তালিকা -->
-                    <button onclick="switchTpTab('students')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
-                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                    <button onclick="switchTpTab('students')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-emerald-300 transition text-emerald-600">
+                        <div class="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-xl">
                             <i class="fa-solid fa-users"></i>
                         </div>
-                        <span class="text-sm font-bold text-center">ছাত্র তালিকা</span>
+                        <span class="text-sm font-bold text-slate-700 text-center">ছাত্র তালিকা</span>
                     </button>
 
                     <!-- ৩. মাকাদীরে আসবাক -->
-                    <button onclick="switchTpTab('asbaq')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
-                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                    <button onclick="switchTpTab('asbaq')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-purple-300 transition text-purple-600">
+                        <div class="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center text-xl">
                             <i class="fa-solid fa-book-open"></i>
                         </div>
-                        <span class="text-sm font-bold text-center">মাকাদীরে আসবাক</span>
+                        <span class="text-sm font-bold text-slate-700 text-center">মাকাদীরে আসবাক</span>
                     </button>
 
                     <!-- ৪. পরীক্ষা ও মার্কস -->
-                    <button onclick="switchTpTab('exam')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
-                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                    <button onclick="switchTpTab('exam')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-amber-300 transition text-amber-600">
+                        <div class="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center text-xl">
                             <i class="fa-solid fa-clipboard-question"></i>
                         </div>
-                        <span class="text-sm font-bold text-center">পরীক্ষা</span>
+                        <span class="text-sm font-bold text-slate-700 text-center">পরীক্ষা</span>
                     </button>
 
                     <!-- ৫. হোমওয়ার্ক -->
-                    <button onclick="switchTpTab('homework')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
-                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                    <button onclick="switchTpTab('homework')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-pink-300 transition text-pink-600">
+                        <div class="w-12 h-12 bg-pink-50 rounded-full flex items-center justify-center text-xl">
                             <i class="fa-solid fa-book-open-reader"></i>
                         </div>
-                        <span class="text-sm font-bold text-center">হোমওয়ার্ক</span>
+                        <span class="text-sm font-bold text-slate-700 text-center">হোমওয়ার্ক</span>
                     </button>
 
                     <!-- ৬. ছুটির আবেদন -->
-                    <button onclick="switchTpTab('leave')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-teal-300 transition text-teal-600">
-                        <div class="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-xl">
+                    <button onclick="switchTpTab('leave')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-rose-300 transition text-rose-600">
+                        <div class="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-xl">
                             <i class="fa-solid fa-plane-departure"></i>
                         </div>
-                        <span class="text-sm font-bold text-center">ছুটির আবেদন</span>
+                        <span class="text-sm font-bold text-slate-700 text-center">ছুটির আবেদন</span>
                     </button>
                 </div>
-
-                <!-- ট্যাব কন্টেন্ট এরিয়া -->
-                <div id="tp-tab-content"></div>
+                <!-- ড্যাশবোর্ডের স্বাগতম বার্তা -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center mt-4">
+                    <i class="fa-solid fa-hand-wave text-4xl text-amber-400 mb-3"></i>
+                    <h3 class="text-lg font-bold text-slate-800">স্বাগতম, ${teacherName}!</h3>
+                    <p class="text-sm text-slate-500 mt-2">উপরের মেনু থেকে আপনার প্রয়োজনীয় অপশনটি নির্বাচন করুন।</p>
+                </div>
             </div>
+
+            <!-- ★★★ নতুন পেইজগুলো এখানে লোড হবে (শুরুতে খালি থাকবে) ★★★ -->
+            <div id="tp-dynamic-content" class="max-w-4xl mx-auto px-4"></div>
         </div>
     `;
 
@@ -53746,23 +53753,35 @@ window.showTeacherPortal = function() {
 
 // ট্যাব কনটেন্ট ডিসপ্যাচার (গার্ডিয়ানের মতো)
 window.switchTpTab = async function(tab) {
-    const content = document.getElementById('tp-tab-content');
-    if (!content) return;
+    const dashboard = document.getElementById('tp-dashboard-area');
+    const content = document.getElementById('tp-dynamic-content');
+    if (!content || !dashboard) return;
     
-    content.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-teal-600"></i></div>`;
+    // ১. ড্যাশবোর্ড লুকিয়ে ফেলা
+    dashboard.style.display = 'none';
+    
+    // ২. লোডিং স্পিনার এবং ফিরে যাওয়ার বাটন দেখানো
+    content.innerHTML = `
+        <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+            <i class="fa-solid fa-arrow-left"></i> মেনু
+        </button>
+        <div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-teal-600"></i></div>
+    `;
     
     const teacherName = currentUserData?.teacherName || currentUserData?.name;
     
     try {
         if (tab === 'routine') {
             content.innerHTML = `
+                <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-3">
-                    <h3 class="font-bold text-sm"><i class="fa-solid fa-calendar-days text-teal-600"></i> আমার ক্লাস রুটিন</h3>
+                    <h3 class="font-bold text-sm"><i class="fa-solid fa-calendar-days text-blue-600"></i> আমার ক্লাস রুটিন</h3>
                     <p class="text-xs text-slate-500 mt-1">${teacherName}</p>
                 </div>
                 <div id="tp-routine-body" class="text-center py-10 text-slate-400 text-sm">রুটিন লোড হচ্ছে...</div>
             `;
-            // রুটিন লোড করার ফাংশন (আপনার আগের কোডে থাকলে সেটা কল করুন)
             const routineBody = document.getElementById('tp-routine-body');
             if (typeof loadTeacherRoutine === 'function') {
                 await loadTeacherRoutine(routineBody, teacherName);
@@ -53773,11 +53792,15 @@ window.switchTpTab = async function(tab) {
         } else if (tab === 'students') {
             const allowed = getTeacherAllowedClasses();
             if (!allowed || allowed.length === 0) {
-                content.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">আপনার কোনো জামাত assigned নেই। এডমিনের সাথে যোগাযোগ করুন।</div>`;
+                content.innerHTML = `
+                    <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+                        <i class="fa-solid fa-arrow-left"></i> মেনু
+                    </button>
+                    <div class="bg-white rounded-xl p-8 text-center text-slate-500">আপনার কোনো জামাত assigned নেই। এডমিনের সাথে যোগাযোগ করুন।</div>
+                `;
                 return;
             }
             
-            // ★ আসল ছাত্র তালিকা লোড করা
             if (typeof studentsCache === 'undefined' || studentsCache.length === 0) {
                 if (typeof loadStudentsFromFirestore === 'function') await loadStudentsFromFirestore();
             }
@@ -53792,9 +53815,9 @@ window.switchTpTab = async function(tab) {
                 
                 studentsHTML += `
                     <div class="bg-white rounded-xl border border-slate-200 mb-3 overflow-hidden">
-                        <div class="bg-teal-50 px-4 py-2 border-b border-teal-200 flex justify-between items-center">
-                            <span class="font-bold text-sm text-teal-900 font-arabic">${className}</span>
-                            <span class="text-xs font-bold bg-teal-600 text-white px-2 py-0.5 rounded-full">${classStudents.length} জন</span>
+                        <div class="bg-emerald-50 px-4 py-2 border-b border-emerald-200 flex justify-between items-center">
+                            <span class="font-bold text-sm text-emerald-900 font-arabic">${className}</span>
+                            <span class="text-xs font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">${classStudents.length} জন</span>
                         </div>
                         <div class="p-2">
                             ${classStudents.length === 0 ? `<p class="text-xs text-slate-400 text-center py-2">কোন ছাত্র নেই</p>` : 
@@ -53812,36 +53835,45 @@ window.switchTpTab = async function(tab) {
                     </div>
                 `;
             });
-            content.innerHTML = `<div class="space-y-2">${studentsHTML}</div>`;
+            content.innerHTML = `
+                <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+                <div class="space-y-2">${studentsHTML}</div>
+            `;
             
         } else if (tab === 'asbaq') {
             content.innerHTML = `
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center">
-                    <i class="fa-solid fa-book-open text-4xl text-teal-500 mb-3"></i>
-                    <h3 class="font-bold text-base text-slate-800">মাকাদীরে আসবাক</h3>
-                    <p class="text-xs text-slate-500 mt-2 mb-4">সিলেবাস ও পাঠ্য পরিমাণ দেখতে মূল অ্যাপে যান।</p>
-                    <button onclick="openTeacherFullApp('asbaq')" class="px-5 py-2.5 bg-teal-700 text-white text-sm font-bold rounded-lg shadow-md">
-                        <i class="fa-solid fa-arrow-right"></i> মডিউল খুলুন
-                    </button>
+                <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-10 text-center">
+                    <i class="fa-solid fa-book-open text-5xl text-purple-400 mb-4 opacity-50"></i>
+                    <h3 class="font-bold text-lg text-slate-800">মাকাদীরে আসবাক</h3>
+                    <p class="text-sm text-slate-500 mt-2">এই মডিউলটি খুব শীঘ্রই শিক্ষক পোর্টালে যুক্ত করা হবে।</p>
                 </div>
             `;
             
         } else if (tab === 'exam') {
             content.innerHTML = `
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center">
-                    <i class="fa-solid fa-clipboard-question text-4xl text-teal-500 mb-3"></i>
-                    <h3 class="font-bold text-base text-slate-800">পরীক্ষা ও মার্কস</h3>
-                    <p class="text-xs text-slate-500 mt-2 mb-4">মার্কস এন্ট্রি ও ফলাফল দেখতে মূল অ্যাপে যান।</p>
-                    <button onclick="openTeacherFullApp('exam')" class="px-5 py-2.5 bg-teal-700 text-white text-sm font-bold rounded-lg shadow-md">
-                        <i class="fa-solid fa-arrow-right"></i> মডিউল খুলুন
-                    </button>
+                <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-10 text-center">
+                    <i class="fa-solid fa-clipboard-question text-5xl text-amber-400 mb-4 opacity-50"></i>
+                    <h3 class="font-bold text-lg text-slate-800">পরীক্ষা ও মার্কস</h3>
+                    <p class="text-sm text-slate-500 mt-2">মার্কস এন্ট্রি মডিউলটি খুব শীঘ্রই যুক্ত করা হবে।</p>
                 </div>
             `;
             
         } else if (tab === 'homework') {
-            content.innerHTML = '';
-            const wrap = document.createElement('div');
-            content.appendChild(wrap);
+            content.innerHTML = `
+                <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+                <div id="tp-homework-body"></div>
+            `;
+            const wrap = document.getElementById('tp-homework-body');
             if (typeof renderHomeworkPage === 'function') {
                 await renderHomeworkPage(wrap);
             } else {
@@ -53849,9 +53881,13 @@ window.switchTpTab = async function(tab) {
             }
             
         } else if (tab === 'leave') {
-            content.innerHTML = '';
-            const wrap = document.createElement('div');
-            content.appendChild(wrap);
+            content.innerHTML = `
+                <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+                <div id="tp-leave-body"></div>
+            `;
+            const wrap = document.getElementById('tp-leave-body');
             if (typeof renderGuardianLeaveManagement === 'function') {
                 await renderGuardianLeaveManagement(wrap);
             } else {
@@ -53861,6 +53897,9 @@ window.switchTpTab = async function(tab) {
     } catch (error) {
         console.error("Tab render error:", error);
         content.innerHTML = `
+            <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+                <i class="fa-solid fa-arrow-left"></i> মেনু
+            </button>
             <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
                 <i class="fa-solid fa-triangle-exclamation text-3xl text-red-400 mb-2"></i>
                 <p class="text-sm font-bold text-red-800">কিছু একটা সমস্যা হয়েছে</p>
@@ -53870,11 +53909,13 @@ window.switchTpTab = async function(tab) {
     }
 };
 
-// ★ মূল অ্যাপে ফেরত যাওয়ার হেল্পার ফাংশন
-window.openTeacherFullApp = function(tab) {
-    document.getElementById('teacher-portal-view')?.remove();
-    document.querySelectorAll('header, main, footer').forEach(el => el.style.display = '');
-    if (typeof switchTab === 'function') switchTab(tab);
+// ★★★ নতুন ফাংশন: মেনু বাটনে ক্লিক করলে আবার ৬টি বাটন ফিরে আসবে ★★★
+window.backToTpDashboard = function() {
+    const dashboard = document.getElementById('tp-dashboard-area');
+    const content = document.getElementById('tp-dynamic-content');
+    
+    if (dashboard) dashboard.style.display = 'block'; // ড্যাশবোর্ড আবার দেখাও
+    if (content) content.innerHTML = ''; // ডাইনামিক পেইজ খালি করো
 };
 
 window.logoutTeacher = async function() {
