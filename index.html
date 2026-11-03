@@ -32536,7 +32536,7 @@ window.doLogout = async function() {
 
         // UI reset
         currentUser = null;
-        currentUserData = null;
+        window.currentUserData = null;
         
         // সব স্ক্রিন hide করে login দেখাও
         ['login-screen', 'card-verify-modal', 'pending-screen', 'denied-screen', 'loading-screen'].forEach(id => {
@@ -32695,6 +32695,7 @@ async function handleUserLogin(user) {
 
     // এডমিন বা শিক্ষক লগইন সফল হলে
     if (userData && (userData.role === 'admin' || userData.role === 'teacher')) {
+        window.currentUserData = userData;
         currentUserData = userData;
         
         // ১. ডাটা লোড করা
@@ -39005,11 +39006,23 @@ async function renderResultDeptPage() {
         headerEl.innerHTML = `
             <div class="space-y-3">
                 <!-- ★★★ নতুন টপ বার: ফিরে যাওয়ার বাটন ★★★ -->
-                <div class="flex justify-start gap-2 flex-wrap mb-2">
+                <div class="flex justify-between items-center gap-2 flex-wrap mb-2">
                     <button onclick="backToResultsMenu()" class="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 border-2 border-slate-500 text-slate-800 hover:text-slate-900 rounded-lg shadow-md hover:shadow-lg transition-all font-bold text-sm">
                         <i class="fa-solid fa-arrow-left"></i>
                         <span>পেছনে ফিরুন</span>
                     </button>
+                    
+                    <!-- ★★★ পাবলিশ কন্ট্রোল বাটন ★★★ -->
+                    <div class="flex items-center gap-2 bg-white border border-slate-300 rounded-lg shadow-sm p-1.5 pr-3">
+                        <span class="text-xs font-bold ${_examPublishStatus ? 'text-emerald-700' : 'text-red-600'}">
+                            <i class="fa-solid ${_examPublishStatus ? 'fa-check-circle' : 'fa-times-circle'}"></i> 
+                            ${_examPublishStatus ? 'পাবলিশড' : 'আনপাবলিশড'}
+                        </span>
+                        <button onclick="toggleExamPublishStatus()" class="px-3 py-1.5 text-white text-xs font-bold rounded-md shadow transition ${_examPublishStatus ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'}">
+                            <i class="fa-solid ${_examPublishStatus ? 'fa-eye-slash' : 'fa-eye'}"></i> 
+                            ${_examPublishStatus ? 'আনপাবলিশ করুন' : 'অফিসিয়ালি পাবলিশ করুন'}
+                        </button>
+                    </div>
                 </div>
 
                 <!-- জামাত সিলেকশন কার্ড -->
@@ -39290,6 +39303,7 @@ async function renderResultDeptPage() {
     }
 
     contentEl.innerHTML = dynamicContentHTML;
+    return dynamicContentHTML; 
 }
 
 // ═══════════════════ মার্কস এন্ট্রি সিস্টেম (স্প্রেডশিট স্টাইল) ═══════════════════
@@ -54139,11 +54153,15 @@ window.switchTpTab = async function(tab) {
                 <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
                     <i class="fa-solid fa-arrow-left"></i> মেনু
                 </button>
-                <div id="tp-leave-body"></div>
+                <div id="tp-leave-body" class="min-h-[300px]">
+                    <div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-teal-600"></i></div>
+                </div>
             `;
             const wrap = document.getElementById('tp-leave-body');
-            if (typeof renderGuardianLeaveManagement === 'function') {
-                await renderGuardianLeaveManagement(wrap);
+            
+            // ★★★ এখানে নতুন ফাংশনটি কল করা হলো ★★★
+            if (typeof renderTeacherLeaveManagement === 'function') {
+                await renderTeacherLeaveManagement(wrap);
             } else {
                 wrap.innerHTML = `<div class="bg-white rounded-xl p-6 text-center text-slate-500">ছুটির আবেদন মডিউল পাওয়া যায়নি।</div>`;
             }
@@ -55334,73 +55352,61 @@ window.switchTpExamNewSub = async function(sub) {
         // ডিফল্টভাবে আমার রুটিন
         window.switchTpRoutineTab('my');
     } else if (sub === 'question-maker') {
-        // ★★★ ২. প্রশ্ন মেকার (মূল সেকশন থেকে সরাসরি লোড) ★★★
-        // শিক্ষক পোর্টাল হাইড করা
-        const portalView = document.getElementById('teacher-portal-view');
-        if (portalView) portalView.style.display = 'none';
-
-        // মূল অ্যাপ দেখানো
-        document.querySelectorAll('header, main, footer').forEach(el => {
-            el.style.display = 'block';
-            el.classList.remove('hidden');
+        // ★★★ ১. মূল অ্যাপের সব কিছু লুকিয়ে ফেলা (শিক্ষক বুঝতে পারবে না) ★★★
+        document.querySelectorAll('body > header, body > main, body > footer').forEach(el => {
+            el.style.display = 'none';
+            el.classList.add('hidden');
         });
-        // হেডার ও ফুটার মূল সেকশনের থাকবে, কিন্তু আমরা উপরে একটি ওভারলে বাটন দেব
+
+        // ★★★ ২. শিক্ষক পোর্টাল দেখানো (যাতে স্ক্রল ও হেডার ঠিক থাকে) ★★★
+        const portalView = document.getElementById('teacher-portal-view');
+        if (portalView) portalView.style.display = 'block';
+
+        // ★★★ ৩. প্রশ্ন মেকারের পুরো HTML টিচার পোর্টালের কনটেন্ট এরিয়ায় কপি করা ★★★
+        const qmOriginal = document.getElementById('exam-view-question-maker');
+        if (!qmOriginal) {
+            wrap.innerHTML = `<div class="text-center py-10 text-red-500">প্রশ্ন মেকার পাওয়া যায়নি</div>`;
+            return;
+        }
+
+        // মেইন কনটেন্ট এরিয়ায় প্রশ্ন মেকারের ক্লোন বসাই
+        wrap.innerHTML = `
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <button onclick="switchTpTab('exam-new')" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i> পরীক্ষা মেনু
+                </button>
+                <h3 class="text-sm md:text-base font-bold text-slate-800">প্রশ্ন মেকার</h3>
+            </div>
+            <div id="tp-qm-container"></div>
+        `;
+
+        const tpQmContainer = document.getElementById('tp-qm-container');
         
-        const examMainMenu = document.getElementById('exam-main-menu');
-        if (examMainMenu) examMainMenu.style.display = 'none';
-        const examMainMenuHomeBtn = document.getElementById('exam-main-menu-home-btn');
-        if (examMainMenuHomeBtn) examMainMenuHomeBtn.style.display = 'none';
+        // ★★★ ৪. মূল প্রশ্ন মেকারের ভেতরের কন্টেন্টটি কপি করে এখানে বসাই (হুবহু) ★★★
+        // যাতে মূল সেকশনের সব জাভাস্ক্রিপ্ট ইভেন্ট (onclick) ঠিকমতো কাজ করে
+        tpQmContainer.innerHTML = qmOriginal.innerHTML;
 
-        // সব exam-view হাইড করা
-        document.querySelectorAll('.exam-view').forEach(v => v.classList.add('hidden'));
-
-        // প্রশ্ন মেকার দেখানো
-        const qmView = document.getElementById('exam-view-question-maker');
-        if (qmView) {
-            qmView.classList.remove('hidden');
-            qmView.style.display = 'block';
-        }
-
-        // ★★★ ফিরে যাওয়ার বাটন তৈরি ★★★
-        let backBtn = document.getElementById('tp-back-to-portal-btn');
-        if (!backBtn) {
-            backBtn = document.createElement('button');
-            backBtn.id = 'tp-back-to-portal-btn';
-            backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> ফিরে যান';
-            backBtn.style.cssText = 'position:fixed;top:60px;left:15px;z-index:9999;background:#0d9488;color:white;padding:8px 16px;border-radius:8px;font-weight:bold;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.1);cursor:pointer;border:none;display:flex;align-items:center;gap:8px;';
-            backBtn.onclick = function() {
-                // মূল অ্যাপ হাইড করা
-                document.querySelectorAll('header, main, footer').forEach(el => {
-                    el.style.display = 'none';
-                });
-                // প্রশ্ন মেকার হাইড করা
-                if (qmView) qmView.classList.add('hidden');
-                
-                // শিক্ষক পোর্টাল দেখানো
-                if (portalView) portalView.style.display = 'block';
-                
-                // বাটন সরানো
-                backBtn.remove();
-            };
-            document.body.appendChild(backBtn);
-        }
-
-        // ★★★ সাবজেক্ট বার (আরবি, বাংলা, ইংরেজি, গণিত) সরাসরি প্রশ্ন মেকারের উপরে দেখানো ★★★
-        // মূল সেকশনে subject bar আছে (qm-common-subject-bar), কিন্তু সেটা hidden থাকতে পারে
+        // ★★★ ৫. প্রশ্ন মেকারের বিষয় সিলেক্টর বারটি এখানেও বসাই (যদি থাকে) ★★★
         const subjectBar = document.getElementById('qm-common-subject-bar');
         if (subjectBar) {
             subjectBar.classList.remove('hidden');
-            // এখানে আমরা subject bar-টি প্রশ্ন মেকারের ঠিক উপরে পজিশন করি
-            // (এটি মূল ডিজাইনে যেভাবে আছে সেভাবে থাকবে)
+            tpQmContainer.insertAdjacentHTML('afterbegin', subjectBar.outerHTML);
+            
+            // যেহেতু কপি করা হয়েছে, তাই নতুন সিলেক্টরটির ইভেন্টগুলো আবার বাইন্ড করতে হবে
+            const newSel = tpQmContainer.querySelector('#qm-subject-selector');
+            if (newSel) {
+                newSel.onchange = function() {
+                    if (typeof switchQmSubject === 'function') switchQmSubject(this.value);
+                };
+            }
         }
 
-        // প্রশ্ন মেকারের ভেতরের সব ইনিশিয়ালাইজেশন ফাংশন কল করি
+        // ★★★ ৬. ইনিশিয়ালাইজেশন ফাংশন কল করা ★★★
         setTimeout(() => {
             if (typeof populateAqmYearDropdown === 'function') populateAqmYearDropdown();
             if (typeof populateAqmClassDropdown === 'function') populateAqmClassDropdown();
             
-            // কোন বিষয় আগে দেখাব? ডিফল্ট আরবি
-            const subjSel = document.getElementById('qm-subject-selector');
+            const subjSel = tpQmContainer.querySelector('#qm-subject-selector');
             if (subjSel) {
                 subjSel.value = 'arabic';
                 if (typeof switchQmSubject === 'function') switchQmSubject('arabic');
@@ -55697,7 +55703,6 @@ window.switchTpExamSub = async function(sub) {
 
     } 
     // ২. আমার শ্রেণি ভিউ
-    // ২. আমার শ্রেণি ভিউ
     else if (sub === 'class-view') {
         const allowed = getTeacherAllowedClasses();
         if (!allowed || allowed.length === 0) {
@@ -55719,8 +55724,8 @@ window.switchTpExamSub = async function(sub) {
                     <div class="text-center py-10 text-slate-400"><p class="text-sm">ফলাফল লোড হচ্ছে...</p></div>
                 </div>
             `;
-            // সরাসরি রেজাল্ট ভিউ ফাংশন কল করি
-            setTimeout(() => window.onTpClassViewChange(`${dept}::${myClasses[0]}`), 50);
+            // ★ ২০০ মিলিসেকেন্ড পর ফাংশন কল করি যাতে DOM লোড হতে সময় পায় ★
+            setTimeout(() => window.onTpClassViewChange(`${dept}::${myClasses[0]}`), 200);
         } else {
             // যদি একাধিক জামাত থাকে, ট্যাব আকারে দেখাই
             let tabsHTML = myClasses.map((c, idx) => {
@@ -55744,10 +55749,10 @@ window.switchTpExamSub = async function(sub) {
             
             // প্রথম জামাতের রেজাল্ট লোড করি
             const firstDept = allowed.find(k => k.split('::')[1] === myClasses[0]).split('::')[0];
-            setTimeout(() => window.onTpClassViewChange(`${firstDept}::${myClasses[0]}`), 50);
+            // ★ ২০০ মিলিসেকেন্ড পর ফাংশন কল করি ★
+            setTimeout(() => window.onTpClassViewChange(`${firstDept}::${myClasses[0]}`), 200);
         }
     }
-    // ৩. বিভাগওয়ারী ফলাফল
     // ৩. বিভাগওয়ারী ফলাফল
     else if (sub === 'dept-result') {
         const depts = configData?.departments || [];
@@ -56388,26 +56393,67 @@ window.saveTpMarks = async function() {
     }
 };
 
+// ★★★ অত্যন্ত সহজ ও নিখুঁত হেল্পার ★★★
+async function renderMainResultHTMLForDept(dept, className) {
+    const oldDept = window._currentResultDept;
+    const oldClass = window._currentResultClass;
+    const oldTab = window._currentResultTab;
+    const oldStatus = _examPublishStatus;
+
+    // টার্গেট স্টেট সেট করা
+    window._currentResultDept = dept;
+    window._currentResultClass = className;
+    window._currentResultTab = className;
+    _examPublishStatus = true; // পাবলিশ চেক বাইপাস
+
+    try {
+        // মূল ফাংশন থেকে সরাসরি HTML রিটার্ন নিন
+        const html = await renderResultDeptPage();
+        return html;
+    } finally {
+        // স্টেট আগের অবস্থায় ফিরিয়ে নিন
+        window._currentResultDept = oldDept;
+        window._currentResultClass = oldClass;
+        window._currentResultTab = oldTab;
+        _examPublishStatus = oldStatus;
+    }
+}
+
 // ───────────────────────────────────────────────────────────────
 // ২. আমার শ্রেণি ভিউ হেল্পার
 // ───────────────────────────────────────────────────────────────
 window.onTpClassViewChange = async function(val) {
     if (!val) return;
+    
+    // ★★★ পাবলিশ চেক ★★★
+    if (!_examPublishStatus) {
+        const wrap = document.getElementById('tp-class-view-wrap');
+        if (wrap) {
+            wrap.innerHTML = `
+                <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-8 text-center">
+                    <i class="fa-solid fa-lock text-5xl text-amber-500 mb-3"></i>
+                    <h3 class="text-lg font-bold text-amber-900">রেজাল্ট এখনো পাবলিশ হয়নি</h3>
+                    <p class="text-sm text-amber-700 mt-2">অফিসিয়ালি রেজাল্ট পাবলিশ না হওয়া পর্যন্ত ফলাফল দেখতে পারবেন না।</p>
+                    <p class="text-xs text-slate-500 mt-3">এডমিনের সাথে যোগাযোগ করুন।</p>
+                </div>`;
+        }
+        return; // বাকি কোড রান হবে না
+    }
+    console.log("🚀 onTpClassViewChange কল হয়েছে:", val);
+    if (!val) return;
     const [d, c] = val.split('::');
     const wrap = document.getElementById('tp-class-view-wrap');
     if (!wrap) return;
 
-    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl"></i></div>`;
+    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-emerald-600"></i> লোড হচ্ছে...</div>`;
 
     try {
-        // ★★★ নতুন যোগ: ডাটা রিফ্রেশ করুন ★★★
+        // ১. ডাটা ও কলাম কনফিগ লোড
         if (typeof loadStudentsFromFirestore === 'function') {
             await loadStudentsFromFirestore();
         }
-        // কলাম কনফিগ লোড
         const { doc, getDoc } = window.fbFuncs;
-        const configRef = doc(window.fbDB, 'config', 'marksColumnsConfig');
-        const snap = await getDoc(configRef);
+        const snap = await getDoc(doc(window.fbDB, 'config', 'marksColumnsConfig'));
         if (snap.exists()) {
             const data = snap.data();
             _customMarksColumns = data.custom || {};
@@ -56415,106 +56461,213 @@ window.onTpClassViewChange = async function(val) {
             _marksColumnOrder = data.order || {};
         }
 
-        // মূল সেকশনের রেজাল্ট ভিউ ফাংশন কল করি
-        if (typeof renderResultDeptPage === 'function') {
-            // ট্রিক: মূল সেকশনের স্টেট সেট করে ফাংশন কল করি
-            window._currentResultDept = d;
-            window._currentResultClass = c;
-            window._currentResultTab = c; // ট্যাব = ক্লাস
-
-            // renderResultDeptPage ফাংশনটি সরাসরি DOM-এ কাজ করে (res-dept-content)
-            // এখানে আমরা buildStudentTableHTML ব্যবহার করে সরাসরি টেবিল বানাই
-            
-            // আসলে এখানে মূল সেকশনের "রেজাল্ট টেবিল" তৈরি করা কঠিন।
-            // আপাতত আমরা একটি রিড-অনলি টেবিল বানাই।
-            
-            const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
-            const students = (studentsCache || []).filter(s => 
-                s.dept === d && s.className === c && 
-                !excludedRemarks.includes((s.remark?.type || '').trim())
-            );
-
-            if (students.length === 0) {
-                wrap.innerHTML = `<div class="text-center py-10 text-slate-400">এই জামাতে কোনো ছাত্র নেই</div>`;
-                return;
+        // ২. ডাটা প্রসেসিং (হুবহু renderResultDeptPage থেকে কপি করা)
+        const dept = d;
+        const currentClass = c;
+        
+        const deptClasses = (configData?.classes || {})[dept] || [];
+        const allBooks = (configData?.books || {})[currentClass] || [];
+        let tempSubs = [];
+        
+        allBooks.forEach((book, idx) => {
+            const colKey = `default_${idx}`;
+            if (!_deletedMarksColumns[currentClass]?.includes(colKey)) {
+                tempSubs.push({ key: colKey, type: 'default', index: idx, label: book });
             }
+        });
 
-            // সমস্ত কলাম বের করি
-            const allBooks = (configData?.books || {})[c] || [];
-            const deletedCols = _deletedMarksColumns[c] || [];
-            const customCols = _customMarksColumns[c] || [];
-            let tempCols = [];
-            allBooks.forEach((book, idx) => {
-                const colKey = `default_${idx}`;
-                if (!deletedCols.includes(colKey)) tempCols.push({ type: 'default', key: colKey, index: idx, label: book });
+        const customCols = (_customMarksColumns[currentClass] || []);
+        customCols.forEach(col => {
+            if (!_deletedMarksColumns[currentClass]?.includes(col.key)) {
+                tempSubs.push({ key: col.key, type: 'custom', label: col.label });
+            }
+        });
+
+        let orderedSubs = [];
+        const savedOrder = _marksColumnOrder[currentClass] || [];
+        savedOrder.forEach(key => {
+            const found = tempSubs.find(c => c.key === key);
+            if (found) orderedSubs.push(found);
+        });
+        tempSubs.forEach(col => {
+            if (!orderedSubs.find(c => c.key === col.key)) {
+                orderedSubs.push(col);
+            }
+        });
+
+        let subjects = orderedSubs.map(s => s.label);
+        if (subjects.length === 0) {
+            subjects = ['বিষয় ১', 'বিষয় ২', 'বিষয় ৩'];
+        }
+
+        // ৩. শিক্ষার্থী ফিল্টার
+        let realStudents = [];
+        if (typeof studentsCache !== 'undefined') {
+            realStudents = studentsCache.filter(s => {
+                if (s.dept !== dept || s.className !== currentClass) return false;
+                const remarkType = s.remark?.type || '';
+                if (['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'].includes(remarkType)) return false;
+                return true;
             });
-            customCols.forEach(col => {
-                if (!deletedCols.includes(col.key)) tempCols.push({ type: 'custom', key: col.key, label: col.label });
-            });
-            const savedOrder = _marksColumnOrder[c] || [];
-            let orderedCols = [];
-            savedOrder.forEach(key => {
-                const found = tempCols.find(col => col.key === key);
-                if (found) orderedCols.push(found);
-            });
-            tempCols.forEach(col => {
-                if (!orderedCols.find(c2 => c2.key === col.key)) orderedCols.push(col);
+        }
+
+        let currentDeptData = [];
+        if (realStudents.length === 0) {
+            wrap.innerHTML = `<div class="bg-white rounded-xl shadow-md p-10 text-center"><i class="fa-solid fa-user-slash text-5xl text-slate-300 mb-3"></i><h3 class="text-lg font-bold text-slate-700">এই জামাতে কোনো ছাত্র পাওয়া যায়নি!</h3></div>`;
+            return;
+        }
+
+        realStudents.forEach(student => {
+            let marks = [];
+            orderedSubs.forEach(colItem => {
+                let val = null;
+                if (colItem.type === 'default') {
+                    if (student.resultMarksObj && student.resultMarksObj[colItem.key] !== undefined) {
+                        val = student.resultMarksObj[colItem.key];
+                    } else if (student.resultMarks && student.resultMarks.length > 0) {
+                        val = student.resultMarks[colItem.index];
+                    }
+                } 
+                else if (colItem.type === 'custom') {
+                    if (student.customMarks && student.customMarks[colItem.key] !== undefined) {
+                        val = student.customMarks[colItem.key];
+                    }
+                }
+                marks.push(val !== null && val !== undefined && val !== '' ? Number(val) : 0);
             });
 
-            // প্রতিটি ছাত্রের নম্বর ও গ্রেড বের করি
-            let dataList = [];
-            students.forEach(s => {
-                let marksArr = [];
-                orderedCols.forEach(col => {
-                    let v = null;
-                    if (col.type === 'default') v = s.resultMarksObj?.[col.key] !== undefined ? s.resultMarksObj[col.key] : (s.resultMarks?.[col.index] || 0);
-                    else v = s.customMarks?.[col.key] || 0;
-                    marksArr.push(Number(v) || 0);
-                });
-                const calc = calculateGradeAndDivision(d, marksArr, c);
-                dataList.push({ id: s.studentId || s.id, name: s.name, marks: marksArr, total: calc.total, avg: calc.avg, grade: calc.grade, rank: 0 });
+            let calc = calculateGradeAndDivision(dept, marks, currentClass);
+
+            currentDeptData.push({
+                id: student.studentId || 'N/A', 
+                name: student.name || 'নাম নেই',
+                dept: dept, className: currentClass, marks: marks,
+                total: calc.total, avg: calc.avg, grade: calc.grade, rank: 0
             });
+        });
 
-            const ranked = calculateRanks(dataList);
+        // ৪. সর্টিং
+        if (typeof _spreadsheetSort !== 'undefined' && _spreadsheetSort.col !== null) {
+            const dir = _spreadsheetSort.dir === 'asc' ? 1 : -1;
+            const sortCol = _spreadsheetSort.col;
 
-            let tableHead = `<th class="p-1 border">ক্রম</th><th class="p-1 border text-left">নাম</th><th class="p-1 border">আইডি</th>`;
-            orderedCols.forEach(col => tableHead += `<th class="p-1 border text-center">${col.label}</th>`);
-            tableHead += `<th class="p-1 border">মোট</th><th class="p-1 border">গড়</th><th class="p-1 border">বিভাগ</th><th class="p-1 border">মেধাস্থান</th>`;
-
-            let tableRows = '';
-            ranked.forEach((st, idx) => {
-                let marksCells = st.marks.map(m => `<td class="p-1 border text-center">${m}</td>`).join('');
-                tableRows += `<tr>
-                    <td class="p-1 border text-center">${idx+1}</td>
-                    <td class="p-1 border text-left font-bold">${st.name}</td>
-                    <td class="p-1 border text-center font-mono">${st.id}</td>
-                    ${marksCells}
-                    <td class="p-1 border text-center font-bold">${st.total}</td>
-                    <td class="p-1 border text-center">${st.avg}</td>
-                    <td class="p-1 border text-center font-bold">${st.grade}</td>
-                    <td class="p-1 border text-center font-bold">${st.rank}</td>
-                </tr>`;
+            currentDeptData.sort((a, b) => {
+                if (sortCol === 'name') return (a.name || '').trim().localeCompare((b.name || '').trim(), 'bn') * dir;
+                if (sortCol === 'id') {
+                    let valA = (a.id || '').trim(), valB = (b.id || '').trim();
+                    let numA = parseFloat(valA), numB = parseFloat(valB);
+                    let isNumA = !isNaN(numA) && /^\d+(\.\d+)?$/.test(valA);
+                    let isNumB = !isNaN(numB) && /^\d+(\.\d+)?$/.test(valB);
+                    if (isNumA && isNumB) return (numA - numB) * dir;
+                    return valA.localeCompare(valB, 'bn', { numeric: true }) * dir;
+                }
+                if (sortCol.startsWith('default_')) {
+                    const idx = parseInt(sortCol.split('_')[1]);
+                    const originalA = studentsCache.find(s => (s.studentId || 'N/A') === a.id);
+                    const originalB = studentsCache.find(s => (s.studentId || 'N/A') === b.id);
+                    const markA = originalA?.resultMarks?.[idx] || 0;
+                    const markB = originalB?.resultMarks?.[idx] || 0;
+                    return (markA - markB) * dir;
+                }
+                return 0;
             });
+        }
 
-            wrap.innerHTML = `
-                <div class="bg-slate-50 p-2 mb-2 text-center border-b border-slate-300">
-                    <h4 class="text-sm font-bold text-slate-800">${settings.madrasaName || 'জামিয়া ইসলামিয়া'}</h4>
-                    <p class="text-xs text-slate-600">শ্রেণি: <span class="font-arabic font-bold">${c}</span></p>
+        const rankedData = calculateRanks(currentDeptData);
+        const totalStudents = rankedData.length;
+        const passed = rankedData.filter(dt => dt.grade !== 'রাসিব' && dt.grade !== 'অনুপস্থিত' && dt.grade !== 'F').length;
+        const mumtaz = rankedData.filter(dt => dt.grade === 'মুমতায' || dt.grade === 'A+').length;
+        const fail = totalStudents - passed;
+        const passRate = totalStudents > 0 ? ((passed / totalStudents) * 100).toFixed(2) : '0.00';
+
+        // ৫. UI তৈরি (আপনার renderResultDeptPage এর টেবিল ফরম্যাট)
+        let tableHeadHTML = `
+            <th class="p-2 border" style="min-width:40px;">ক্রম</th>
+            <th class="p-2 border" style="min-width:120px;">পরীক্ষার্থীর নাম</th>
+            <th class="p-2 border" style="min-width:70px;">আইডি</th>
+        `;
+        subjects.forEach(sub => {
+            tableHeadHTML += `<th class="p-2 border text-center bg-slate-50" style="min-width:60px;">${sub}</th>`;
+        });
+        tableHeadHTML += `
+            <th class="p-2 border bg-blue-50 text-blue-800">মোট</th>
+            <th class="p-2 border bg-emerald-50 text-emerald-800">গড়</th>
+            <th class="p-2 border bg-amber-50 text-amber-800">বিভাগ</th>
+            <th class="p-2 border bg-fuchsia-50 text-fuchsia-800">মেধাস্থান</th>
+            <th class="p-2 border">অ্যাকশন</th>
+        `;
+
+        let rowsHTML = '';
+        rankedData.forEach((student, idx) => {
+            let gradeColor = 'text-slate-700';
+            if (student.grade === 'মুমতায' || student.grade === 'A+') gradeColor = 'text-emerald-700 font-bold';
+            else if (student.grade === 'রাসিব' || student.grade === 'F') gradeColor = 'text-red-700 font-bold';
+
+            let marksCellsHTML = student.marks.map(mark => {
+                const color = (mark < 33) ? 'text-red-600 font-bold' : 'text-slate-700';
+                return `<td class="p-2 border text-center ${color}">${mark === 0 ? '—' : mark}</td>`;
+            }).join('');
+
+            rowsHTML += `
+                <tr class="border-b hover:bg-slate-50 text-center">
+                    <td class="p-2 border">${idx + 1}</td>
+                    <td class="p-2 border text-right font-bold text-slate-800">${student.name}</td>
+                    <td class="p-2 border font-mono text-blue-700">${student.id}</td>
+                    ${marksCellsHTML}
+                    <td class="p-2 border font-bold bg-blue-50 ${gradeColor}">${student.total}</td>
+                    <td class="p-2 border font-bold bg-emerald-50">${student.avg}</td>
+                    <td class="p-2 border bg-amber-50 ${gradeColor}">${student.grade}</td>
+                    <td class="p-2 border font-bold text-fuchsia-700 bg-fuchsia-50">${student.rank}</td>
+                    <td class="p-2 border"><button onclick="viewStudentMarksheet('${student.id}')" class="text-blue-600 hover:underline text-xs"><i class="fa-solid fa-file-invoice"></i> মার্কশীট</button></td>
+                </tr>
+            `;
+        });
+
+        wrap.innerHTML = `
+            <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+                <div class="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white rounded border border-slate-300 text-xs overflow-hidden">
+                        <div class="bg-slate-100 text-center font-bold py-1 border-b border-slate-300">সংশ্লিষ্ট রিপোর্ট</div>
+                        <div class="flex justify-between p-2 border-b border-slate-200"><span>পরীক্ষার্থী:</span> <span class="font-bold">${totalStudents}</span></div>
+                        <div class="flex justify-between p-2 border-b border-slate-200"><span>পাশ:</span> <span class="font-bold text-emerald-600">${passed}</span></div>
+                        <div class="flex justify-between p-2 border-b border-slate-200"><span>মুমতায:</span> <span class="font-bold">${mumtaz}</span></div>
+                        <div class="flex justify-between p-2 border-b border-slate-200"><span>ফেল:</span> <span class="font-bold text-red-600">${fail}</span></div>
+                        <div class="flex justify-between p-2"><span>পাশের হার:</span> <span class="font-bold text-blue-600">${passRate}%</span></div>
+                    </div>
+                    <div class="flex flex-col items-center justify-center text-center py-2">
+                        ${settings.logo ? `<img src="${settings.logo}" class="h-14 mb-2" alt="Logo">` : `<i class="fa-solid fa-book-open text-4xl text-emerald-600 mb-2"></i>`}
+                        <h3 class="font-bold text-slate-800 text-base">${settings.madrasaName || 'জামিয়া ইসলামিয়া'}</h3>
+                        <p class="text-[11px] text-slate-500 mt-1">১ম সাময়িক পরীক্ষা - ${settings.year || ''}</p>
+                        <p class="text-xs font-bold font-arabic mt-1">${currentClass}</p>
+                    </div>
+                    <div class="bg-white rounded border border-slate-300 text-xs overflow-hidden">
+                        <div class="bg-slate-100 text-center font-bold py-1 border-b border-slate-300">মেধার গ্রেডিং বিষয়</div>
+                        <table class="w-full border-collapse">
+                            <tr class="border-b border-slate-200"><td class="p-1.5 border-r border-slate-200 text-right font-bold">মুমতায (১ম বিভাগ)</td><td class="p-1.5 text-center bg-emerald-50 font-bold text-emerald-700">৮০-১০০</td></tr>
+                            <tr class="border-b border-slate-200"><td class="p-1.5 border-r border-slate-200 text-right font-bold">জায়্যিদ জিদ্দান (২য় বিভাগ)</td><td class="p-1.5 text-center bg-blue-50 font-bold text-blue-700">৬৫-৭৯</td></tr>
+                            <tr class="border-b border-slate-200"><td class="p-1.5 border-r border-slate-200 text-right font-bold">জায়্যিদ (৩য় বিভাগ)</td><td class="p-1.5 text-center bg-amber-50 font-bold text-amber-700">৫০-৬৪</td></tr>
+                            <tr class="border-b border-slate-200"><td class="p-1.5 border-r border-slate-200 text-right font-bold">মাকবুল (৪র্থ বিভাগ)</td><td class="p-1.5 text-center bg-orange-50 font-bold text-orange-700">৩৩-৪৯</td></tr>
+                            <tr><td class="p-1.5 border-r border-slate-200 text-right font-bold">রাসিব (অকৃতকার্য)</td><td class="p-1.5 text-center bg-red-50 font-bold text-red-700">০-৩২</td></tr>
+                        </table>
+                    </div>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full border-collapse border border-slate-300 text-xs md:text-sm">
-                        <thead class="bg-slate-100"><tr>${tableHead}</tr></thead>
-                        <tbody>${tableRows}</tbody>
+                <div class="overflow-x-auto p-2">
+                    <table class="w-full text-xs border-collapse border border-slate-300">
+                        <thead class="bg-slate-100 text-slate-700">
+                            <tr>
+                                ${tableHeadHTML}
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHTML}</tbody>
                     </table>
                 </div>
-            `;
+            </div>
+        `;
+        console.log("✅ ক্লাস ভিউ রেন্ডার সফল!");
 
-        } else {
-            wrap.innerHTML = `<div class="text-center py-10 text-red-500">রেজাল্ট ভিউ ফাংশন পাওয়া যায়নি</div>`;
-        }
     } catch (err) {
-        console.error(err);
-        wrap.innerHTML = `<div class="text-center py-10 text-red-500">${err.message}</div>`;
+        console.error('❌ onTpClassViewChange:', err);
+        wrap.innerHTML = `<div class="text-center py-10 text-red-500 font-bold">এরর: ${err.message}</div>`;
     }
 };
 
@@ -56555,22 +56708,34 @@ window.onTpDeptResultDeptChange = function(deptKey) {
 
 window.onTpDeptResultClassChange = async function(val) {
     if (!val) return;
+    
+    // ★★★ পাবলিশ চেক ★★★
+    if (!_examPublishStatus) {
+        const wrap = document.getElementById('tp-dept-result-wrap');
+        if (wrap) {
+            wrap.innerHTML = `
+                <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-8 text-center">
+                    <i class="fa-solid fa-lock text-5xl text-amber-500 mb-3"></i>
+                    <h3 class="text-lg font-bold text-amber-900">রেজাল্ট এখনো পাবলিশ হয়নি</h3>
+                    <p class="text-sm text-amber-700 mt-2">অফিসিয়ালি রেজাল্ট পাবলিশ না হওয়া পর্যন্ত ফলাফল দেখতে পারবেন না।</p>
+                </div>`;
+        }
+        return;
+    }
+    if (!val) return;
     const [d, c] = val.split('::');
     const wrap = document.getElementById('tp-dept-result-wrap');
     if (!wrap) return;
 
-    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl"></i></div>`;
+    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-emerald-600"></i> লোড হচ্ছে...</div>`;
 
     try {
-        // ★★★ ১. ডাটা রিফ্রেশ ★★★
+        // ১. ডাটা ও কলাম কনফিগ লোড
         if (typeof loadStudentsFromFirestore === 'function') {
             await loadStudentsFromFirestore();
         }
-        
-        // ★★★ ২. কলাম কনফিগ ও রেজাল্ট স্টেট সেট করা ★★★
         const { doc, getDoc } = window.fbFuncs;
-        const configRef = doc(window.fbDB, 'config', 'marksColumnsConfig');
-        const snap = await getDoc(configRef);
+        const snap = await getDoc(doc(window.fbDB, 'config', 'marksColumnsConfig'));
         if (snap.exists()) {
             const data = snap.data();
             _customMarksColumns = data.custom || {};
@@ -56578,70 +56743,212 @@ window.onTpDeptResultClassChange = async function(val) {
             _marksColumnOrder = data.order || {};
         }
 
-        // ★★★ ৩. মূল সেকশনের স্টেট সেট করা ★★★
-        window._currentResultDept = d;
-        window._currentResultClass = c;
-        window._currentResultTab = c; 
-
-        // ★★★ ৪. মূল সেকশনের ফাংশন কল করে লুকানো ডিভ-এ রেন্ডার করা ★★★
-        if (typeof renderResultDeptPage === 'function') {
-            const hiddenDiv = document.createElement('div');
-            hiddenDiv.style.display = 'none';
-            document.body.appendChild(hiddenDiv);
-
-            // মূল সেকশনে যেখানে রেন্ডার হয়, সেটার ট্রিক
-            const originalResDeptContent = document.getElementById('res-dept-content');
-            const originalResDeptHeader = document.getElementById('res-dept-header');
-            
-            if (originalResDeptContent && originalResDeptHeader) {
-                // আসল ডিভ সাময়িকভাবে সরিয়ে রাখি
-                const parent1 = originalResDeptContent.parentNode;
-                const parent2 = originalResDeptHeader.parentNode;
-
-                const placeholder1 = document.createElement('div');
-                const placeholder2 = document.createElement('div');
-                parent1.replaceChild(placeholder1, originalResDeptContent);
-                parent2.replaceChild(placeholder2, originalResDeptHeader);
-
-                hiddenDiv.appendChild(originalResDeptContent);
-                hiddenDiv.appendChild(originalResDeptHeader);
-
-                // ফাংশন কল
-                await renderResultDeptPage();
-
-                // ★★★ ৫. শুধু টেবিলের অংশ কপি করা ★★★
-                // মূল সেকশনে টেবিলটি .overflow-x-auto ক্লাসের ভেতরে থাকে
-                const tableHTML = originalResDeptContent.querySelector('.overflow-x-auto')?.outerHTML;
-
-                if (tableHTML) {
-                    wrap.innerHTML = `
-                        <div class="bg-white rounded-lg border border-slate-200 p-2 shadow-sm">
-                            <div class="text-center mb-2 pb-2 border-b border-slate-200">
-                                <h4 class="text-sm font-bold text-emerald-900">${settings.madrasaName || 'জামিয়া ইসলামিয়া'}</h4>
-                                <p class="text-xs text-slate-600 font-arabic">শ্রেণি: <strong>${c}</strong></p>
-                            </div>
-                            ${tableHTML}
-                        </div>
-                    `;
-                } else {
-                    wrap.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">এই শ্রেণির জন্য কোনো ফলাফল পাওয়া যায়নি।</div>`;
-                }
-
-                // ★★★ ৬. আসল ডিভগুলো ফিরিয়ে আনা ★★★
-                parent1.replaceChild(originalResDeptContent, placeholder1);
-                parent2.replaceChild(originalResDeptHeader, placeholder2);
-            } else {
-                wrap.innerHTML = `<div class="text-center py-10 text-red-500">মূল সেকশনের UI কন্টেইনার পাওয়া যায়নি।</div>`;
+        // ২. ডাটা প্রসেসিং (ক্লাস ভিউ-এর মতোই)
+        const dept = d;
+        const currentClass = c;
+        
+        const allBooks = (configData?.books || {})[currentClass] || [];
+        let tempSubs = [];
+        
+        allBooks.forEach((book, idx) => {
+            const colKey = `default_${idx}`;
+            if (!_deletedMarksColumns[currentClass]?.includes(colKey)) {
+                tempSubs.push({ key: colKey, type: 'default', index: idx, label: book });
             }
-            
-            document.body.removeChild(hiddenDiv);
-        } else {
-            wrap.innerHTML = `<div class="text-center py-10 text-red-500">রেজাল্ট ভিউ ফাংশন পাওয়া যায়নি</div>`;
+        });
+
+        const customCols = (_customMarksColumns[currentClass] || []);
+        customCols.forEach(col => {
+            if (!_deletedMarksColumns[currentClass]?.includes(col.key)) {
+                tempSubs.push({ key: col.key, type: 'custom', label: col.label });
+            }
+        });
+
+        let orderedSubs = [];
+        const savedOrder = _marksColumnOrder[currentClass] || [];
+        savedOrder.forEach(key => {
+            const found = tempSubs.find(c => c.key === key);
+            if (found) orderedSubs.push(found);
+        });
+        tempSubs.forEach(col => {
+            if (!orderedSubs.find(c => c.key === col.key)) {
+                orderedSubs.push(col);
+            }
+        });
+
+        let subjects = orderedSubs.map(s => s.label);
+        if (subjects.length === 0) {
+            subjects = ['বিষয় ১', 'বিষয় ২', 'বিষয় ৩'];
         }
 
+        // ৩. শিক্ষার্থী ফিল্টার
+        let realStudents = [];
+        if (typeof studentsCache !== 'undefined') {
+            realStudents = studentsCache.filter(s => {
+                if (s.dept !== dept || s.className !== currentClass) return false;
+                const remarkType = s.remark?.type || '';
+                if (['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'].includes(remarkType)) return false;
+                return true;
+            });
+        }
+
+        let currentDeptData = [];
+        if (realStudents.length === 0) {
+            wrap.innerHTML = `<div class="bg-white rounded-xl shadow-md p-10 text-center"><i class="fa-solid fa-user-slash text-5xl text-slate-300 mb-3"></i><h3 class="text-lg font-bold text-slate-700">এই জামাতে কোনো ছাত্র পাওয়া যায়নি!</h3></div>`;
+            return;
+        }
+
+        realStudents.forEach(student => {
+            let marks = [];
+            orderedSubs.forEach(colItem => {
+                let val = null;
+                if (colItem.type === 'default') {
+                    if (student.resultMarksObj && student.resultMarksObj[colItem.key] !== undefined) {
+                        val = student.resultMarksObj[colItem.key];
+                    } else if (student.resultMarks && student.resultMarks.length > 0) {
+                        val = student.resultMarks[colItem.index];
+                    }
+                } 
+                else if (colItem.type === 'custom') {
+                    if (student.customMarks && student.customMarks[colItem.key] !== undefined) {
+                        val = student.customMarks[colItem.key];
+                    }
+                }
+                marks.push(val !== null && val !== undefined && val !== '' ? Number(val) : 0);
+            });
+
+            let calc = calculateGradeAndDivision(dept, marks, currentClass);
+
+            currentDeptData.push({
+                id: student.studentId || 'N/A', 
+                name: student.name || 'নাম নেই',
+                dept: dept, className: currentClass, marks: marks,
+                total: calc.total, avg: calc.avg, grade: calc.grade, rank: 0
+            });
+        });
+
+        // ৪. সর্টিং
+        if (typeof _spreadsheetSort !== 'undefined' && _spreadsheetSort.col !== null) {
+            const dir = _spreadsheetSort.dir === 'asc' ? 1 : -1;
+            const sortCol = _spreadsheetSort.col;
+
+            currentDeptData.sort((a, b) => {
+                if (sortCol === 'name') return (a.name || '').trim().localeCompare((b.name || '').trim(), 'bn') * dir;
+                if (sortCol === 'id') {
+                    let valA = (a.id || '').trim(), valB = (b.id || '').trim();
+                    let numA = parseFloat(valA), numB = parseFloat(valB);
+                    let isNumA = !isNaN(numA) && /^\d+(\.\d+)?$/.test(valA);
+                    let isNumB = !isNaN(numB) && /^\d+(\.\d+)?$/.test(valB);
+                    if (isNumA && isNumB) return (numA - numB) * dir;
+                    return valA.localeCompare(valB, 'bn', { numeric: true }) * dir;
+                }
+                if (sortCol.startsWith('default_')) {
+                    const idx = parseInt(sortCol.split('_')[1]);
+                    const originalA = studentsCache.find(s => (s.studentId || 'N/A') === a.id);
+                    const originalB = studentsCache.find(s => (s.studentId || 'N/A') === b.id);
+                    const markA = originalA?.resultMarks?.[idx] || 0;
+                    const markB = originalB?.resultMarks?.[idx] || 0;
+                    return (markA - markB) * dir;
+                }
+                return 0;
+            });
+        }
+
+        const rankedData = calculateRanks(currentDeptData);
+        const totalStudents = rankedData.length;
+        const passed = rankedData.filter(dt => dt.grade !== 'রাসিব' && dt.grade !== 'অনুপস্থিত' && dt.grade !== 'F').length;
+        const mumtaz = rankedData.filter(dt => dt.grade === 'মুমতায' || dt.grade === 'A+').length;
+        const fail = totalStudents - passed;
+        const passRate = totalStudents > 0 ? ((passed / totalStudents) * 100).toFixed(2) : '0.00';
+
+        // ৫. UI তৈরি
+        let tableHeadHTML = `
+            <th class="p-2 border" style="min-width:40px;">ক্রম</th>
+            <th class="p-2 border" style="min-width:120px;">পরীক্ষার্থীর নাম</th>
+            <th class="p-2 border" style="min-width:70px;">আইডি</th>
+        `;
+        subjects.forEach(sub => {
+            tableHeadHTML += `<th class="p-2 border text-center bg-slate-50" style="min-width:60px;">${sub}</th>`;
+        });
+        tableHeadHTML += `
+            <th class="p-2 border bg-blue-50 text-blue-800">মোট</th>
+            <th class="p-2 border bg-emerald-50 text-emerald-800">গড়</th>
+            <th class="p-2 border bg-amber-50 text-amber-800">বিভাগ</th>
+            <th class="p-2 border bg-fuchsia-50 text-fuchsia-800">মেধাস্থান</th>
+            <th class="p-2 border">অ্যাকশন</th>
+        `;
+
+        let rowsHTML = '';
+        rankedData.forEach((student, idx) => {
+            let gradeColor = 'text-slate-700';
+            if (student.grade === 'মুমতায' || student.grade === 'A+') gradeColor = 'text-emerald-700 font-bold';
+            else if (student.grade === 'রাসিব' || student.grade === 'F') gradeColor = 'text-red-700 font-bold';
+
+            let marksCellsHTML = student.marks.map(mark => {
+                const color = (mark < 33) ? 'text-red-600 font-bold' : 'text-slate-700';
+                return `<td class="p-2 border text-center ${color}">${mark === 0 ? '—' : mark}</td>`;
+            }).join('');
+
+            rowsHTML += `
+                <tr class="border-b hover:bg-slate-50 text-center">
+                    <td class="p-2 border">${idx + 1}</td>
+                    <td class="p-2 border text-right font-bold text-slate-800">${student.name}</td>
+                    <td class="p-2 border font-mono text-blue-700">${student.id}</td>
+                    ${marksCellsHTML}
+                    <td class="p-2 border font-bold bg-blue-50 ${gradeColor}">${student.total}</td>
+                    <td class="p-2 border font-bold bg-emerald-50">${student.avg}</td>
+                    <td class="p-2 border bg-amber-50 ${gradeColor}">${student.grade}</td>
+                    <td class="p-2 border font-bold text-fuchsia-700 bg-fuchsia-50">${student.rank}</td>
+                    <td class="p-2 border"><button onclick="viewStudentMarksheet('${student.id}')" class="text-blue-600 hover:underline text-xs"><i class="fa-solid fa-file-invoice"></i> মার্কশীট</button></td>
+                </tr>
+            `;
+        });
+
+        wrap.innerHTML = `
+            <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+                <div class="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white rounded border border-slate-300 text-xs overflow-hidden">
+                        <div class="bg-slate-100 text-center font-bold py-1 border-b border-slate-300">সংশ্লিষ্ট রিপোর্ট</div>
+                        <div class="flex justify-between p-2 border-b border-slate-200"><span>পরীক্ষার্থী:</span> <span class="font-bold">${totalStudents}</span></div>
+                        <div class="flex justify-between p-2 border-b border-slate-200"><span>পাশ:</span> <span class="font-bold text-emerald-600">${passed}</span></div>
+                        <div class="flex justify-between p-2 border-b border-slate-200"><span>মুমতায:</span> <span class="font-bold">${mumtaz}</span></div>
+                        <div class="flex justify-between p-2 border-b border-slate-200"><span>ফেল:</span> <span class="font-bold text-red-600">${fail}</span></div>
+                        <div class="flex justify-between p-2"><span>পাশের হার:</span> <span class="font-bold text-blue-600">${passRate}%</span></div>
+                    </div>
+                    <div class="flex flex-col items-center justify-center text-center py-2">
+                        ${settings.logo ? `<img src="${settings.logo}" class="h-14 mb-2" alt="Logo">` : `<i class="fa-solid fa-book-open text-4xl text-emerald-600 mb-2"></i>`}
+                        <h3 class="font-bold text-slate-800 text-base">${settings.madrasaName || 'জামিয়া ইসলামিয়া'}</h3>
+                        <p class="text-[11px] text-slate-500 mt-1">পরীক্ষার ফলাফল - ${settings.year || ''}</p>
+                        <p class="text-xs font-bold font-arabic mt-1">${currentClass}</p>
+                    </div>
+                    <div class="bg-white rounded border border-slate-300 text-xs overflow-hidden">
+                        <div class="bg-slate-100 text-center font-bold py-1 border-b border-slate-300">মেধার গ্রেডিং বিষয়</div>
+                        <table class="w-full border-collapse">
+                            <tr class="border-b border-slate-200"><td class="p-1.5 border-r border-slate-200 text-right font-bold">মুমতায (১ম বিভাগ)</td><td class="p-1.5 text-center bg-emerald-50 font-bold text-emerald-700">৮০-১০০</td></tr>
+                            <tr class="border-b border-slate-200"><td class="p-1.5 border-r border-slate-200 text-right font-bold">জায়্যিদ জিদ্দান (২য় বিভাগ)</td><td class="p-1.5 text-center bg-blue-50 font-bold text-blue-700">৬৫-৭৯</td></tr>
+                            <tr class="border-b border-slate-200"><td class="p-1.5 border-r border-slate-200 text-right font-bold">জায়্যিদ (৩য় বিভাগ)</td><td class="p-1.5 text-center bg-amber-50 font-bold text-amber-700">৫০-৬৪</td></tr>
+                            <tr class="border-b border-slate-200"><td class="p-1.5 border-r border-slate-200 text-right font-bold">মাকবুল (৪র্থ বিভাগ)</td><td class="p-1.5 text-center bg-orange-50 font-bold text-orange-700">৩৩-৪৯</td></tr>
+                            <tr><td class="p-1.5 border-r border-slate-200 text-right font-bold">রাসিব (অকৃতকার্য)</td><td class="p-1.5 text-center bg-red-50 font-bold text-red-700">০-৩২</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="overflow-x-auto p-2">
+                    <table class="w-full text-xs border-collapse border border-slate-300">
+                        <thead class="bg-slate-100 text-slate-700">
+                            <tr>
+                                ${tableHeadHTML}
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHTML}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        console.log("✅ বিভাগওয়ারী ফলাফল রেন্ডার সফল!");
+
     } catch (err) {
-        console.error(err);
-        wrap.innerHTML = `<div class="text-center py-10 text-red-500">${err.message}</div>`;
+        console.error('❌ onTpDeptResultClassChange:', err);
+        wrap.innerHTML = `<div class="text-center py-10 text-red-500 font-bold">এরর: ${err.message}</div>`;
     }
 };
 
@@ -56681,38 +56988,23 @@ window.onTpSummaryDeptChange = async function(deptKey) {
             window._currentResultDept = deptKey;
             window._overviewTab = 'summary'; // ডিফল্ট summary ট্যাব
 
-            const hiddenDiv = document.createElement('div');
-            hiddenDiv.style.display = 'none';
-            document.body.appendChild(hiddenDiv);
-
-            // ফাংশনটি সরাসরি HTML রিটার্ন করে, তাই সরাসরি ভেরিয়েবলে নিচ্ছি
+            // ফাংশনটি সরাসরি HTML রিটার্ন করে
             const fullHTML = buildOverviewSummaryHTML(deptKey);
 
-            // ★★★ ৪. HTML থেকে শুধু টেবিলের অংশটুকু বের করা ★★★
-            // মূল সামারি HTML-এর ভেতরে টেবিলটি <div style="padding:14px;background:white;"> এর ভেতরে থাকে
-            // আমরা একটি টেম্পোরারি DOM তৈরি করে সেখান থেকে শুধু টেবিলের অংশ নিতে পারি।
-            
+            // ★★★ ৪. স্মার্ট পার্সিং ★★★
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = fullHTML;
 
-            // টেবিলের কন্টেইনার খুঁজে বের করা
-            // buildOverviewSummaryTable ফাংশনটি যে ডিভ তৈরি করে, সেটার ব্যাকগ্রাউন্ড সাদা এবং প্যাডিং থাকে
-            const tableContainer = tempDiv.querySelector('div[style*="padding:14px"]');
+            // যেসব বাটন বা এলিমেন্টে 'no-print' ক্লাস আছে (যেমন: মোট সামারি, সকল মুমতায ইত্যাদি), সেগুলো সরিয়ে দিই
+            tempDiv.querySelectorAll('.no-print').forEach(el => el.remove());
 
-            if (tableContainer) {
-                wrap.innerHTML = `
-                    <div class="bg-white rounded-lg border border-slate-200 p-2 shadow-sm">
-                        ${tableContainer.outerHTML}
-                    </div>
-                `;
-            } else {
-                // যদি কোনো কারণে না পাওয়া যায়, তবে পুরোটা দেখাই (তবে বাটনগুলো থাকবে না, কারণ buildOverviewSummaryHTML এর ভেতরে ট্যাব নেই)
-                // আসলে buildOverviewSummaryHTML-এ ট্যাব বাটনগুলো (মোট সামারি, সকল মুমতায) বাইরে থেকে আসে (buildOverviewSummaryHTML ফাংশনের ভেতরে সেগুলো আলাদা স্ট্রিং হিসেবে আছে)।
-                // তাই টেবিল কন্টেইনার না পেলে নিচের ফলব্যাক কাজ করবে।
-                wrap.innerHTML = `<div class="bg-white rounded-lg border border-slate-200 p-2 shadow-sm">${fullHTML}</div>`;
-            }
+            // বাকি যে অংশটুকু থাকবে (যেখানে হেডার ও টেবিল আছে), সেটাই আমাদের লাগবে
+            wrap.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-2 md:p-4 overflow-x-auto">
+                    ${tempDiv.innerHTML}
+                </div>
+            `;
             
-            document.body.removeChild(hiddenDiv);
         } else {
             wrap.innerHTML = `<div class="text-center py-10 text-red-500">সামারি ফাংশন পাওয়া যায়নি</div>`;
         }
@@ -59127,32 +59419,62 @@ window.shareLeavePDF = function() {
 window.submitLeaveApplication = async function() {
     const data = collectLeaveFormData();
 
-    // ভ্যালিডেশন
-    if (!data.reason) {
-        showToast('⚠️ ছুটির কারণ দিন', 'warn');
-        return;
-    }
-    if (data.type === 'partial' && (!data.startDate || !data.endDate || data.totalDays <= 0)) {
-        showToast('⚠️ সঠিক তারিখ দিন', 'warn');
-        return;
-    }
-    if (data.type === 'approval' && (!data.startDate || !data.endDate || data.totalDays <= 0)) {
-        showToast('⚠️ সঠিক তারিখ দিন', 'warn');
-        return;
-    }
-    if (data.type === 'promise' && !data.promiseReason) {
-        showToast('⚠️ অঙ্গীকারের কারণ দিন', 'warn');
-        return;
-    }
+    // ★★★ ১. ভ্যালিডেশন ★★★
+    if (!data.reason) return showToast('⚠️ ছুটির কারণ দিন', 'warn');
+    if (data.type === 'partial' && (!data.startDate || !data.endDate || data.totalDays <= 0)) return showToast('⚠️ সঠিক তারিখ দিন', 'warn');
+    if (data.type === 'approval' && (!data.startDate || !data.endDate || data.totalDays <= 0)) return showToast('⚠️ সঠিক তারিখ দিন', 'warn');
+    if (data.type === 'promise' && !data.promiseReason) return showToast('⚠️ অঙ্গীকারের কারণ দিন', 'warn');
 
     if (!confirm('আবেদনটি জমা দিতে চান?')) return;
 
     showToast('⏳ আবেদন জমা হচ্ছে...', 'info');
 
     try {
-        const { addDoc, collection, serverTimestamp } = window.fbFuncs;
+        const { addDoc, collection, serverTimestamp, doc, getDoc } = window.fbFuncs;
         const student = _guardianSession;
 
+        // ★★★ ২. ছাত্রের শ্রেণির দায়িত্বে কোন শিক্ষক আছেন তা বের করা ★★★
+        let classTeacherName = '';
+        try {
+            // কনফিগ ডাটা রিফ্রেশ করি যাতে লেটেস্ট অ্যাসাইনমেন্ট পাওয়া যায়
+            if (!configData || !configData.assignments) {
+                const configSnap = await getDoc(doc(window.fbDB, 'config', 'main'));
+                if (configSnap.exists()) {
+                    configData = configSnap.data();
+                }
+            }
+
+            // ছাত্রের ডিপার্টমেন্ট এবং ক্লাসের নাম দিয়ে অ্যাসাইনমেন্ট চেক করা
+            if (configData && configData.assignments) {
+                // ছাত্রের dept এবং className ক্লিন করা
+                let sDept = String(student.dept || '').trim();
+                let sClass = String(student.className || '').trim();
+
+                const classKey = `${sDept}::${sClass}`;
+                let assignedTeachers = configData.assignments[classKey] || [];
+
+                // যদি সরাসরি না মেলে, তবে পুরো অ্যাসাইনমেন্ট লিস্টে খুঁজি
+                if (assignedTeachers.length === 0) {
+                    const allKeys = Object.keys(configData.assignments);
+                    for (const k of allKeys) {
+                        const [d, c] = k.split('::');
+                        if (String(d).trim() === sDept && String(c).trim() === sClass) {
+                            assignedTeachers = configData.assignments[k];
+                            break;
+                        }
+                    }
+                }
+
+                // যদি শিক্ষক পাওয়া যায়
+                if (assignedTeachers.length > 0) {
+                    classTeacherName = assignedTeachers[0]; // প্রথম দায়িত্বশীল শিক্ষকের নাম নিলাম
+                }
+            }
+        } catch (assignErr) {
+            console.warn('⚠️ শিক্ষক খোঁজার সময় এরর:', assignErr);
+        }
+
+        // ★★★ ৩. ডাটাবেসে পাঠানোর জন্য পেলোড তৈরি ★★★
         const payload = {
             ...data,
             studentDbId: student.id,
@@ -59163,17 +59485,26 @@ window.submitLeaveApplication = async function() {
             guardianName: student.guardian || student.fatherName || '',
             guardianMobile: student.mobile1 || '',
             academicYear: settings.year || '',
+            
+            // ★ এখানে খুঁজে পাওয়া শিক্ষকের নামটি সেভ হবে
+            classTeacher: classTeacherName, 
+            
             status: 'pending',
             createdAt: serverTimestamp(),
             createdBy: 'guardian',
             submittedFrom: 'guardian_portal'
         };
 
+        // ★★★ ৪. ফায়ারবেসে সেভ করা ★★★
         await addDoc(collection(window.fbDB, 'leaveApplications'), payload);
 
-        showToast('✅ আবেদন সফলভাবে জমা হয়েছে', 'success');
+        if (classTeacherName) {
+            showToast(`✅ আবেদন সফলভাবে জমা হয়েছে (শিক্ষক: ${classTeacherName})`, 'success');
+        } else {
+            showToast('✅ আবেদন জমা হয়েছে, তবে শ্রেণি শিক্ষক নির্ধারিত নেই!', 'warn');
+        }
 
-        // মূল পেজে ফিরে যাই
+        // মূল পেজে ফিরে যাওয়া
         setTimeout(() => {
             switchGpTab('leave-application');
         }, 800);
@@ -59280,6 +59611,28 @@ async function startStudentsRealtimeListener() {
             if (typeof _currentStudentSub !== 'undefined' && _currentStudentSub) {
                 if (typeof renderStudentDetailContent === 'function') renderStudentDetailContent();
             }
+                        // ★★★ ২. টিচার পোর্টালের লাইভ রিফ্রেশ (নতুন যোগ করা) ★★★
+            if (typeof window._tpExamState !== 'undefined') {
+                
+                // ২.১ "আমার শ্রেণি ভিউ" খোলা থাকলে
+                if (window._tpExamState.sub === 'class-view') {
+                    const activeTab = document.querySelector('.tp-class-view-tab.bg-emerald-600');
+                    if (activeTab) activeTab.click(); // বর্তমান ট্যাবে ক্লিক করে রি-রেন্ডার
+                }
+
+                // ২.২ "বিভাগওয়ারী ফলাফল" খোলা থাকলে
+                if (window._tpExamState.sub === 'dept-result') {
+                    const classSel = document.getElementById('tp-dept-result-class');
+                    if (classSel && classSel.value) {
+                        window.onTpDeptResultClassChange(classSel.value);
+                    }
+                }
+
+                // ২.৩ "ফলাফল এন্ট্রি" খোলা থাকলে
+                if (window._tpExamState.sub === 'entry') {
+                    if (typeof loadTpMarksEntryTable === 'function') loadTpMarksEntryTable();
+                }
+            }
         } catch (err) {
             console.error('❌ reloadAllStudents error:', err);
         }
@@ -59323,7 +59676,19 @@ async function renderGpResults(container) {
         return;
     }
 
-        // ★★★ নতুন যোগ করুন: কনফিগ ডাটা লোড নিশ্চিত করা ★★★
+    // ★★★ পাবলিশ চেক ★★★
+    if (!_examPublishStatus) {
+        container.innerHTML = `
+            <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-8 text-center my-10">
+                <i class="fa-solid fa-lock text-5xl text-amber-500 mb-3"></i>
+                <h3 class="text-lg font-bold text-amber-900">রেজাল্ট এখনো পাবলিশ হয়নি</h3>
+                <p class="text-sm text-amber-700 mt-2">অফিসিয়ালি রেজাল্ট পাবলিশ না হওয়া পর্যন্ত আপনার সন্তানের ফলাফল দেখতে পারবেন না।</p>
+                <p class="text-xs text-slate-500 mt-3">অনুগ্রহ করে মাদরাসার অফিসে যোগাযোগ করুন অথবা পরবর্তীতে আবার চেষ্টা করুন।</p>
+            </div>`;
+        return; // বাকি কোড রান হবে না
+    }
+
+    // ★★★ নতুন যোগ করুন: কনফিগ ডাটা লোড নিশ্চিত করা ★★★
     if (!configData || !configData.books) {
         if (typeof loadConfigFromFirestore === 'function') {
             await loadConfigFromFirestore(); 
@@ -62089,6 +62454,246 @@ async function renderGpAdmissionPrograms(container) {
             </div>`;
     }
 }
+// ★★★ পাবলিশ বাটন টগল ফাংশন ★★★
+window.toggleExamPublishStatus = function() {
+    _examPublishStatus = !_examPublishStatus;
+    
+    // লোকাল স্টোরেজে সেভ করা
+    localStorage.setItem('madrasa_publish_status', _examPublishStatus);
+    
+    // সাকসেস মেসেজ
+    showToast(
+        _examPublishStatus 
+            ? '✅ রেজাল্ট অফিসিয়ালি পাবলিশ হয়েছে (সব পোর্টালে দেখা যাবে)' 
+            : '🔒 রেজাল্ট আনপাবলিশ করা হয়েছে (কেউ দেখতে পাবে না)', 
+        _examPublishStatus ? 'success' : 'info'
+    );
+    
+    // UI রিফ্রেশ
+    if (typeof renderResultDeptPage === 'function') {
+        renderResultDeptPage();
+    }
+};
+// ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষকদের জন্য ছুটির আবেদন ম্যানেজমেন্ট (নতুন ফাংশন) ★★★
+// ═══════════════════════════════════════════════════════════════
+async function renderTeacherLeaveManagement(container) {
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, 'leaveApplications'));
+        
+        let allApps = [];
+        snap.forEach(d => allApps.push({ id: d.id, ...d.data() }));
+
+        // শিক্ষকের নাম বের করা
+        const myName = window.currentUserData?.teacherName || window.currentUserData?.name || '';
+
+        // ২. ফিল্টারিং লজিক (পেন্ডিং, মঞ্জুর, বাতিল সবই দেখাবে)
+        let myApps = allApps.filter(app => {
+            const dbTeacher = String(app.classTeacher || '').trim();
+            
+            // যদি ডাটাবেসে কোনো নাম না থাকে (undefined), তবুও দেখাবে
+            if (!dbTeacher || dbTeacher === 'undefined' || dbTeacher === '') {
+                return true; 
+            }
+            // যদি নাম হুবহু মিলে যায়
+            if (dbTeacher === myName) {
+                return true;
+            }
+            // যদি আংশিক নাম মিলে যায়
+            if (dbTeacher.includes(myName) || myName.includes(dbTeacher)) {
+                return true;
+            }
+            return false;
+        });
+
+        // ★★★ যদি একদমই কিছু না পাওয়া যায় (ফিল্টারের কারণে), তবে আপনার ক্লাসের সব ডাটা দেখানোর জন্য ব্যাকআপ লজিক ★★★
+        if (myApps.length === 0 && allApps.length > 0) {
+            myApps = allApps.filter(app => {
+                const sDept = String(app.dept || '').trim();
+                const sClass = String(app.className || '').trim();
+                // যদি কারেন্ট ইউজারের ক্লাসের সাথে মিলে
+                // (এখানে আপনার ইউজারের ডাটা থেকে ক্লাস নেওয়া লাগবে, তবে আপাতত সব ডাটা দেখাচ্ছি যাতে কিছু মিস না হয়)
+                return true; 
+            });
+        }
+
+        // নতুন আগে
+        myApps.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+        const typeLabels = {
+            temporary: 'সাময়িক ছুটি', partial: 'খণ্ডকালীন ছুটি',
+            approval: 'মঞ্জুরির আবেদন', promise: 'অঙ্গীকারনামা'
+        };
+
+        let html = `<div class="space-y-3">`;
+
+        myApps.forEach(app => {
+            let statusBadge = '';
+            if (app.status === 'pending') statusBadge = '<span class="badge bg-amber-100 text-amber-800 text-[10px]">⏳ অপেক্ষমাণ</span>';
+            else if (app.status === 'recommended') statusBadge = '<span class="badge bg-blue-100 text-blue-800 text-[10px]">👍 সুপারিশকৃত</span>';
+            else if (app.status === 'approved') statusBadge = '<span class="badge bg-emerald-100 text-emerald-800 text-[10px]">✅ মঞ্জুরকৃত</span>';
+            else if (app.status === 'rejected') statusBadge = '<span class="badge bg-red-100 text-red-800 text-[10px]">❌ বাতিল</span>';
+
+            const dateStr = app.createdAt?.seconds ? new Date(app.createdAt.seconds * 1000).toLocaleDateString('bn-BD') : '---';
+
+            let actionHTML = '';
+            const isPending = app.status === 'pending';
+
+            if (isPending) {
+                if (app.type === 'temporary') {
+                    // সাময়িক ছুটির জন্য সরাসরি অনুমোদন/বাতিল
+                    actionHTML = `
+                    <div class="p-4 border-t bg-slate-50 space-y-2">
+                        <p class="text-[10px] text-emerald-800 font-bold"><i class="fa-solid fa-info-circle"></i> আপনি এই ছুটিটি সরাসরি অনুমোদন করতে পারবেন।</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-600">ছুটি শুরু</label>
+                                <input type="date" id="appr-start-${app.id}" value="${app.startDate || ''}" class="w-full text-xs p-1.5 border rounded">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-600">ছুটি শেষ</label>
+                                <input type="date" id="appr-end-${app.id}" value="${app.endDate || ''}" class="w-full text-xs p-1.5 border rounded">
+                            </div>
+                        </div>
+                        <input type="text" id="appr-txt-${app.id}" placeholder="মন্তব্য লিখুন..." class="w-full text-xs p-2 border rounded">
+                        <div class="flex gap-2">
+                            <button onclick="approveTeacherLeave('${app.id}')" class="flex-1 py-2 bg-emerald-600 text-white rounded font-bold text-xs shadow">অনুমোদন</button>
+                            <button onclick="rejectTeacherLeave('${app.id}')" class="flex-1 py-2 bg-red-100 text-red-700 rounded font-bold text-xs">বাতিল</button>
+                        </div>
+                    </div>`;
+                } else {
+                    // খণ্ডকালীন, মঞ্জুরি ও অঙ্গীকারনামার জন্য শুধু সুপারিশ
+                    actionHTML = `
+                    <div class="p-4 border-t bg-blue-50 space-y-2">
+                        <p class="text-[10px] text-blue-800 font-bold"><i class="fa-solid fa-info-circle"></i> আপনি শুধু সুপারিশ করতে পারবেন। চূড়ান্ত অনুমোদন প্রিন্সিপাল/শিক্ষাসচিব দেবেন।</p>
+                        <input type="text" id="appr-txt-${app.id}" placeholder="সুপারিশের মন্তব্য লিখুন..." class="w-full text-xs p-2 border rounded">
+                        <div class="flex gap-2">
+                            <button onclick="recommendTeacherLeave('${app.id}')" class="flex-1 py-2 bg-blue-600 text-white rounded font-bold text-xs shadow">সুপারিশ করুন</button>
+                            <button onclick="rejectTeacherLeave('${app.id}')" class="flex-1 py-2 bg-red-100 text-red-700 rounded font-bold text-xs">বাতিল</button>
+                        </div>
+                    </div>`;
+                }
+            } else if (app.status === 'recommended') {
+                actionHTML = `
+                <div class="p-3 border-t bg-blue-50 text-[10px] text-blue-800">
+                    <p><i class="fa-solid fa-check-circle"></i> আপনি সুপারিশ করেছেন: <b>"${app.teacherComment || ''}"</b></p>
+                    <p class="mt-1 text-slate-500">চূড়ান্ত অনুমোদনের অপেক্ষায় আছে...</p>
+                </div>`;
+            } else if (app.status === 'approved') {
+                actionHTML = `
+                <div class="p-3 border-t bg-emerald-50 text-[10px] text-emerald-800">
+                    <p><i class="fa-solid fa-check-double"></i> মঞ্জুর করা হয়েছে। মন্তব্য: <b>"${app.adminComment || ''}"</b></p>
+                    <p class="mt-1">অনুমোদনকারী: ${app.approvedBy || '—'}</p>
+                </div>`;
+            } else if (app.status === 'rejected') {
+                actionHTML = `
+                <div class="p-3 border-t bg-red-50 text-[10px] text-red-800">
+                    <p><i class="fa-solid fa-times-circle"></i> বাতিল করা হয়েছে। কারণ: <b>"${app.adminComment || ''}"</b></p>
+                </div>`;
+            }
+
+            html += `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center flex-wrap gap-2">
+                        <div>
+                            <span class="text-sm font-bold text-slate-800">${app.studentName}</span>
+                            <span class="text-xs text-slate-500 font-arabic ml-2">(${app.className})</span>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                    
+                    <div class="p-4 text-xs grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div>
+                            <p><b>ধরন:</b> ${typeLabels[app.type] || app.type}</p>
+                            <p><b>কারণ:</b> ${app.reason}</p>
+                            <p><b>তারিখ:</b> ${dateStr}</p>
+                        </div>
+                        <div class="bg-slate-50 p-2 rounded">
+                            <p><b>অভিভাবক:</b> ${app.guardianName} (${app.guardianMobile})</p>
+                            <p><b>বরাবর:</b> ${app.addressedTo || '—'}</p>
+                        </div>
+                    </div>
+
+                    ${actionHTML}
+                </div>`;
+        });
+        
+        html += `</div>`;
+        container.innerHTML = html;
+
+    } catch (err) {
+        console.error('❌ renderTeacherLeaveManagement:', err);
+        container.innerHTML = `<div class="text-center py-10 text-red-500 font-bold">লোড ব্যর্থ: ${err.message}</div>`;
+    }
+}
+
+// ★ অনুমোদন ফাংশন (শুধু সাময়িক ছুটির জন্য)
+window.approveTeacherLeave = async function(appId) {
+    const comment = document.getElementById(`appr-txt-${appId}`).value.trim();
+    const startDate = document.getElementById(`appr-start-${appId}`).value;
+    const endDate = document.getElementById(`appr-end-${appId}`).value;
+    
+    if (!comment) return showToast('⚠️ মন্তব্য লিখুন', 'warn');
+
+    try {
+        const { doc, updateDoc, serverTimestamp } = window.fbFuncs;
+        const myName = window.currentUserData?.teacherName || window.currentUserData?.name || 'শিক্ষক';
+
+        await updateDoc(doc(window.fbDB, 'leaveApplications', appId), {
+            status: 'approved',
+            approvedStartDate: startDate,
+            approvedEndDate: endDate,
+            adminComment: comment,
+            approvedBy: myName,
+            approvedDate: serverTimestamp()
+        });
+        showToast('✅ অনুমোদন দেওয়া হয়েছে', 'success');
+        renderTeacherLeaveManagement(document.getElementById('tp-leave-body'));
+    } catch (e) { showToast('❌ এরর: ' + e.message, 'error'); }
+};
+
+// ★ সুপারিশ ফাংশন (খণ্ডকালীন, মঞ্জুরি ও অঙ্গীকারনামার জন্য)
+window.recommendTeacherLeave = async function(appId) {
+    const comment = document.getElementById(`appr-txt-${appId}`).value.trim();
+    if (!comment) return showToast('⚠️ সুপারিশের কারণ লিখুন', 'warn');
+
+    try {
+        const { doc, updateDoc, serverTimestamp } = window.fbFuncs;
+        const myName = window.currentUserData?.teacherName || window.currentUserData?.name || 'শিক্ষক';
+
+        await updateDoc(doc(window.fbDB, 'leaveApplications', appId), {
+            status: 'recommended',
+            teacherComment: comment,
+            recommendedBy: myName,
+            recommendedAt: serverTimestamp()
+        });
+        showToast('✅ সুপারিশ করা হয়েছে', 'success');
+        renderTeacherLeaveManagement(document.getElementById('tp-leave-body'));
+    } catch (e) { showToast('❌ এরর: ' + e.message, 'error'); }
+};
+
+// ★ বাতিল ফাংশন (সব ধরনের জন্য)
+window.rejectTeacherLeave = async function(appId) {
+    const comment = document.getElementById(`appr-txt-${appId}`).value.trim();
+    if (!comment) return showToast('⚠️ বাতিলের কারণ লিখুন', 'warn');
+
+    try {
+        const { doc, updateDoc, serverTimestamp } = window.fbFuncs;
+        const myName = window.currentUserData?.teacherName || window.currentUserData?.name || 'শিক্ষক';
+
+        await updateDoc(doc(window.fbDB, 'leaveApplications', appId), {
+            status: 'rejected',
+            adminComment: comment,
+            rejectedBy: myName,
+            rejectedAt: serverTimestamp()
+        });
+        showToast('❌ বাতিল করা হয়েছে', 'success');
+        renderTeacherLeaveManagement(document.getElementById('tp-leave-body'));
+    } catch (e) { showToast('❌ এরর: ' + e.message, 'error'); }
+};
+
+console.log('✅ শিক্ষকদের ছুটির আবেদন ম্যানেজমেন্ট মডিউল লোড হয়েছে');
 </script>
 </body>
 </html>
