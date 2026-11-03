@@ -32713,23 +32713,35 @@ async function handleUserLogin(user) {
         }
         
         // ২. রোল অনুযায়ী পোর্টাল বা অ্যাপ দেখানো
-        // ২. রোল অনুযায়ী পোর্টাল বা অ্যাপ দেখানো
         if (userData.role === 'teacher') {
             
-            // ★★★ পরিবর্তন ১: loading-screen কে শুধু hidden না করে display: none ও করে দিন ★★★
+            // ★★★ loading-screen হাইড করা ★★★
             const loadScreen = document.getElementById('loading-screen');
             if (loadScreen) {
                 loadScreen.classList.add('hidden');
                 loadScreen.style.display = 'none';
             }
             
-            // ★★★ পরিবর্তন ২: একটু ডিলে দিয়ে পোর্টাল কল করুন যাতে ডাটা রেডি থাকে ★★★
-            setTimeout(() => {
-                showTeacherPortal();
-            }, 100);
+            // ★★★ মূল অ্যাপের সব কিছু হাইড করা (এখানেই করে ফেলি, যাতে এক পলকও না দেখা যায়) ★★★
+            document.querySelectorAll('header, main, footer').forEach(el => {
+                el.style.display = 'none';
+                el.classList.add('hidden');
+            });
+            
+            // লগইন স্ক্রিন হাইড করা
+            const loginScreen = document.getElementById('login-screen');
+            if (loginScreen) {
+                loginScreen.classList.add('hidden');
+                loginScreen.classList.remove('flex');
+                loginScreen.style.display = 'none';
+            }
+
+            // ★★★ সরাসরি পোর্টাল দেখানো ★★★
+            showTeacherPortal();
+            return; // ★★★ এখানেই থামিয়ে দিলাম, যাতে showApp() না কল হয় ★★★
             
         } else {
-            // ★★★ পরিবর্তন ৩: এডমিনের জন্যও লোডিং স্ক্রিন হাইড করা নিশ্চিত করুন ★★★
+            // এডমিনের জন্য মূল অ্যাপ দেখানো
             const loadScreen = document.getElementById('loading-screen');
             if (loadScreen) {
                 loadScreen.classList.add('hidden');
@@ -32897,6 +32909,11 @@ function showLogin() {
 }
 
 function showApp() {
+    // ★★★ নতুন যোগ: শিক্ষক হলে সরাসরি পোর্টালে পাঠাও ★★★
+    if (currentUserData?.role === 'teacher') {
+        showTeacherPortal();
+        return;
+    }
     if (window._guardianSession) {
         showGuardianPortal();
         return; 
@@ -53732,12 +53749,20 @@ window.showTeacherPortal = function() {
                         <span class="text-sm font-bold text-slate-700 text-center">মাকাদীরে আসবাক</span>
                     </button>
 
-                    <!-- ৪. পরীক্ষা ও মার্কস -->
-                    <button onclick="switchTpTab('exam')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-amber-300 transition text-amber-600">
-                        <div class="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center text-xl">
+                    <!-- ★★★ ১৪. নতুন পরীক্ষা বাটন ★★★ -->
+                    <button onclick="switchTpTab('exam-new')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-orange-300 transition text-orange-600">
+                        <div class="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center text-xl">
                             <i class="fa-solid fa-clipboard-question"></i>
                         </div>
-                        <span class="text-sm font-bold text-slate-700 text-center">পরীক্ষা</span>
+                        <span class="text-sm font-bold text-slate-700 text-center">১৪. পরীক্ষা</span>
+                    </button>
+
+                    <!-- ৪. ফলাফল -->
+                    <button onclick="switchTpTab('exam')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-amber-300 transition text-amber-600">
+                        <div class="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-chart-simple"></i>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700 text-center">ফলাফল</span>
                     </button>
 
                     <!-- ৫. হোমওয়ার্ক -->
@@ -53935,7 +53960,47 @@ window.switchTpTab = async function(tab) {
             `;
             // ডিফল্টভাবে শিক্ষকের নিজের রিপোর্ট লোড হবে
             window.switchTpAsbaqSub('teacher');
+        } else if (tab === 'exam-new') {
+            const dashboard = document.getElementById('tp-dashboard-area');
+            const content = document.getElementById('tp-dynamic-content');
+            if (dashboard) dashboard.style.display = 'none';
+
+            content.innerHTML = `
+                <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
+                    <h3 class="font-bold text-sm text-slate-800 mb-3"><i class="fa-solid fa-clipboard-question text-orange-600"></i> পরীক্ষা ব্যবস্থাপনা</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        <button onclick="switchTpExamNewSub('routine')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-calendar-check text-purple-500 text-lg"></i>
+                            <span>১. পরীক্ষার রুটিন</span>
+                        </button>
+                        <button onclick="switchTpExamNewSub('question-maker')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-file-pen text-blue-500 text-lg"></i>
+                            <span>২. প্রশ্ন মেকার</span>
+                        </button>
+                        <button onclick="switchTpExamNewSub('hall')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-hotel text-rose-500 text-lg"></i>
+                            <span>৩. পরীক্ষার হল নেগরানী</span>
+                        </button>
+                        <button onclick="switchTpExamNewSub('policies')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-scroll text-indigo-500 text-lg"></i>
+                            <span>৪. নীতিমালা</span>
+                        </button>
+                        <button onclick="switchTpExamNewSub('remuneration')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-money-bill-wave text-emerald-500 text-lg"></i>
+                            <span>৫. পরীক্ষার সম্মানী</span>
+                        </button>
+                    </div>
+                </div>
+            `;
         } else if (tab === 'exam') {
+            const dashboard = document.getElementById('tp-dashboard-area');
+            const content = document.getElementById('tp-dynamic-content');
+            if (dashboard) dashboard.style.display = 'none';
+
             content.innerHTML = `
                 <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
                     <i class="fa-solid fa-arrow-left"></i> মেনু
@@ -53944,39 +54009,33 @@ window.switchTpTab = async function(tab) {
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
                     <h3 class="font-bold text-sm text-slate-800 mb-3"><i class="fa-solid fa-clipboard-question text-amber-600"></i> পরীক্ষা ও ফলাফল</h3>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        <button onclick="switchTpExamSub('entry')" id="tp-ex-sub-entry" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
+                        <button onclick="switchTpExamSub('entry')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-keyboard text-blue-500 text-lg"></i>
                             <span>১. ফলাফল এন্ট্রি</span>
                         </button>
-                        <button onclick="switchTpExamSub('class-view')" id="tp-ex-sub-class-view" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
+                        <button onclick="switchTpExamSub('class-view')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-table-list text-emerald-500 text-lg"></i>
                             <span>২. আমার শ্রেণি ভিউ</span>
                         </button>
-                        <button onclick="switchTpExamSub('dept-result')" id="tp-ex-sub-dept-result" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
+                        <button onclick="switchTpExamSub('dept-result')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-magnifying-glass-chart text-fuchsia-500 text-lg"></i>
                             <span>৩. বিভাগওয়ারী ফলাফল</span>
                         </button>
-                        <button onclick="switchTpExamSub('summary')" id="tp-ex-sub-summary" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
+                        <button onclick="switchTpExamSub('summary')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-chart-pie text-orange-500 text-lg"></i>
                             <span>৪. বিভাগ ভিত্তিক সামারি</span>
                         </button>
-                        <button onclick="switchTpExamSub('mumtaz')" id="tp-ex-sub-mumtaz" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
+                        <button onclick="switchTpExamSub('mumtaz')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-trophy text-amber-500 text-lg"></i>
                             <span>৫. সকল মুমতায</span>
                         </button>
-                        <button onclick="switchTpExamSub('fail')" id="tp-ex-sub-fail" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
+                        <button onclick="switchTpExamSub('fail')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-circle-xmark text-red-500 text-lg"></i>
                             <span>৬. সকল ফেল</span>
                         </button>
                     </div>
                 </div>
-
-                <div id="tp-exam-wrap" class="min-h-[300px]">
-                    <!-- কন্টেন্ট এখানে লোড হবে -->
-                </div>
             `;
-            // ডিফল্টভাবে প্রথম ট্যাব লোড হবে
-            window.switchTpExamSub('entry');
         } else if (tab === 'homework') {
             content.innerHTML = `
                 <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
@@ -54004,7 +54063,7 @@ window.switchTpTab = async function(tab) {
             } else {
                 wrap.innerHTML = `<div class="bg-white rounded-xl p-6 text-center text-slate-500">ছুটির আবেদন মডিউল পাওয়া যায়নি।</div>`;
             }
-        } else if (tab === 'admission' || tab === 'live-events' || tab === 'academic-calendar' || tab === 'notice' || tab === 'policies' || tab === 'attendance' || tab === 'accounting') {
+        } else if (tab === 'admission' || tab === 'live-events' || tab === 'academic-calendar' || tab === 'notice' || tab === 'policies' || tab === 'attendance' || tab === 'accounting' || tab === 'exam-new') { // ★ exam-new যোগ হলো
             content.innerHTML = `
                 <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
                     <i class="fa-solid fa-arrow-left"></i> মেনু
@@ -54014,6 +54073,28 @@ window.switchTpTab = async function(tab) {
                     <p class="text-slate-600 font-bold text-sm">এই সেকশনটি শীঘ্রই আসছে</p>
                 </div>
             `;
+        } else if (tab === 'live-events') {
+            const dashboard = document.getElementById('tp-dashboard-area');
+            const content = document.getElementById('tp-dynamic-content');
+            if (dashboard) dashboard.style.display = 'none';
+            await renderTpLiveEvents(content);
+
+        } else if (tab === 'academic-calendar') {
+            const dashboard = document.getElementById('tp-dashboard-area');
+            const content = document.getElementById('tp-dynamic-content');
+            if (dashboard) dashboard.style.display = 'none';
+            await renderTpAcademicCalendar(content);
+        } else if (tab === 'notice') {
+            const dashboard = document.getElementById('tp-dashboard-area');
+            const content = document.getElementById('tp-dynamic-content');
+            if (dashboard) dashboard.style.display = 'none';
+            await renderTpNotice(content);
+
+        } else if (tab === 'policies') {
+            const dashboard = document.getElementById('tp-dashboard-area');
+            const content = document.getElementById('tp-dynamic-content');
+            if (dashboard) dashboard.style.display = 'none';
+            await renderTpPolicies(content);
         }
     } catch (error) {
         console.error("Tab render error:", error);
@@ -54037,6 +54118,483 @@ window.backToTpDashboard = function() {
     
     if (dashboard) dashboard.style.display = 'block'; // ড্যাশবোর্ড আবার দেখাও
     if (content) content.innerHTML = ''; // ডাইনামিক পেইজ খালি করো
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল - লাইভ ইভেন্ট ★★★
+// ═══════════════════════════════════════════════════════════════
+
+async function renderTpLiveEvents(container) {
+    container.innerHTML = `
+        <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+            <i class="fa-solid fa-arrow-left"></i> মেনু
+        </button>
+        <div class="bg-gradient-to-r from-amber-500 to-amber-700 text-white rounded-xl p-4 shadow-md mb-4">
+            <h2 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-calendar-star"></i> আসন্ন ইভেন্টসমূহ</h2>
+            <p class="text-xs opacity-90 mt-1">আগামী ৩ মাসের ইভেন্ট</p>
+        </div>
+        <div id="tp-live-events-wrap">
+            <div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-amber-600"></i></div>
+        </div>
+    `;
+
+    const wrap = document.getElementById('tp-live-events-wrap');
+
+    try {
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, 'calendars', 'main'));
+        
+        let allEvents = [];
+        if (snap.exists()) {
+            allEvents = snap.data().events || [];
+        }
+
+        const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
+        const teacherMeta = findTeacherByName(teacherName) || { dept: '' };
+        const currentSession = settings.year || getCurrentYear();
+        const cleanSession = String(currentSession).replace(/\s*\(.*?\)\s*/g, '').trim();
+        
+        // শিক্ষকের বিভাগ অনুযায়ী ক্যালেন্ডার ডিপার্টমেন্ট নির্ধারণ
+        const deptKeyMap = { 'শরীয়াহ': 'shariah_noorani', 'নূরানী-নাযেরা': 'shariah_noorani', 'অনাবাসিক': 'non_res', 'হিফযুল কুরআন': 'shariah_noorani' };
+        const calendarDept = deptKeyMap[teacherMeta.dept] || 'shariah_noorani';
+
+        // ফিল্টার: session + dept
+        const filteredEvents = allEvents.filter(e => {
+            if (e.session && e.session !== 'all') {
+                const eSess = String(e.session).replace(/\s*\(.*?\)\s*/g, '').trim();
+                if (eSess !== cleanSession) return false;
+            }
+            const eDept = String(e.dept || '').trim();
+            if (!eDept || eDept === 'all') return true;
+            return eDept === calendarDept;
+        });
+
+        // তারিখ কনভার্ট করার হেল্পার
+        const HIJRI_REF_DEFAULTS = {
+            '2026-2027': { shawwal: '2026-03-21', zilqad: '2026-04-20', zilhajj: '2026-05-19', muharram: '2026-06-17', safar: '2026-07-16', rabiul_awwal: '2026-08-15', rabiul_akhir: '2026-09-14', jumadal_ula: '2026-10-13', jumadal_akhirah: '2026-11-12', rajab: '2026-12-11', shaban: '2027-01-10', ramadan: '2027-02-08' },
+            '2027-2028': { shawwal: '2027-03-10', zilqad: '2027-04-09', zilhajj: '2027-05-08', muharram: '2027-06-06', safar: '2027-07-05', rabiul_awwal: '2027-08-04', rabiul_akhir: '2027-09-02', jumadal_ula: '2027-10-02', jumadal_akhirah: '2027-10-31', rajab: '2027-11-30', shaban: '2027-12-29', ramadan: '2028-01-28' }
+        };
+
+        const convertToEng = (str) => {
+            if (!str) return '';
+            const map = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9','٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9' };
+            return String(str).replace(/[০-৯٠-٩]/g, d => map[d] || d);
+        };
+
+        const eventsWithDate = filteredEvents.map(e => {
+            let eventDate = null;
+            // gregorianDate থেকে চেষ্টা
+            if (e.gregorianDate) {
+                const gStr = convertToEng(e.gregorianDate).replace(/,/g, '').trim();
+                const rangeMatch = gStr.match(/(\d+)\s*[-–]\s*(\d+)\s*([a-zA-Z\u0980-\u09FF]+)\s*(\d{4})/);
+                const singleMatch = gStr.match(/(\d+)\s*([a-zA-Z\u0980-\u09FF]+)\s*(\d{4})/);
+                const engMonths = { january:0, february:1, march:2, april:3, may:4, june:5, july:6, august:7, september:8, october:9, november:10, december:11 };
+                const bnMonths = { 'জানুয়ারি':0, 'ফেব্রুয়ারি':1, 'মার্চ':2, 'এপ্রিল':3, 'মে':4, 'জুন':5, 'জুলাই':6, 'আগস্ট':7, 'সেপ্টেম্বর':8, 'অক্টোবর':9, 'নভেম্বর':10, 'ডিসেম্বর':11 };
+
+                if (rangeMatch) {
+                    const day = parseInt(rangeMatch[1]);
+                    const monthName = rangeMatch[3].toLowerCase();
+                    const year = parseInt(rangeMatch[4]);
+                    let mIdx = engMonths[monthName] !== undefined ? engMonths[monthName] : bnMonths[monthName];
+                    if (mIdx !== undefined) eventDate = new Date(year, mIdx, day);
+                } else if (singleMatch) {
+                    const day = parseInt(singleMatch[1]);
+                    const monthName = singleMatch[2].toLowerCase();
+                    const year = parseInt(singleMatch[3]);
+                    let mIdx = engMonths[monthName] !== undefined ? engMonths[monthName] : bnMonths[monthName];
+                    if (mIdx !== undefined) eventDate = new Date(year, mIdx, day);
+                }
+            }
+            
+            // হিজরি থেকে কনভার্ট
+            if (!eventDate && e.hijriMonth && e.hijriDate) {
+                const yearDefaults = HIJRI_REF_DEFAULTS[cleanSession];
+                if (yearDefaults && yearDefaults[e.hijriMonth]) {
+                    const hijriStr = convertToEng(e.hijriDate);
+                    const dayMatch = hijriStr.match(/(\d+)/);
+                    if (dayMatch) {
+                        const dayNum = parseInt(dayMatch[1]);
+                        const monthStart = new Date(yearDefaults[e.hijriMonth] + 'T00:00:00');
+                        if (!isNaN(monthStart.getTime())) {
+                            const realDate = new Date(monthStart);
+                            realDate.setDate(monthStart.getDate() + (dayNum - 1));
+                            eventDate = realDate;
+                        }
+                    }
+                }
+            }
+            return { ...e, _eventDate: eventDate };
+        });
+
+        const today = new Date(); today.setHours(0,0,0,0);
+        const threeMonthsLater = new Date(today); threeMonthsLater.setMonth(today.getMonth() + 3);
+
+        const upcoming = eventsWithDate
+            .filter(e => e._eventDate && !isNaN(e._eventDate.getTime()) && e._eventDate >= today && e._eventDate <= threeMonthsLater)
+            .sort((a, b) => a._eventDate - b._eventDate);
+
+        if (upcoming.length === 0) {
+            wrap.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center text-slate-500">আগামী ৩ মাসে কোনো ইভেন্ট নেই।</div>`;
+            return;
+        }
+
+        // ক্যাটাগরি অনুযায়ী আইকন
+        const categoryIcons = {
+            start: 'fa-play-circle', exam: 'fa-file-pen', holiday: 'fa-mug-hot',
+            mahfil: 'fa-bullhorn', result: 'fa-award', course: 'fa-graduation-cap',
+            competition: 'fa-trophy', admin: 'fa-clipboard-list'
+        };
+
+        let eventsHTML = upcoming.map(ev => {
+            const dateBn = ev._eventDate.toLocaleDateString('bn-BD', { day: 'numeric', month: 'long', year: 'numeric' });
+            const dayName = ev._eventDate.toLocaleDateString('bn-BD', { weekday: 'long' });
+            
+            // ৭ দিনের ভেতরের ইভেন্ট হলে সবুজ, নাহলে সোনালী
+            const daysDiff = Math.ceil((ev._eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            const isRecent = daysDiff <= 7;
+            
+            const bgClass = isRecent ? 'bg-gradient-to-r from-emerald-500 to-emerald-700' : 'bg-gradient-to-r from-amber-400 to-amber-600';
+            const icon = categoryIcons[ev.category] || 'fa-calendar-day';
+
+            return `
+                <div class="${bgClass} rounded-xl p-4 text-white shadow-md mb-3 relative overflow-hidden">
+                    <i class="fa-solid ${icon} absolute -right-4 -bottom-4 text-6xl opacity-10"></i>
+                    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">${isRecent ? 'আসন্ন' : 'পরবর্তী'}</span>
+                                <span class="text-[10px] opacity-90">${dayName}</span>
+                            </div>
+                            <h3 class="text-sm md:text-base font-bold leading-tight">${ev.title}</h3>
+                            ${ev.details ? `<p class="text-[11px] opacity-90 mt-1">${ev.details}</p>` : ''}
+                            <p class="text-[11px] opacity-80 mt-2">
+                                <i class="fa-regular fa-calendar"></i> ${dateBn}
+                                ${ev.time ? ` • <i class="fa-regular fa-clock"></i> ${ev.time}` : ''}
+                            </p>
+                        </div>
+                        <div class="text-center md:text-right bg-black/20 px-3 py-2 rounded-lg border border-white/20 flex-shrink-0" id="tp-countdown-${ev.id || Math.random()}">
+                            <span class="text-[9px] opacity-80 block mb-1">বাকী আছে</span>
+                            <div class="text-sm font-bold text-amber-100 countdown-text">হিসাব হচ্ছে...</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        wrap.innerHTML = `<div class="space-y-2">${eventsHTML}</div>`;
+
+        // কাউন্টডাউন লাইভ আপডেট
+        const timer = setInterval(() => {
+            document.querySelectorAll('.countdown-text').forEach((el, idx) => {
+                if (!upcoming[idx]) return;
+                const diff = upcoming[idx]._eventDate.getTime() - Date.now();
+                if (diff <= 0) {
+                    el.innerHTML = `<span class="text-emerald-300">শুরু হয়েছে</span>`;
+                } else {
+                    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const s = Math.floor((diff % (1000 * 60)) / 1000);
+                    let str = '';
+                    if (d > 0) str += `${toBanglaNumber(d)}দিন `;
+                    if (h > 0 || d > 0) str += `${toBanglaNumber(h)}ঘ `;
+                    if (m > 0 || h > 0 || d > 0) str += `${toBanglaNumber(m)}মি `;
+                    str += `${toBanglaNumber(s)}সে`;
+                    el.textContent = str;
+                }
+            });
+        }, 1000);
+
+    } catch (err) {
+        console.error('❌ renderTpLiveEvents Error:', err);
+        wrap.innerHTML = `<div class="text-center py-10 text-red-500">লোড ব্যর্থ: ${err.message}</div>`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল - একাডেমিক ক্যালেন্ডার (মূল সেকশনের ট্রিক) ★★★
+// ═══════════════════════════════════════════════════════════════
+
+async function renderTpAcademicCalendar(container) {
+    // ★★★ ১. শিক্ষক পোর্টাল হাইড করা ★★★
+    const portalView = document.getElementById('teacher-portal-view');
+    if (portalView) portalView.style.display = 'none';
+
+    // ★★★ ২. মূল অ্যাপ দেখানো (শুধু ক্যালেন্ডার অংশ) ★★★
+    document.querySelectorAll('header, main, footer').forEach(el => {
+        el.style.display = 'block';
+        el.classList.remove('hidden');
+    });
+
+    // সব ট্যাব হাইড করে শুধু ক্যালেন্ডার দেখানো
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    const calTab = document.getElementById('tab-calendar');
+    if (calTab) {
+        calTab.classList.remove('hidden');
+        calTab.style.display = 'block';
+    }
+
+    // ★★★ ৩. ফিরে যাওয়ার বাটন তৈরি ★★★
+    let backBtn = document.getElementById('tp-back-to-portal-btn');
+    if (!backBtn) {
+        backBtn = document.createElement('button');
+        backBtn.id = 'tp-back-to-portal-btn';
+        backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> ফিরে যান';
+        backBtn.style.cssText = 'position:fixed;top:70px;left:15px;z-index:9999;background:#0d9488;color:white;padding:8px 16px;border-radius:8px;font-weight:bold;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.1);cursor:pointer;border:none;display:flex;align-items:center;gap:8px;';
+        backBtn.onclick = function() {
+            // মূল অ্যাপ হাইড করা
+            document.querySelectorAll('header, main, footer').forEach(el => {
+                el.style.display = 'none';
+            });
+            // মূল অ্যাপের সব ট্যাব হাইড
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            
+            // শিক্ষক পোর্টাল দেখানো
+            if (portalView) portalView.style.display = 'block';
+            
+            // বাটন সরানো
+            backBtn.remove();
+        };
+        document.body.appendChild(backBtn);
+    }
+
+    // ★★★ ৪. ক্যালেন্ডার ইনিশিয়ালাইজ করা (মূল সেকশনের মতো) ★★★
+    setTimeout(async () => {
+        if (typeof populateCalendarDropdowns === 'function') {
+            populateCalendarDropdowns();
+        }
+        
+        // ডিফল্টভাবে বর্তমান বছর ও শিক্ষকের বিভাগ সিলেক্ট করা
+        const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
+        const teacherMeta = findTeacherByName(teacherName) || { dept: '' };
+        
+        const sessSel = document.getElementById('cal-session');
+        if (sessSel && !sessSel.value) sessSel.value = getCurrentYear();
+        
+        const deptSel = document.getElementById('cal-dept');
+        if (deptSel) {
+            const deptKeyMap = { 'শরীয়াহ': 'shariah_noorani', 'নূরানী-নাযেরা': 'shariah_noorani', 'অনাবাসিক': 'non_res', 'হিফযুল কুরআন': 'shariah_noorani' };
+            deptSel.value = deptKeyMap[teacherMeta.dept] || 'shariah_noorani';
+        }
+
+        // ক্যালেন্ডার ডাটা লোড ও রেন্ডার
+        calState.session = sessSel?.value || '';
+        calState.dept = deptSel?.value || '';
+        calState.view = 'calgrid'; // বাৎসরিক/ক্যালেন্ডার গ্রিড ভিউ ডিফল্ট
+        
+        if (calState.session && calState.dept && typeof checkCalReadiness === 'function') {
+            checkCalReadiness();
+        }
+    }, 100);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল - নোটিশ বোর্ড ★★★
+// ═══════════════════════════════════════════════════════════════
+async function renderTpNotice(container) {
+    container.innerHTML = `
+        <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+            <i class="fa-solid fa-arrow-left"></i> মেনু
+        </button>
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
+            <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-bullhorn text-orange-500"></i> নোটিশ বোর্ড
+            </h3>
+        </div>
+        <div id="tp-notice-wrap">
+            <div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-orange-500"></i></div>
+        </div>
+    `;
+
+    const wrap = document.getElementById('tp-notice-wrap');
+
+    try {
+        const { collection, getDocs, query, orderBy } = window.fbFuncs;
+        const q = query(collection(window.fbDB, 'notices'), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        
+        let noticesHTML = '';
+        
+        if (!snap.empty) {
+            snap.forEach(d => {
+                const data = d.data();
+                const dateStr = data.createdAt?.seconds 
+                    ? new Date(data.createdAt.seconds * 1000).toLocaleDateString('bn-BD') 
+                    : '---';
+                
+                noticesHTML += `
+                    <div class="bg-white rounded-lg p-4 mb-3 border-l-4 border-orange-500 shadow-sm">
+                        <div class="flex justify-between items-start mb-2 pb-2 border-b border-orange-100">
+                            <h4 class="text-sm font-bold text-slate-800">
+                                <i class="fa-solid fa-circle-info text-[10px] text-orange-500 mr-1"></i> ${data.title}
+                            </h4>
+                            <span class="text-[9px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold whitespace-nowrap">
+                                ${dateStr}
+                            </span>
+                        </div>
+                        <div class="text-xs text-slate-700 leading-relaxed" style="white-space: pre-wrap; text-align: justify;">
+                            ${data.body}
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            noticesHTML = `<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-10 text-center text-slate-500">কোনো নোটিশ নেই।</div>`;
+        }
+
+        wrap.innerHTML = noticesHTML;
+    } catch (err) {
+        console.error('❌ renderTpNotice:', err);
+        wrap.innerHTML = `<div class="text-center py-10 text-red-500">নোটিশ লোড ব্যর্থ: ${err.message}</div>`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল - নীতিমালা ★★★
+// ═══════════════════════════════════════════════════════════════
+async function renderTpPolicies(container) {
+    container.innerHTML = `
+        <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+            <i class="fa-solid fa-arrow-left"></i> মেনু
+        </button>
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
+            <h3 class="font-bold text-sm text-slate-800 mb-3"><i class="fa-solid fa-scroll text-violet-600"></i> নীতিমালা</h3>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="switchTpPolicyTab('student')" id="tp-policy-tab-student" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-violet-600 text-white shadow-md">
+                    <i class="fa-solid fa-user-graduate"></i> ছাত্রদের নিয়মকানুন
+                </button>
+                <button onclick="switchTpPolicyTab('teacher')" id="tp-policy-tab-teacher" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50">
+                    <i class="fa-solid fa-chalkboard-user"></i> শিক্ষক নীতিমালা
+                </button>
+            </div>
+        </div>
+        <div id="tp-policy-wrap" class="min-h-[300px]">
+            <div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-violet-600"></i></div>
+        </div>
+    `;
+
+    window.switchTpPolicyTab('student');
+}
+
+window.switchTpPolicyTab = async function(type) {
+    // বাটন হাইলাইট
+    const btnStudent = document.getElementById('tp-policy-tab-student');
+    const btnTeacher = document.getElementById('tp-policy-tab-teacher');
+    if (btnStudent && btnTeacher) {
+        if (type === 'student') {
+            btnStudent.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-violet-600 text-white shadow-md';
+            btnTeacher.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50';
+        } else {
+            btnTeacher.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-violet-600 text-white shadow-md';
+            btnStudent.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50';
+        }
+    }
+
+    const wrap = document.getElementById('tp-policy-wrap');
+    if (!wrap) return;
+    
+    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-violet-600"></i></div>`;
+
+    try {
+        // মূল সেকশনের নিয়মকানুন ডাটাবেস (config/madrasaRules)
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, 'config', 'madrasaRules'));
+        
+        let rulesData = {};
+        if (snap.exists()) {
+            rulesData = snap.data().data || {};
+        }
+
+        // ★★★ এখানে মূল সেকশনের RULES_MAIN_CONFIG ব্যবহার করা হচ্ছে ★★★
+        // আপনার কোডে RULES_MAIN_CONFIG গ্লোবালি ডিফাইন করা আছে।
+        const RULES_MAIN_CONFIG_LOCAL = {
+            admission:    { name: 'ভর্তি',                icon: 'fa-user-plus',         color: 'emerald', hasSubTabs: false },
+            darul_iqama:  { name: 'দারুল ইকামা',          icon: 'fa-hotel',             color: 'indigo',  hasSubTabs: true, defaultSubs: ['ছুটির নীতিমালা', 'নেযামুল আওকাত', 'হোস্টেলে অবস্থানের নীতিমালা', 'বিদায় সংক্রান্ত নীতিমালা'] },
+            talimat:      { name: 'তালিমাত',              icon: 'fa-graduation-cap',    color: 'amber',   hasSubTabs: true, defaultSubs: ['পাঠ্যবই সংক্রান্ত নীতিমালা', 'শরাহ শরুহাত ক্রয় সংক্রান্ত নীতিমালা', 'অনুপস্থিতির বিধান', 'অকৃতকার্য বিধান', 'ক্লাস সংক্রান্ত নীতিমালা', 'তাকরার সংক্রান্ত নীতিমালা'] },
+            maktaba:      { name: 'মাকতাবা (লাইব্রেরি)',  icon: 'fa-book',              color: 'rose',    hasSubTabs: true, defaultSubs: ['বই ইস্যু ও ফেরতের নিয়ম', 'লাইব্রেরি ব্যবহারের নীতিমালা', 'বই ক্ষতিগ্রস্ত হলে করণীয়', 'লাইব্রেরির সময়সূচি'] },
+            matbakh:      { name: 'মাতবাখ (বোডিং)',       icon: 'fa-utensils',          color: 'teal',    hasSubTabs: true, defaultSubs: ['খাবারের তালিকা ও সময়সূচি', 'খাবারের মান নিয়ন্ত্রণ', 'পরিষ্কার-পরিচ্ছন্নতার নিয়ম', 'অতিরিক্ত খাবারের বিধান'] }
+        };
+
+        const RULES_BOX_COLORS_LOCAL = [
+            { bg: '#fef3c7', border: '#f59e0b', text: '#78350f' },
+            { bg: '#ffedd5', border: '#ea580c', text: '#7c2d12' },
+            { bg: '#fef9c3', border: '#ca8a04', text: '#713f12' },
+            { bg: '#f5f5f4', border: '#a8a29e', text: '#44403c' },
+            { bg: '#fdf2f8', border: '#db2777', text: '#831843' },
+            { bg: '#f0fdf4', border: '#16a34a', text: '#14532d' }
+        ];
+
+        let sectionsHTML = '';
+
+        if (type === 'student') {
+            // শিক্ষার্থীদের জন্য: admission, talimat (শুধু প্রাসঙ্গিক অংশ বা সব?)
+            // আপনার নির্দেশ অনুযায়ী আমরা সব ক্যাটাগরি থেকে ডাটা দেখাব (শিক্ষার্থীদের নিয়ম)
+            Object.keys(RULES_MAIN_CONFIG_LOCAL).forEach(pageKey => {
+                const cfg = RULES_MAIN_CONFIG_LOCAL[pageKey];
+                const pageData = rulesData[pageKey];
+                if (!pageData) return;
+
+                let pageSections = '';
+                if (cfg.hasSubTabs) {
+                    const subTabs = pageData.subTabs || {};
+                    Object.keys(subTabs).forEach(subName => {
+                        const subData = subTabs[subName];
+                        if (!subData.sections || subData.sections.length === 0) return;
+                        
+                        pageSections += `<h4 class="text-xs font-bold text-${cfg.color}-800 mt-3 mb-2 border-b border-${cfg.color}-200 pb-1"><i class="fa-solid fa-folder-open"></i> ${subName}</h4>`;
+                        pageSections += subData.sections.map((sec, idx) => {
+                            const color = RULES_BOX_COLORS_LOCAL[idx % RULES_BOX_COLORS_LOCAL.length];
+                            return `<div class="rounded-lg p-3 mb-2 border" style="background:${color.bg}; border-color:${color.border};">
+                                <h5 class="text-xs font-bold mb-1" style="color:${color.text};">${sec.title}</h5>
+                                <div class="text-[11px] leading-relaxed" style="color:${color.text}; white-space: pre-wrap;">${sec.content || '<em class="opacity-60">শীঘ্রই আসছে</em>'}</div>
+                            </div>`;
+                        }).join('');
+                    });
+                } else {
+                    if (pageData.sections && pageData.sections.length > 0) {
+                        pageSections = pageData.sections.map((sec, idx) => {
+                            const color = RULES_BOX_COLORS_LOCAL[idx % RULES_BOX_COLORS_LOCAL.length];
+                            return `<div class="rounded-lg p-3 mb-2 border" style="background:${color.bg}; border-color:${color.border};">
+                                <h5 class="text-xs font-bold mb-1" style="color:${color.text};">${sec.title}</h5>
+                                <div class="text-[11px] leading-relaxed" style="color:${color.text}; white-space: pre-wrap;">${sec.content || '<em class="opacity-60">শীঘ্রই আসছে</em>'}</div>
+                            </div>`;
+                        }).join('');
+                    }
+                }
+
+                if (pageSections) {
+                    sectionsHTML += `
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
+                            <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <i class="fa-solid ${cfg.icon} text-${cfg.color}-600"></i> ${cfg.name}
+                            </h3>
+                            ${pageSections}
+                        </div>
+                    `;
+                }
+            });
+
+            if (!sectionsHTML) {
+                sectionsHTML = `<div class="text-center py-12 bg-white rounded-xl text-slate-400"><p class="text-sm font-bold">এখনো কোনো নিয়মকানুন যোগ করা হয়নি</p></div>`;
+            }
+
+        } else {
+            // শিক্ষক নীতিমালা (ভবিষ্যতে এখানে শিক্ষকদের জন্য নির্দিষ্ট নীতিমালা যোগ করা যাবে, আপাতত একটি মেসেজ)
+            sectionsHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-10 text-center">
+                    <i class="fa-solid fa-chalkboard-user text-5xl text-slate-300 mb-3"></i>
+                    <p class="font-bold text-slate-600">শিক্ষক নীতিমালা শীঘ্রই আসছে</p>
+                    <p class="text-xs text-slate-400 mt-1">মূল সেকশনে শিক্ষকদের জন্য আলাদা নীতিমালা যোগ করা হলে এখানে দেখা যাবে।</p>
+                </div>
+            `;
+        }
+
+        wrap.innerHTML = sectionsHTML;
+
+    } catch (err) {
+        console.error('❌ switchTpPolicyTab:', err);
+        wrap.innerHTML = `<div class="text-center py-10 text-red-500">লোড ব্যর্থ: ${err.message}</div>`;
+    }
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -54608,6 +55166,337 @@ window.switchTpAsbaqSub = async function(sub) {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল - পরীক্ষা (নতুন) সাব-ভিউ লজিক ★★★
+// ═══════════════════════════════════════════════════════════════
+
+window._tpExamNewState = { sub: '', routineView: 'my' };
+
+window.switchTpExamNewSub = async function(sub) {
+    window._tpExamNewState.sub = sub;
+    const content = document.getElementById('tp-dynamic-content');
+    if (!content) return;
+
+    let title = '';
+    if (sub === 'routine') title = '১. পরীক্ষার রুটিন';
+    else if (sub === 'question-maker') title = '২. প্রশ্ন মেকার';
+    else if (sub === 'hall') title = '৩. পরীক্ষার হল নেগরানী';
+    else if (sub === 'policies') title = '৪. নীতিমালা';
+    else if (sub === 'remuneration') title = '৫. পরীক্ষার সম্মানী';
+
+    content.innerHTML = `
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <button onclick="switchTpTab('exam-new')" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg shadow-sm transition">
+                <i class="fa-solid fa-arrow-left"></i> পরীক্ষা মেনু
+            </button>
+            <h3 class="text-sm md:text-base font-bold text-slate-800">${title}</h3>
+        </div>
+        <div id="tp-exam-new-content" class="min-h-[300px]"></div>
+    `;
+
+    const wrap = document.getElementById('tp-exam-new-content');
+    
+    if (sub === 'routine') {
+        wrap.innerHTML = `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="switchTpRoutineTab('my')" id="tp-er-tab-my" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-purple-600 text-white shadow-md">
+                        <i class="fa-solid fa-user"></i> আমার রুটিন
+                    </button>
+                    <button onclick="switchTpRoutineTab('dept')" id="tp-er-tab-dept" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50">
+                        <i class="fa-solid fa-layer-group"></i> বিভাগীয় রুটিন
+                    </button>
+                </div>
+            </div>
+            <div id="tp-er-content-wrap" class="min-h-[300px]">
+                <!-- রুটিন এখানে লোড হবে -->
+            </div>
+        `;
+        // ডিফল্টভাবে আমার রুটিন
+        window.switchTpRoutineTab('my');
+    } else if (sub === 'question-maker') {
+        // ★★★ ২. প্রশ্ন মেকার (মূল সেকশন থেকে সরাসরি লোড) ★★★
+        // শিক্ষক পোর্টাল হাইড করা
+        const portalView = document.getElementById('teacher-portal-view');
+        if (portalView) portalView.style.display = 'none';
+
+        // মূল অ্যাপ দেখানো
+        document.querySelectorAll('header, main, footer').forEach(el => {
+            el.style.display = 'block';
+            el.classList.remove('hidden');
+        });
+        // হেডার ও ফুটার মূল সেকশনের থাকবে, কিন্তু আমরা উপরে একটি ওভারলে বাটন দেব
+        
+        const examMainMenu = document.getElementById('exam-main-menu');
+        if (examMainMenu) examMainMenu.style.display = 'none';
+        const examMainMenuHomeBtn = document.getElementById('exam-main-menu-home-btn');
+        if (examMainMenuHomeBtn) examMainMenuHomeBtn.style.display = 'none';
+
+        // সব exam-view হাইড করা
+        document.querySelectorAll('.exam-view').forEach(v => v.classList.add('hidden'));
+
+        // প্রশ্ন মেকার দেখানো
+        const qmView = document.getElementById('exam-view-question-maker');
+        if (qmView) {
+            qmView.classList.remove('hidden');
+            qmView.style.display = 'block';
+        }
+
+        // ★★★ ফিরে যাওয়ার বাটন তৈরি ★★★
+        let backBtn = document.getElementById('tp-back-to-portal-btn');
+        if (!backBtn) {
+            backBtn = document.createElement('button');
+            backBtn.id = 'tp-back-to-portal-btn';
+            backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> ফিরে যান';
+            backBtn.style.cssText = 'position:fixed;top:60px;left:15px;z-index:9999;background:#0d9488;color:white;padding:8px 16px;border-radius:8px;font-weight:bold;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.1);cursor:pointer;border:none;display:flex;align-items:center;gap:8px;';
+            backBtn.onclick = function() {
+                // মূল অ্যাপ হাইড করা
+                document.querySelectorAll('header, main, footer').forEach(el => {
+                    el.style.display = 'none';
+                });
+                // প্রশ্ন মেকার হাইড করা
+                if (qmView) qmView.classList.add('hidden');
+                
+                // শিক্ষক পোর্টাল দেখানো
+                if (portalView) portalView.style.display = 'block';
+                
+                // বাটন সরানো
+                backBtn.remove();
+            };
+            document.body.appendChild(backBtn);
+        }
+
+        // ★★★ সাবজেক্ট বার (আরবি, বাংলা, ইংরেজি, গণিত) সরাসরি প্রশ্ন মেকারের উপরে দেখানো ★★★
+        // মূল সেকশনে subject bar আছে (qm-common-subject-bar), কিন্তু সেটা hidden থাকতে পারে
+        const subjectBar = document.getElementById('qm-common-subject-bar');
+        if (subjectBar) {
+            subjectBar.classList.remove('hidden');
+            // এখানে আমরা subject bar-টি প্রশ্ন মেকারের ঠিক উপরে পজিশন করি
+            // (এটি মূল ডিজাইনে যেভাবে আছে সেভাবে থাকবে)
+        }
+
+        // প্রশ্ন মেকারের ভেতরের সব ইনিশিয়ালাইজেশন ফাংশন কল করি
+        setTimeout(() => {
+            if (typeof populateAqmYearDropdown === 'function') populateAqmYearDropdown();
+            if (typeof populateAqmClassDropdown === 'function') populateAqmClassDropdown();
+            
+            // কোন বিষয় আগে দেখাব? ডিফল্ট আরবি
+            const subjSel = document.getElementById('qm-subject-selector');
+            if (subjSel) {
+                subjSel.value = 'arabic';
+                if (typeof switchQmSubject === 'function') switchQmSubject('arabic');
+            }
+        }, 100);
+    } else if (sub === 'hall') {
+        // ★★★ ৩. পরীক্ষার হল নেগরানী ★★★
+        wrap.innerHTML = `
+            <div class="text-center py-12 bg-white rounded-xl border border-slate-200">
+                <i class="fa-solid fa-hotel text-5xl text-rose-300 mb-3"></i>
+                <p class="text-slate-600 font-bold text-sm">এই সেকশনটি শীঘ্রই আসছে</p>
+                <p class="text-xs text-slate-400 mt-1">মূল সেকশনে হল নেগরানী যুক্ত হলে এখানে দেখা যাবে।</p>
+            </div>
+        `;
+
+    } else if (sub === 'policies') {
+        // ★★★ ৪. নীতিমালা ★★★
+        wrap.innerHTML = `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3">
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="switchTpExamPolicy('question-rules')" id="tp-ex-policy-btn-0" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-indigo-600 text-white shadow-md">
+                        ক. প্রশ্ন তৈরির উসুল
+                    </button>
+                    <button onclick="switchTpExamPolicy('invigilation')" id="tp-ex-policy-btn-1" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50">
+                        খ. নেগরানীর নীতিমালা
+                    </button>
+                    <button onclick="switchTpExamPolicy('evaluation')" id="tp-ex-policy-btn-2" class="flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50">
+                        গ. উত্তরপত্র মূল্যায়নের নিয়ম
+                    </button>
+                </div>
+            </div>
+            <div id="tp-exam-policy-wrap" class="min-h-[300px]"></div>
+        `;
+        window.switchTpExamPolicy('question-rules');
+
+    } else if (sub === 'remuneration') {
+        // ★★★ ৫. পরীক্ষার সম্মানী (অটো ক্যালকুলেশন সহ) ★★★
+        const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
+        
+        wrap.innerHTML = `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-3">
+                <div class="flex justify-between items-center mb-3 border-b pb-2">
+                    <h4 class="text-sm font-bold text-emerald-800"><i class="fa-solid fa-money-bill-wave"></i> পরীক্ষার সম্মানী বিবরণী</h4>
+                    <span class="text-xs font-bold text-slate-600">শিক্ষক: ${teacherName}</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs md:text-sm border-collapse border border-slate-300">
+                        <thead class="bg-emerald-50 text-emerald-900">
+                            <tr>
+                                <th class="p-2 border text-left">খাত</th>
+                                <th class="p-2 border text-center">দর (৳)</th>
+                                <th class="p-2 border text-center">পরিমাণ</th>
+                                <th class="p-2 border text-center">মোট (৳)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b hover:bg-slate-50">
+                                <td class="p-2 border font-bold">নেগরানী ভাতা</td>
+                                <td class="p-2 border text-center"><input type="number" id="tp-rem-rate-invig" oninput="calcTpRemuneration()" class="w-16 text-center border rounded p-1" placeholder="0"></td>
+                                <td class="p-2 border text-center"><input type="number" id="tp-rem-qty-invig" oninput="calcTpRemuneration()" class="w-16 text-center border rounded p-1" placeholder="0"> দিন</td>
+                                <td class="p-2 border text-center font-bold" id="tp-rem-total-invig">০</td>
+                            </tr>
+                            <tr class="border-b hover:bg-slate-50">
+                                <td class="p-2 border font-bold">উত্তরপত্র মূল্যায়ন</td>
+                                <td class="p-2 border text-center"><input type="number" id="tp-rem-rate-eval" oninput="calcTpRemuneration()" class="w-16 text-center border rounded p-1" placeholder="0"></td>
+                                <td class="p-2 border text-center"><input type="number" id="tp-rem-qty-eval" oninput="calcTpRemuneration()" class="w-16 text-center border rounded p-1" placeholder="0"> খাতা</td>
+                                <td class="p-2 border text-center font-bold" id="tp-rem-total-eval">০</td>
+                            </tr>
+                            <tr class="border-b hover:bg-slate-50">
+                                <td class="p-2 border font-bold">মৌখিক পরীক্ষা</td>
+                                <td class="p-2 border text-center"><input type="number" id="tp-rem-rate-oral" oninput="calcTpRemuneration()" class="w-16 text-center border rounded p-1" placeholder="0"></td>
+                                <td class="p-2 border text-center"><input type="number" id="tp-rem-qty-oral" oninput="calcTpRemuneration()" class="w-16 text-center border rounded p-1" placeholder="0"> জন</td>
+                                <td class="p-2 border text-center font-bold" id="tp-rem-total-oral">০</td>
+                            </tr>
+                            <tr class="border-b hover:bg-slate-50">
+                                <td class="p-2 border font-bold">সাধারণ সম্মানী</td>
+                                <td class="p-2 border text-center"><input type="number" id="tp-rem-rate-general" oninput="calcTpRemuneration()" class="w-16 text-center border rounded p-1" placeholder="0"></td>
+                                <td class="p-2 border text-center">-</td>
+                                <td class="p-2 border text-center font-bold" id="tp-rem-total-general">০</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-emerald-100 font-bold">
+                                <td class="p-2 border text-right" colspan="3">সর্বমোট সম্মানী:</td>
+                                <td class="p-2 border text-center text-lg text-emerald-900" id="tp-rem-grand-total">৳ ০</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="mt-4 flex justify-between items-center flex-wrap gap-2">
+                    <p class="text-[10px] text-slate-500 italic"><i class="fa-solid fa-info-circle"></i> মূল সেকশন থেকে দর ও ডাটা অটো লোড হবে (ফিচারটি শীঘ্রই আসছে)।</p>
+                    <div class="flex gap-2">
+                        <button onclick="saveTpRemuneration()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg shadow-md transition">
+                            <i class="fa-solid fa-check-circle"></i> রিসিভ করেছেন
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+};
+
+// ───────────────────────────────────────────────────────────────
+// নীতিমালা সাব-ট্যাব হেল্পার (পরীক্ষা)
+// ───────────────────────────────────────────────────────────────
+window.switchTpExamPolicy = function(policyKey) {
+    // বাটন হাইলাইট
+    for (let i = 0; i < 3; i++) {
+        const btn = document.getElementById('tp-ex-policy-btn-' + i);
+        if (!btn) continue;
+        const isActive = (i === 0 && policyKey === 'question-rules') || 
+                         (i === 1 && policyKey === 'invigilation') || 
+                         (i === 2 && policyKey === 'evaluation');
+        if (isActive) {
+            btn.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-indigo-600 text-white shadow-md';
+        } else {
+            btn.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50';
+        }
+    }
+
+    const wrap = document.getElementById('tp-exam-policy-wrap');
+    if (!wrap) return;
+
+    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-indigo-600"></i></div>`;
+
+    // ডামি টেক্সট (পরবর্তীতে মূল সেকশনের ডাটাবেস থেকে লোড করা যাবে)
+    setTimeout(() => {
+        let content = '';
+        if (policyKey === 'question-rules') {
+            content = `
+                <h4 class="font-bold text-sm text-indigo-900 mb-2 border-b pb-1">প্রশ্ন তৈরির উসুল</h4>
+                <p class="text-xs text-slate-700 leading-relaxed">
+                    ১. প্রশ্নপত্র তৈরির সময় পাঠ্যবইয়ের প্রতিটি অধ্যায় থেকে সমানভাবে প্রশ্ন নির্বাচন করতে হবে।<br>
+                    ২. প্রশ্নের ভাষা সহজ, স্পষ্ট ও দ্ব্যর্থতামুক্ত হতে হবে।<br>
+                    ৩. মোট নম্বরের সঙ্গে প্রশ্নের মান ও সময়ের সামঞ্জস্য রাখতে হবে।<br>
+                    ৪. কোনো প্রশ্ন সরাসরি বই থেকে হুবহু কপি করা যাবে না, তবে ধারণা ভিত্তিক হতে হবে।
+                </p>
+            `;
+        } else if (policyKey === 'invigilation') {
+            content = `
+                <h4 class="font-bold text-sm text-indigo-900 mb-2 border-b pb-1">নেগরানীর নীতিমালা</h4>
+                <p class="text-xs text-slate-700 leading-relaxed">
+                    ১. পরীক্ষা শুরুর ১৫ মিনিট আগে নেগরানীকে হলে উপস্থিত থাকতে হবে।<br>
+                    ২. পরীক্ষার্থীদের মোবাইল ফোন ও নিষিদ্ধ জিনিসপত্র জব্দ করতে হবে।<br>
+                    ৩. নেগরানী চলাকালীন নিজের মোবাইল ফোন ব্যবহার করা যাবে না।<br>
+                    ৪. কোনো অনিয়ম পরিলক্ষিত হলে তাৎক্ষণিকভাবে কর্তৃপক্ষকে জানাতে হবে।
+                </p>
+            `;
+        } else if (policyKey === 'evaluation') {
+            content = `
+                <h4 class="font-bold text-sm text-indigo-900 mb-2 border-b pb-1">উত্তরপত্র মূল্যায়নের নিয়ম</h4>
+                <p class="text-xs text-slate-700 leading-relaxed">
+                    ১. নির্ধারিত নম্বর বণ্টন অনুযায়ী নিখুঁতভাবে খাতা মূল্যায়ন করতে হবে।<br>
+                    ২. মূল্যায়নের সময় লাল কালি ব্যবহার করতে হবে এবং প্রাপ্ত নম্বর স্পষ্টভাবে লিখতে হবে।<br>
+                    ৩. কোনো উত্তরে দ্বিধা থাকলে প্রধান পরীক্ষকের সঙ্গে আলোচনা করে নম্বর দিতে হবে।<br>
+                    ৪. খাতায় কোনো ধরনের হেরফের বা ঘষামাজা করা যাবে না।
+                </p>
+            `;
+        }
+
+        wrap.innerHTML = `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                ${content}
+            </div>
+        `;
+    }, 200);
+};
+
+// ───────────────────────────────────────────────────────────────
+// সম্মানী ক্যালকুলেশন
+// ───────────────────────────────────────────────────────────────
+window.calcTpRemuneration = function() {
+    const getNum = (id) => parseFloat(document.getElementById(id)?.value) || 0;
+    
+    // সংখ্যা ফরম্যাট (বাংলা)
+    const fmt = (num) => {
+        const n = Number(num);
+        if (isNaN(n)) return '০';
+        // হাজার/লক্ষ আলাদা করার জন্য toLocaleString
+        return toBanglaNumber(n.toLocaleString('en-IN'));
+    };
+
+    // নেগরানী
+    const invigTotal = getNum('tp-rem-rate-invig') * getNum('tp-rem-qty-invig');
+    document.getElementById('tp-rem-total-invig').textContent = fmt(invigTotal);
+
+    // মূল্যায়ন
+    const evalTotal = getNum('tp-rem-rate-eval') * getNum('tp-rem-qty-eval');
+    document.getElementById('tp-rem-total-eval').textContent = fmt(evalTotal);
+
+    // মৌখিক
+    const oralTotal = getNum('tp-rem-rate-oral') * getNum('tp-rem-qty-oral');
+    document.getElementById('tp-rem-total-oral').textContent = fmt(oralTotal);
+
+    // সাধারণ
+    const generalTotal = getNum('tp-rem-rate-general');
+    document.getElementById('tp-rem-total-general').textContent = fmt(generalTotal);
+
+    // সর্বমোট
+    const grandTotal = invigTotal + evalTotal + oralTotal + generalTotal;
+    document.getElementById('tp-rem-grand-total').textContent = '৳ ' + fmt(grandTotal);
+};
+
+window.saveTpRemuneration = function() {
+    // হিসাব করে দেখা টাকা ০ এর বেশি কি না
+    const totalText = document.getElementById('tp-rem-grand-total').textContent;
+    if (totalText === '৳ ০' || totalText === '৳ 0') {
+        showToast('⚠️ প্রথমে সম্মানীর তথ্য এন্ট্রি করুন', 'warn');
+        return;
+    }
+    
+    if (!confirm('আপনি কি নিশ্চিত যে আপনি এই সম্মানী গ্রহণ করেছেন?')) return;
+    showToast('✅ সম্মানী গ্রহণের রিকোয়েস্ট মূল সেকশনে পাঠানো হয়েছে (মডিউল ডেভেলপিং)', 'success');
+};
+
+// ═══════════════════════════════════════════════════════════════
 // ★★★ শিক্ষক পোর্টাল - পরীক্ষা সাব-ভিউ লজিক ★★★
 // ═══════════════════════════════════════════════════════════════
 
@@ -54623,21 +55512,31 @@ window._tpExamState = {
 };
 
 window.switchTpExamSub = async function(sub) {
-    window._tpExamState.sub = sub;
+    const content = document.getElementById('tp-dynamic-content');
+    if (!content) return;
+
     const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
     window._tpExamState.teacherName = teacherName;
 
-    // বাটন হাইলাইট
-    const subKeys = ['entry', 'class-view', 'dept-result', 'summary', 'mumtaz', 'fail'];
-    subKeys.forEach(k => {
-        const btn = document.getElementById('tp-ex-sub-' + k);
-        if (!btn) return;
-        if (k === sub) {
-            btn.className = 'px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-amber-600 text-white shadow-md flex flex-col items-center justify-center gap-1.5';
-        } else {
-            btn.className = 'px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5';
-        }
-    });
+    let title = '';
+    if (sub === 'entry') title = '১. ফলাফল এন্ট্রি';
+    else if (sub === 'class-view') title = '২. আমার শ্রেণি ভিউ';
+    else if (sub === 'dept-result') title = '৩. বিভাগওয়ারী ফলাফল';
+    else if (sub === 'summary') title = '৪. বিভাগ ভিত্তিক সামারি';
+    else if (sub === 'mumtaz') title = '৫. সকল মুমতায';
+    else if (sub === 'fail') title = '৬. সকল ফেল';
+
+    content.innerHTML = `
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <button onclick="switchTpTab('exam')" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg shadow-sm transition">
+                <i class="fa-solid fa-arrow-left"></i> পরীক্ষা মেনু
+            </button>
+            <h3 class="text-sm md:text-base font-bold text-slate-800">${title}</h3>
+        </div>
+        <div id="tp-exam-wrap" class="min-h-[300px]">
+            <!-- কন্টেন্ট এখানে লোড হবে -->
+        </div>
+    `;
 
     const wrap = document.getElementById('tp-exam-wrap');
     if (!wrap) return;
@@ -54678,31 +55577,70 @@ window.switchTpExamSub = async function(sub) {
 
     } 
     // ২. আমার শ্রেণি ভিউ
+    // ২. আমার শ্রেণি ভিউ
     else if (sub === 'class-view') {
-        wrap.innerHTML = `
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3">
-                <div class="flex flex-wrap gap-2 items-end">
-                    <div class="flex-1 min-w-[150px]">
-                        <label class="block text-xs font-bold text-slate-700 mb-1">আপনার শ্রেণি ভিউ</label>
-                        <select onchange="onTpClassViewChange(this.value)" class="w-full rounded-lg border-slate-300 border p-2 text-sm">
-                            <option value="">-- জামাত --</option>
-                            ${allowed.map(k => {
-                                const [d, c] = k.split('::');
-                                return `<option value="${d}::${c}">${c}</option>`;
-                            }).join('')}
-                        </select>
-                    </div>
+        const allowed = getTeacherAllowedClasses();
+        if (!allowed || allowed.length === 0) {
+            wrap.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">আপনার কোনো জামাত assigned নেই।</div>`;
+            return;
+        }
+
+        // ইউনিক জামাতের লিস্ট বের করি
+        const myClasses = [...new Set(allowed.map(k => k.split('::')[1]))];
+
+        if (myClasses.length === 1) {
+            // যদি একটাই জামাত থাকে, সরাসরি দেখাও
+            const dept = allowed[0].split('::')[0];
+            wrap.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3 flex items-center justify-between">
+                    <h3 class="font-bold text-sm text-slate-800"><i class="fa-solid fa-table-list text-emerald-600"></i> শ্রেণি: <span class="font-arabic">${myClasses[0]}</span></h3>
                 </div>
-            </div>
-            <div id="tp-class-view-wrap" class="bg-white rounded-xl shadow-sm border border-slate-200 p-2 min-h-[300px] overflow-x-auto">
-                <div class="text-center py-10 text-slate-400"><p class="text-sm">জামাত নির্বাচন করুন</p></div>
-            </div>
-        `;
+                <div id="tp-class-view-wrap" class="bg-white rounded-xl shadow-sm border border-slate-200 p-2 min-h-[300px] overflow-x-auto">
+                    <div class="text-center py-10 text-slate-400"><p class="text-sm">ফলাফল লোড হচ্ছে...</p></div>
+                </div>
+            `;
+            // সরাসরি রেজাল্ট ভিউ ফাংশন কল করি
+            setTimeout(() => window.onTpClassViewChange(`${dept}::${myClasses[0]}`), 50);
+        } else {
+            // যদি একাধিক জামাত থাকে, ট্যাব আকারে দেখাই
+            let tabsHTML = myClasses.map((c, idx) => {
+                const dept = allowed.find(k => k.split('::')[1] === c).split('::')[0];
+                return `
+                    <button onclick="onTpClassViewTab('${dept}::${c}', this)" 
+                            class="tp-class-view-tab px-4 py-2 rounded-lg text-sm font-bold transition ${idx === 0 ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-300 hover:bg-slate-50'}">
+                        <span class="font-arabic">${c}</span>
+                    </button>
+                `;
+            }).join('');
+
+            wrap.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3">
+                    <div class="flex flex-wrap gap-2">${tabsHTML}</div>
+                </div>
+                <div id="tp-class-view-wrap" class="bg-white rounded-xl shadow-sm border border-slate-200 p-2 min-h-[300px] overflow-x-auto">
+                    <div class="text-center py-10 text-slate-400"><p class="text-sm">ফলাফল লোড হচ্ছে...</p></div>
+                </div>
+            `;
+            
+            // প্রথম জামাতের রেজাল্ট লোড করি
+            const firstDept = allowed.find(k => k.split('::')[1] === myClasses[0]).split('::')[0];
+            setTimeout(() => window.onTpClassViewChange(`${firstDept}::${myClasses[0]}`), 50);
+        }
     }
+    // ৩. বিভাগওয়ারী ফলাফল
     // ৩. বিভাগওয়ারী ফলাফল
     else if (sub === 'dept-result') {
         const depts = configData?.departments || [];
-        const deptOptions = depts.map(d => `<option value="${d.key}" ${window._tpExamState.deptResult === d.key ? 'selected' : ''}>${d.name}</option>`).join('');
+        if (depts.length === 0) {
+            wrap.innerHTML = `<div class="text-center py-10 text-red-500">কোন বিভাগ নেই</div>`;
+            return;
+        }
+        
+        // ডিফল্ট বিভাগ সেট করা (আগে সিলেক্ট করা থাকলে সেটাই, নাহলে প্রথমটি)
+        const defaultDept = window._tpExamState.deptResult || depts[0].key;
+        window._tpExamState.deptResult = defaultDept;
+
+        const deptOptions = depts.map(d => `<option value="${d.key}" ${defaultDept === d.key ? 'selected' : ''}>${d.name}</option>`).join('');
 
         wrap.innerHTML = `
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3">
@@ -54710,7 +55648,6 @@ window.switchTpExamSub = async function(sub) {
                     <div class="flex-1 min-w-[150px]">
                         <label class="block text-xs font-bold text-slate-700 mb-1">বিভাগ</label>
                         <select onchange="onTpDeptResultDeptChange(this.value)" class="w-full rounded-lg border-slate-300 border p-2 text-sm">
-                            <option value="">-- বিভাগ --</option>
                             ${deptOptions}
                         </select>
                     </div>
@@ -54723,9 +55660,12 @@ window.switchTpExamSub = async function(sub) {
                 </div>
             </div>
             <div id="tp-dept-result-wrap" class="bg-white rounded-xl shadow-sm border border-slate-200 p-2 min-h-[300px] overflow-x-auto">
-                <div class="text-center py-10 text-slate-400"><p class="text-sm">বিভাগ ও শ্রেণি নির্বাচন করুন</p></div>
+                <div class="text-center py-10 text-slate-400"><p class="text-sm">শ্রেণি নির্বাচন করুন</p></div>
             </div>
         `;
+
+        // ★★★ ডিফল্টভাবে প্রথম বিভাগের শ্রেণিগুলো লোড করি ★★★
+        window.onTpDeptResultDeptChange(defaultDept);
     }
     // ৪. বিভাগ ভিত্তিক সামারি
     else if (sub === 'summary') {
@@ -54792,6 +55732,271 @@ window.switchTpExamSub = async function(sub) {
                 <div class="text-center py-10 text-slate-400"><p class="text-sm">বিভাগ নির্বাচন করুন</p></div>
             </div>
         `;
+    }
+};
+
+// ───────────────────────────────────────────────────────────────
+// নীতিমালা সাব-ট্যাব হেল্পার
+// ───────────────────────────────────────────────────────────────
+window.switchTpExamPolicy = function(policyKey) {
+    // বাটন হাইলাইট
+    for (let i = 0; i < 3; i++) {
+        const btn = document.getElementById('tp-ex-policy-btn-' + i);
+        if (!btn) continue;
+        // policyKey এর সাথে মিলিয়ে হাইলাইট
+        const isActive = (i === 0 && policyKey === 'question-rules') || 
+                         (i === 1 && policyKey === 'invigilation') || 
+                         (i === 2 && policyKey === 'evaluation');
+        if (isActive) {
+            btn.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-indigo-600 text-white shadow-md';
+        } else {
+            btn.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50';
+        }
+    }
+
+    const wrap = document.getElementById('tp-exam-policy-wrap');
+    if (!wrap) return;
+
+    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-indigo-600"></i></div>`;
+
+    // মূল সেকশনের নীতিমালা লোড করার লজিক (অথবা কাস্টম টেক্সট)
+    setTimeout(() => {
+        let content = '';
+        if (policyKey === 'question-rules') {
+            content = `
+                <h4 class="font-bold text-sm text-indigo-900 mb-2 border-b pb-1">প্রশ্ন তৈরির উসুল</h4>
+                <p class="text-xs text-slate-700 leading-relaxed">এখানে মূল সেকশনের নীতিমালা থাকবে...</p>
+            `;
+        } else if (policyKey === 'invigilation') {
+            content = `
+                <h4 class="font-bold text-sm text-indigo-900 mb-2 border-b pb-1">নেগরানীর নীতিমালা</h4>
+                <p class="text-xs text-slate-700 leading-relaxed">এখানে মূল সেকশনের নীতিমালা থাকবে...</p>
+            `;
+        } else if (policyKey === 'evaluation') {
+            content = `
+                <h4 class="font-bold text-sm text-indigo-900 mb-2 border-b pb-1">উত্তরপত্র মূল্যায়নের নিয়ম</h4>
+                <p class="text-xs text-slate-700 leading-relaxed">এখানে মূল সেকশনের নীতিমালা থাকবে...</p>
+            `;
+        }
+
+        wrap.innerHTML = `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                ${content}
+            </div>
+        `;
+    }, 200);
+};
+
+// ─── রুটিন সাব-ট্যাব হ্যান্ডলার ───
+window.switchTpRoutineTab = async function(view) {
+    window._tpExamNewState.routineView = view;
+    
+    // বাটন হাইলাইট
+    const btnMy = document.getElementById('tp-er-tab-my');
+    const btnDept = document.getElementById('tp-er-tab-dept');
+    if (btnMy && btnDept) {
+        if (view === 'my') {
+            btnMy.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-purple-600 text-white shadow-md';
+            btnDept.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50';
+        } else {
+            btnDept.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition bg-purple-600 text-white shadow-md';
+            btnMy.className = 'flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 bg-white border border-slate-300 hover:bg-slate-50';
+        }
+    }
+
+    const wrap = document.getElementById('tp-er-content-wrap');
+    if (!wrap) return;
+    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-purple-600"></i></div>`;
+
+    try {
+        const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
+        const year = getCurrentYear();
+
+        // পরীক্ষার রুটিন লোড করা
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        const q = query(collection(window.fbDB, 'examRoutines'), where('academicYear', '==', year));
+        const snap = await getDocs(q);
+        const examRoutines = [];
+        snap.forEach(d => examRoutines.push({ id: d.id, ...d.data() }));
+
+        if (examRoutines.length === 0) {
+            wrap.innerHTML = `<div class="text-center py-10 text-slate-400">এই শিক্ষাবর্ষে কোনো পরীক্ষার রুটিন তৈরি করা হয়নি।</div>`;
+            return;
+        }
+
+        // সবশেষ তৈরি হওয়া রুটিনটি নিই (বা একাধিক থাকলে সব)
+        // এখানে আমরা সবগুলো রুটিন একসাথে দেখাব
+
+        if (view === 'my') {
+            // ★★★ আমার রুটিন (শিক্ষকের বিষয়গুলো ফিল্টার) ★★★
+            let myExams = [];
+            examRoutines.forEach(exam => {
+                (exam.classes || []).forEach(cls => {
+                    Object.keys(cls.cells || {}).forEach(date => {
+                        (cls.cells[date] || []).forEach(bookName => {
+                            // শিক্ষকের ক্লাস রুটিন থেকে চেক করি এই কিতাব সে পড়ায় কি না
+                            const isMyBook = (routinesCache || []).some(r => 
+                                r.teacherName === teacherName && 
+                                r.bookName === bookName && 
+                                (r.className === cls.nameAr || r.className === cls.nameBn)
+                            );
+                            
+                            if (isMyBook) {
+                                // তারিখ ফরম্যাট
+                                const dObj = new Date(date);
+                                const dayNames = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'];
+                                const dateStr = `${dObj.getDate()} ${dObj.toLocaleString('bn-BD', {month: 'short'})} (${dayNames[dObj.getDay()]})`;
+                                
+                                myExams.push({
+                                    date: date,
+                                    dateStr: dateStr,
+                                    className: cls.nameBn || cls.nameAr,
+                                    bookName: bookName,
+                                    examTitle: exam.examTitle,
+                                    examType: exam.examType
+                                });
+                            }
+                        });
+                    });
+                });
+            });
+
+            // ডুপ্লিকেট বাদ দেওয়া
+            myExams = myExams.filter((v, i, a) => a.findIndex(t => (t.date === v.date && t.bookName === v.bookName && t.className === v.className)) === i);
+            // তারিখ অনুযায়ী সর্ট করা
+            myExams.sort((a, b) => a.date.localeCompare(b.date));
+
+            if (myExams.length === 0) {
+                wrap.innerHTML = `<div class="text-center py-10 text-slate-400">আপনার কোনো পরীক্ষার রুটিন নেই।</div>`;
+                return;
+            }
+
+            let tableRows = myExams.map(e => `
+                <tr class="border-b hover:bg-slate-50 text-xs">
+                    <td class="p-2 border text-center whitespace-nowrap font-bold text-purple-700">${e.dateStr}</td>
+                    <td class="p-2 border text-center font-arabic">${e.className}</td>
+                    <td class="p-2 border text-center font-arabic font-bold">${e.bookName}</td>
+                    <td class="p-2 border text-center text-slate-600">${e.examTitle}</td>
+                </tr>
+            `).join('');
+
+            wrap.innerHTML = `
+                <div class="bg-white rounded-lg border border-slate-200 p-2">
+                    <div class="text-center mb-3 pb-2 border-b border-slate-200">
+                        <h4 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-user text-purple-600"></i> ${teacherName}</h4>
+                        <p class="text-xs text-slate-500">আপনার পরীক্ষার রুটিন</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse border border-slate-300">
+                            <thead class="bg-purple-100 text-purple-900">
+                                <tr>
+                                    <th class="p-2 border text-xs">তারিখ ও বার</th>
+                                    <th class="p-2 border text-xs">জামাত</th>
+                                    <th class="p-2 border text-xs">বিষয়</th>
+                                    <th class="p-2 border text-xs">পরীক্ষার নাম</th>
+                                </tr>
+                            </thead>
+                            <tbody>${tableRows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+        } else if (view === 'dept') {
+            // ★★★ বিভাগীয় রুটিন (হুবহু মূল সেকশন) ★★★
+            const depts = configData?.departments || [];
+            let deptOptions = depts.map(d => `<option value="${d.key}">${d.name}</option>`).join('');
+
+            wrap.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3">
+                    <div class="flex flex-wrap gap-2 items-end">
+                        <div class="flex-1 min-w-[150px]">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">বিভাগ নির্বাচন করুন</label>
+                            <select id="tp-er-dept-select" onchange="loadTpDeptExamRoutine(this.value)" class="w-full rounded-lg border-slate-300 border p-2 text-sm">
+                                <option value="">-- বিভাগ --</option>
+                                ${deptOptions}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div id="tp-er-dept-view-wrap" class="min-h-[300px]">
+                    <div class="text-center py-10 text-slate-400"><p class="text-sm">বিভাগ নির্বাচন করুন</p></div>
+                </div>
+            `;
+        }
+
+    } catch (err) {
+        console.error('❌ Exam Routine Error:', err);
+        wrap.innerHTML = `<div class="text-center py-10 text-red-500">${err.message}</div>`;
+    }
+};
+
+// ★ বিভাগীয় রুটিন লোড করার ফাংশন (মূল সেকশনের রেন্ডারিং ব্যবহার করে) ★
+window.loadTpDeptExamRoutine = async function(deptKey) {
+    const wrap = document.getElementById('tp-er-dept-view-wrap');
+    if (!wrap) return;
+    if (!deptKey) {
+        wrap.innerHTML = `<div class="text-center py-10 text-slate-400"><p class="text-sm">বিভাগ নির্বাচন করুন</p></div>`;
+        return;
+    }
+
+    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-purple-600"></i></div>`;
+
+    try {
+        const year = getCurrentYear();
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        const q = query(collection(window.fbDB, 'examRoutines'), where('academicYear', '==', year), where('dept', '==', deptKey));
+        const snap = await getDocs(q);
+        
+        if (snap.empty) {
+            wrap.innerHTML = `<div class="text-center py-10 text-slate-400">এই বিভাগের কোনো রুটিন পাওয়া যায়নি।</div>`;
+            return;
+        }
+
+        const examData = snap.docs[0].data(); // প্রথম রুটিনটি নিই (সবশেষটি আগে সর্ট করা থাকলে ভালো)
+
+        // মূল সেকশনের রুটিন HTML বিল্ডার কল করি
+        // এখানে buildExamRoutineHTML ফাংশনটি ডাটা সেট করে তারপর HTML তৈরি করে
+        // তাই আমরা সরাসরি টেবিল বানানোর জন্য মূল সেকশনের erState ব্যবহার করি
+        
+        // erState ট্রিক (মূল সেকশনে এর উপর ভিত্তি করে টেবিল তৈরি হয়)
+        window.erState = window.erState || {};
+        window.erState.dept = examData.dept;
+        window.erState.examType = examData.examType;
+        window.erState.examTitle = examData.examTitle;
+        window.erState.hijriYear = examData.hijriYear;
+        window.erState.gregYear = examData.gregYear;
+        window.erState.startDate = examData.startDate;
+        window.erState.endDate = examData.endDate;
+        window.erState.days = examData.days || [];
+        window.erState.classes = examData.classes || [];
+
+        if (typeof buildExamRoutineHTML === 'function') {
+            const html = buildExamRoutineHTML(false); // false = স্ক্রিনের জন্য
+            
+            // টেবিলের কন্টেইনার খুঁজে বের করি (id="er-print-paper")
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // টাইটেল ও টেবিল বের করা
+            const printPaper = tempDiv.querySelector('#er-print-paper');
+            
+            if (printPaper) {
+                wrap.innerHTML = `
+                    <div class="bg-white rounded-lg border border-slate-200 p-2">
+                        ${printPaper.outerHTML}
+                    </div>
+                `;
+            } else {
+                wrap.innerHTML = `<div class="text-center py-10 text-slate-400">রুটিন HTML তৈরি করা যায়নি।</div>`;
+            }
+        } else {
+            wrap.innerHTML = `<div class="text-center py-10 text-red-500">রুটিন ফাংশন পাওয়া যায়নি।</div>`;
+        }
+
+    } catch (err) {
+        console.error('❌ Dept Exam Routine Error:', err);
+        wrap.innerHTML = `<div class="text-center py-10 text-red-500">${err.message}</div>`;
     }
 };
 
@@ -55172,8 +56377,12 @@ window.onTpClassViewChange = async function(val) {
             });
 
             wrap.innerHTML = `
+                <div class="bg-slate-50 p-2 mb-2 text-center border-b border-slate-300">
+                    <h4 class="text-sm font-bold text-slate-800">${settings.madrasaName || 'জামিয়া ইসলামিয়া'}</h4>
+                    <p class="text-xs text-slate-600">শ্রেণি: <span class="font-arabic font-bold">${c}</span></p>
+                </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse border border-slate-300 text-xs">
+                    <table class="w-full border-collapse border border-slate-300 text-xs md:text-sm">
                         <thead class="bg-slate-100"><tr>${tableHead}</tr></thead>
                         <tbody>${tableRows}</tbody>
                     </table>
@@ -55189,37 +56398,130 @@ window.onTpClassViewChange = async function(val) {
     }
 };
 
+window.onTpClassViewTab = function(val, btn) {
+    // সব ট্যাবের রঙ আগের অবস্থায় ফিরিয়ে আনি
+    document.querySelectorAll('.tp-class-view-tab').forEach(b => {
+        b.className = 'tp-class-view-tab px-4 py-2 rounded-lg text-sm font-bold transition bg-white text-slate-600 border border-slate-300 hover:bg-slate-50';
+    });
+    // ক্লিক করা ট্যাবকে হাইলাইট করি
+    if (btn) {
+        btn.className = 'tp-class-view-tab px-4 py-2 rounded-lg text-sm font-bold transition bg-emerald-600 text-white shadow-md';
+    }
+    // রেজাল্ট লোড করি
+    window.onTpClassViewChange(val);
+};
+
 // ───────────────────────────────────────────────────────────────
 // ৩. বিভাগওয়ারী ফলাফল হেল্পার
 // ───────────────────────────────────────────────────────────────
 window.onTpDeptResultDeptChange = function(deptKey) {
     window._tpExamState.deptResult = deptKey;
     const classSel = document.getElementById('tp-dept-result-class');
+    
+    if (!classSel) return;
     classSel.innerHTML = '<option value="">-- শ্রেণি --</option>';
     
+    // রেজাল্ট ক্লিয়ার করি
+    const wrap = document.getElementById('tp-dept-result-wrap');
+    if (wrap) wrap.innerHTML = `<div class="text-center py-10 text-slate-400"><p class="text-sm">শ্রেণি নির্বাচন করুন</p></div>`;
+
     if (deptKey) {
         const classes = getClassesForDept(deptKey);
         classes.forEach(c => {
             classSel.innerHTML += `<option value="${deptKey}::${c}">${c}</option>`;
         });
     }
-    document.getElementById('tp-dept-result-wrap').innerHTML = `<div class="text-center py-10 text-slate-400">শ্রেণি নির্বাচন করুন</div>`;
 };
 
 window.onTpDeptResultClassChange = async function(val) {
     if (!val) return;
     const [d, c] = val.split('::');
     const wrap = document.getElementById('tp-dept-result-wrap');
-    
-    // মূল সেকশনের রেন্ডার ফাংশনটি ব্যবহার করতে চাই, কিন্তু সেটা পুরো পেজ রিপ্লেস করে ফেলে।
-    // তাই আমরা সরাসরি টেবিল বানাই।
-    // ইতিমধ্যে ২ নং (onTpClassViewChange) এ টেবিল বানানোর লজিক আছে, সেটাই রিইউজ করি।
-    await onTpClassViewChange(val); // এই ফাংশনটি tp-class-view-wrap-এ কাজ করে, তাই কপি করে এখানে বসাই।
-    
-    // একটি ট্রিক: ২ নং এর রেজাল্ট wrap-এ চলে যায়। তাই আমরা ওখান থেকে HTML কপি করি।
-    const classViewWrap = document.getElementById('tp-class-view-wrap');
-    if (classViewWrap) {
-        wrap.innerHTML = classViewWrap.innerHTML;
+    if (!wrap) return;
+
+    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl"></i></div>`;
+
+    try {
+        // ★★★ ১. ডাটা রিফ্রেশ ★★★
+        if (typeof loadStudentsFromFirestore === 'function') {
+            await loadStudentsFromFirestore();
+        }
+        
+        // ★★★ ২. কলাম কনফিগ ও রেজাল্ট স্টেট সেট করা ★★★
+        const { doc, getDoc } = window.fbFuncs;
+        const configRef = doc(window.fbDB, 'config', 'marksColumnsConfig');
+        const snap = await getDoc(configRef);
+        if (snap.exists()) {
+            const data = snap.data();
+            _customMarksColumns = data.custom || {};
+            _deletedMarksColumns = data.deleted || {};
+            _marksColumnOrder = data.order || {};
+        }
+
+        // ★★★ ৩. মূল সেকশনের স্টেট সেট করা ★★★
+        window._currentResultDept = d;
+        window._currentResultClass = c;
+        window._currentResultTab = c; 
+
+        // ★★★ ৪. মূল সেকশনের ফাংশন কল করে লুকানো ডিভ-এ রেন্ডার করা ★★★
+        if (typeof renderResultDeptPage === 'function') {
+            const hiddenDiv = document.createElement('div');
+            hiddenDiv.style.display = 'none';
+            document.body.appendChild(hiddenDiv);
+
+            // মূল সেকশনে যেখানে রেন্ডার হয়, সেটার ট্রিক
+            const originalResDeptContent = document.getElementById('res-dept-content');
+            const originalResDeptHeader = document.getElementById('res-dept-header');
+            
+            if (originalResDeptContent && originalResDeptHeader) {
+                // আসল ডিভ সাময়িকভাবে সরিয়ে রাখি
+                const parent1 = originalResDeptContent.parentNode;
+                const parent2 = originalResDeptHeader.parentNode;
+
+                const placeholder1 = document.createElement('div');
+                const placeholder2 = document.createElement('div');
+                parent1.replaceChild(placeholder1, originalResDeptContent);
+                parent2.replaceChild(placeholder2, originalResDeptHeader);
+
+                hiddenDiv.appendChild(originalResDeptContent);
+                hiddenDiv.appendChild(originalResDeptHeader);
+
+                // ফাংশন কল
+                await renderResultDeptPage();
+
+                // ★★★ ৫. শুধু টেবিলের অংশ কপি করা ★★★
+                // মূল সেকশনে টেবিলটি .overflow-x-auto ক্লাসের ভেতরে থাকে
+                const tableHTML = originalResDeptContent.querySelector('.overflow-x-auto')?.outerHTML;
+
+                if (tableHTML) {
+                    wrap.innerHTML = `
+                        <div class="bg-white rounded-lg border border-slate-200 p-2 shadow-sm">
+                            <div class="text-center mb-2 pb-2 border-b border-slate-200">
+                                <h4 class="text-sm font-bold text-emerald-900">${settings.madrasaName || 'জামিয়া ইসলামিয়া'}</h4>
+                                <p class="text-xs text-slate-600 font-arabic">শ্রেণি: <strong>${c}</strong></p>
+                            </div>
+                            ${tableHTML}
+                        </div>
+                    `;
+                } else {
+                    wrap.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">এই শ্রেণির জন্য কোনো ফলাফল পাওয়া যায়নি।</div>`;
+                }
+
+                // ★★★ ৬. আসল ডিভগুলো ফিরিয়ে আনা ★★★
+                parent1.replaceChild(originalResDeptContent, placeholder1);
+                parent2.replaceChild(originalResDeptHeader, placeholder2);
+            } else {
+                wrap.innerHTML = `<div class="text-center py-10 text-red-500">মূল সেকশনের UI কন্টেইনার পাওয়া যায়নি।</div>`;
+            }
+            
+            document.body.removeChild(hiddenDiv);
+        } else {
+            wrap.innerHTML = `<div class="text-center py-10 text-red-500">রেজাল্ট ভিউ ফাংশন পাওয়া যায়নি</div>`;
+        }
+
+    } catch (err) {
+        console.error(err);
+        wrap.innerHTML = `<div class="text-center py-10 text-red-500">${err.message}</div>`;
     }
 };
 
@@ -55229,6 +56531,7 @@ window.onTpDeptResultClassChange = async function(val) {
 window.onTpSummaryDeptChange = async function(deptKey) {
     window._tpExamState.deptSummary = deptKey;
     const wrap = document.getElementById('tp-summary-wrap');
+    
     if (!deptKey) {
         wrap.innerHTML = `<div class="text-center py-10 text-slate-400">বিভাগ নির্বাচন করুন</div>`;
         return;
@@ -55237,26 +56540,59 @@ window.onTpSummaryDeptChange = async function(deptKey) {
     wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl"></i></div>`;
 
     try {
-        // ★★★ নতুন যোগ: ডাটা রিফ্রেশ করুন ★★★
+        // ★★★ ১. ডাটা রিফ্রেশ ★★★
         if (typeof loadStudentsFromFirestore === 'function') {
             await loadStudentsFromFirestore();
         }
-        // মূল সেকশনের overview সামারি তৈরি করার ফাংশন
-        if (typeof buildOverviewSummaryHTML === 'function') {
-            // ফাংশনটি কল করার আগে কিছু স্টেট লাগতে পারে (যেমন কাস্টম কলাম)
-            // কলাম কনফিগ লোড করি
-            const { doc, getDoc } = window.fbFuncs;
-            const configRef = doc(window.fbDB, 'config', 'marksColumnsConfig');
-            const snap = await getDoc(configRef);
-            if (snap.exists()) {
-                const data = snap.data();
-                _customMarksColumns = data.custom || {};
-                _deletedMarksColumns = data.deleted || {};
-                _marksColumnOrder = data.order || {};
-            }
 
-            const html = buildOverviewSummaryHTML(deptKey);
-            wrap.innerHTML = html;
+        // ★★★ ২. কলাম কনফিগ লোড ★★★
+        const { doc, getDoc } = window.fbFuncs;
+        const configRef = doc(window.fbDB, 'config', 'marksColumnsConfig');
+        const snap = await getDoc(configRef);
+        if (snap.exists()) {
+            const data = snap.data();
+            _customMarksColumns = data.custom || {};
+            _deletedMarksColumns = data.deleted || {};
+            _marksColumnOrder = data.order || {};
+        }
+
+        if (typeof buildOverviewSummaryHTML === 'function') {
+            // ★★★ ৩. মূল সেকশনের স্টেট সেট করা ★★★
+            window._currentResultDept = deptKey;
+            window._overviewTab = 'summary'; // ডিফল্ট summary ট্যাব
+
+            const hiddenDiv = document.createElement('div');
+            hiddenDiv.style.display = 'none';
+            document.body.appendChild(hiddenDiv);
+
+            // ফাংশনটি সরাসরি HTML রিটার্ন করে, তাই সরাসরি ভেরিয়েবলে নিচ্ছি
+            const fullHTML = buildOverviewSummaryHTML(deptKey);
+
+            // ★★★ ৪. HTML থেকে শুধু টেবিলের অংশটুকু বের করা ★★★
+            // মূল সামারি HTML-এর ভেতরে টেবিলটি <div style="padding:14px;background:white;"> এর ভেতরে থাকে
+            // আমরা একটি টেম্পোরারি DOM তৈরি করে সেখান থেকে শুধু টেবিলের অংশ নিতে পারি।
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = fullHTML;
+
+            // টেবিলের কন্টেইনার খুঁজে বের করা
+            // buildOverviewSummaryTable ফাংশনটি যে ডিভ তৈরি করে, সেটার ব্যাকগ্রাউন্ড সাদা এবং প্যাডিং থাকে
+            const tableContainer = tempDiv.querySelector('div[style*="padding:14px"]');
+
+            if (tableContainer) {
+                wrap.innerHTML = `
+                    <div class="bg-white rounded-lg border border-slate-200 p-2 shadow-sm">
+                        ${tableContainer.outerHTML}
+                    </div>
+                `;
+            } else {
+                // যদি কোনো কারণে না পাওয়া যায়, তবে পুরোটা দেখাই (তবে বাটনগুলো থাকবে না, কারণ buildOverviewSummaryHTML এর ভেতরে ট্যাব নেই)
+                // আসলে buildOverviewSummaryHTML-এ ট্যাব বাটনগুলো (মোট সামারি, সকল মুমতায) বাইরে থেকে আসে (buildOverviewSummaryHTML ফাংশনের ভেতরে সেগুলো আলাদা স্ট্রিং হিসেবে আছে)।
+                // তাই টেবিল কন্টেইনার না পেলে নিচের ফলব্যাক কাজ করবে।
+                wrap.innerHTML = `<div class="bg-white rounded-lg border border-slate-200 p-2 shadow-sm">${fullHTML}</div>`;
+            }
+            
+            document.body.removeChild(hiddenDiv);
         } else {
             wrap.innerHTML = `<div class="text-center py-10 text-red-500">সামারি ফাংশন পাওয়া যায়নি</div>`;
         }
