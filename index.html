@@ -53686,7 +53686,7 @@ window.showTeacherPortal = function() {
                     <!-- ডান: শিক্ষকের নাম ও ড্রপডাউন -->
                     <div class="flex items-center gap-3">
                         <div class="text-right"> 
-                            <p class="text-[10px] text-teal-200 leading-tight">স্বাগতম,</p>
+                            <p class="text-[10px] text-teal-200 leading-tight">আইডি: ${teacherMeta?.card || '—'}</p>
                             <p class="text-xs font-bold text-white leading-tight">${teacherName}</p>
                         </div>
                         <div class="relative">
@@ -53704,20 +53704,45 @@ window.showTeacherPortal = function() {
                 </div>
             </header>
 
-            <!-- শিক্ষক প্রোফাইল কার্ড -->
+            <!-- শিক্ষক প্রোফাইল কার্ড (শুধু ক্লাস সংক্রান্ত তথ্য) -->
             <div class="max-w-4xl mx-auto px-4 pt-6">
-                <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 flex items-center gap-4 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-24 h-24 bg-teal-50 rounded-bl-full -z-0"></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 md:p-5 relative overflow-hidden">
+                    <!-- ★★★ ডেকোরেটিভ বৃত্ত (লেখার পেছনে থাকবে) ★★★ -->
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-teal-50 rounded-bl-full z-0"></div>
                     
-                    <div class="w-16 h-16 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-3xl flex-shrink-0 z-10 overflow-hidden border-2 border-teal-300">
-                        <i class="fa-solid fa-chalkboard-user"></i>
-                    </div>
-
-                    <div class="z-10 flex-1">
-                        <h2 class="text-xl font-bold text-slate-800">${teacherName}</h2>
-                        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-slate-600 font-semibold">
-                            <span><i class="fa-solid fa-id-card"></i> ${teacherPost}</span>
+                    <!-- ৩টি তথ্য পাশাপাশি (z-10 দিয়ে লেখাকে উপরে আনা হলো) -->
+                    <div class="relative z-10 grid grid-cols-3 gap-2 md:gap-4 divide-x divide-slate-200">
+                        
+                        <!-- বাম: শ্রেণি -->
+                        <div class="px-1 md:px-2 flex flex-col items-center justify-center text-center">
+                            <span class="text-[9px] md:text-[11px] font-bold text-slate-500 mb-1 leading-tight">
+                                <i class="fa-solid fa-chalkboard text-teal-500"></i> শ্রেণি
+                            </span>
+                            <div id="tp-profile-classes" class="text-[10px] md:text-sm font-bold text-slate-800 font-arabic leading-tight">
+                                লোড হচ্ছে...
+                            </div>
                         </div>
+                        
+                        <!-- মাঝ: মোট শিক্ষার্থী -->
+                        <div class="px-1 md:px-2 flex flex-col items-center justify-center text-center">
+                            <span class="text-[9px] md:text-[11px] font-bold text-slate-500 mb-1 leading-tight">
+                                <i class="fa-solid fa-users text-blue-500"></i> মোট ছাত্র
+                            </span>
+                            <span class="text-xs md:text-lg font-bold text-blue-700 leading-none">
+                                <span id="tp-profile-total-students">০</span> জন
+                            </span>
+                        </div>
+                        
+                        <!-- ডান: উপস্থিতি -->
+                        <div class="px-1 md:px-2 flex flex-col items-center justify-center text-center">
+                            <span class="text-[9px] md:text-[11px] font-bold text-slate-500 mb-1 leading-tight">
+                                <i class="fa-solid fa-user-check text-emerald-500"></i> উপস্থিতি
+                            </span>
+                            <span class="text-xs md:text-lg font-bold text-emerald-700 leading-none">
+                                <span id="tp-profile-present-students">—</span> জন
+                            </span>
+                        </div>
+                        
                     </div>
                 </div>
             </div>
@@ -53754,7 +53779,7 @@ window.showTeacherPortal = function() {
                         <div class="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center text-xl">
                             <i class="fa-solid fa-clipboard-question"></i>
                         </div>
-                        <span class="text-sm font-bold text-slate-700 text-center">১৪. পরীক্ষা</span>
+                        <span class="text-sm font-bold text-slate-700 text-center"> পরীক্ষা</span>
                     </button>
 
                     <!-- ৪. ফলাফল -->
@@ -53791,7 +53816,7 @@ window.showTeacherPortal = function() {
                     <!-- ৮. লাইভ ইভেন্ট -->
                     <button onclick="switchTpTab('live-events')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-indigo-300 transition text-indigo-600">
                         <div class="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-calendar-star"></i>
+                           <i class="fa-regular fa-clock"></i>
                         </div>
                         <span class="text-sm font-bold text-slate-700 text-center">লাইভ ইভেন্ট</span>
                     </button>
@@ -53856,7 +53881,51 @@ window.showTeacherPortal = function() {
             </div>
         `;
     }
+    loadTpProfileStats();
 };
+
+async function loadTpProfileStats() {
+    try {
+        // ১. ডাটা লোড নিশ্চিত করা
+        if (typeof studentsCache === 'undefined' || studentsCache.length === 0) {
+            if (typeof loadStudentsFromFirestore === 'function') {
+                await loadStudentsFromFirestore();
+            }
+        }
+
+        // ২. শিক্ষকের অনুমোদিত শ্রেণি বের করা
+        const allowed = typeof getTeacherAllowedClasses === 'function' ? getTeacherAllowedClasses() : [];
+        const classNames = allowed.map(k => k.split('::')[1]);
+        
+        // ৩. মোট ছাত্র সংখ্যা (বিদায়/বহিষ্কৃত বাদ দিয়ে)
+        const totalStudents = (studentsCache || []).filter(s => 
+            allowed.includes(s.dept + '::' + s.className) &&
+            !['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'].includes((s.remark?.type || '').trim())
+        ).length;
+
+        // ৪. DOM-এ মান বসানো
+        const classEl = document.getElementById('tp-profile-classes');
+        if (classEl) {
+            if (classNames.length > 0) {
+                classEl.innerHTML = classNames.join(', ');
+            } else {
+                classEl.textContent = 'নির্ধারিত নেই';
+            }
+        }
+        
+        const studentEl = document.getElementById('tp-profile-total-students');
+        if (studentEl) studentEl.textContent = toBanglaNumber(totalStudents);
+
+        // ৫. উপস্থিতি (হাজিরা সিস্টেম তৈরি হলে এখানে আপডেট হবে)
+        const presentEl = document.getElementById('tp-profile-present-students');
+        if (presentEl) {
+            presentEl.textContent = '—'; 
+        }
+
+    } catch (err) {
+        console.error('❌ loadTpProfileStats error:', err);
+    }
+}
 
 // ট্যাব কনটেন্ট ডিসপ্যাচার (গার্ডিয়ানের মতো)
 window.switchTpTab = async function(tab) {
@@ -53970,28 +54039,43 @@ window.switchTpTab = async function(tab) {
                     <i class="fa-solid fa-arrow-left"></i> মেনু
                 </button>
                 
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
-                    <h3 class="font-bold text-sm text-slate-800 mb-3"><i class="fa-solid fa-clipboard-question text-orange-600"></i> পরীক্ষা ব্যবস্থাপনা</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        <button onclick="switchTpExamNewSub('routine')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-calendar-check text-purple-500 text-lg"></i>
-                            <span>১. পরীক্ষার রুটিন</span>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 mb-4">
+                    <div class="flex items-center justify-center gap-2 mb-6">
+                        <div class="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
+                            <i class="fa-solid fa-clipboard-question"></i>
+                        </div>
+                        <h3 class="text-lg md:text-xl font-bold text-slate-800 leading-none">পরীক্ষা ব্যবস্থাপনা</h3>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 max-w-4xl mx-auto">
+                        <!-- ১. পরীক্ষার রুটিন -->
+                        <button onclick="switchTpExamNewSub('routine')" class="group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
+                            <i class="fa-solid fa-calendar-check text-3xl md:text-4xl text-amber-600 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm md:text-base font-bold leading-tight text-center text-amber-900">পরীক্ষার রুটিন</span>
                         </button>
-                        <button onclick="switchTpExamNewSub('question-maker')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-file-pen text-blue-500 text-lg"></i>
-                            <span>২. প্রশ্ন মেকার</span>
+                        
+                        <!-- ২. প্রশ্ন মেকার -->
+                        <button onclick="switchTpExamNewSub('question-maker')" class="group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
+                            <i class="fa-solid fa-file-pen text-3xl md:text-4xl text-blue-600 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm md:text-base font-bold leading-tight text-center text-blue-900">প্রশ্ন মেকার</span>
                         </button>
-                        <button onclick="switchTpExamNewSub('hall')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-hotel text-rose-500 text-lg"></i>
-                            <span>৩. পরীক্ষার হল নেগরানী</span>
+                        
+                        <!-- ৩. পরীক্ষার হল নেগরানী -->
+                        <button onclick="switchTpExamNewSub('hall')" class="group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
+                            <i class="fa-solid fa-hotel text-3xl md:text-4xl text-rose-600 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm md:text-base font-bold leading-tight text-center text-rose-900">পরীক্ষার হল নেগরানী</span>
                         </button>
-                        <button onclick="switchTpExamNewSub('policies')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-scroll text-indigo-500 text-lg"></i>
-                            <span>৪. নীতিমালা</span>
+                        
+                        <!-- ৪. নীতিমালা -->
+                        <button onclick="switchTpExamNewSub('policies')" class="group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
+                            <i class="fa-solid fa-scroll text-3xl md:text-4xl text-indigo-600 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm md:text-base font-bold leading-tight text-center text-indigo-900">নীতিমালা</span>
                         </button>
-                        <button onclick="switchTpExamNewSub('remuneration')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-money-bill-wave text-emerald-500 text-lg"></i>
-                            <span>৫. পরীক্ষার সম্মানী</span>
+                        
+                        <!-- ৫. পরীক্ষার সম্মানী -->
+                        <button onclick="switchTpExamNewSub('remuneration')" class="group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
+                            <i class="fa-solid fa-money-bill-wave text-3xl md:text-4xl text-emerald-600 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm md:text-base font-bold leading-tight text-center text-emerald-900">পরীক্ষার সম্মানী</span>
                         </button>
                     </div>
                 </div>
@@ -54007,31 +54091,31 @@ window.switchTpTab = async function(tab) {
                 </button>
                 
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
-                    <h3 class="font-bold text-sm text-slate-800 mb-3"><i class="fa-solid fa-clipboard-question text-amber-600"></i> পরীক্ষা ও ফলাফল</h3>
+                    <h3 class="font-bold text-sm text-slate-800 mb-3"><i class="fa-solid fa-clipboard-question text-amber-600"></i> ফলাফল</h3>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
                         <button onclick="switchTpExamSub('entry')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-keyboard text-blue-500 text-lg"></i>
-                            <span>১. ফলাফল এন্ট্রি</span>
+                            <span> ফলাফল এন্ট্রি</span>
                         </button>
                         <button onclick="switchTpExamSub('class-view')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-table-list text-emerald-500 text-lg"></i>
-                            <span>২. আমার শ্রেণি ভিউ</span>
+                            <span> আমার শ্রেণি ভিউ</span>
                         </button>
                         <button onclick="switchTpExamSub('dept-result')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-magnifying-glass-chart text-fuchsia-500 text-lg"></i>
-                            <span>৩. বিভাগওয়ারী ফলাফল</span>
+                            <span> বিভাগওয়ারী ফলাফল</span>
                         </button>
                         <button onclick="switchTpExamSub('summary')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-chart-pie text-orange-500 text-lg"></i>
-                            <span>৪. বিভাগ ভিত্তিক সামারি</span>
+                            <span> বিভাগ ভিত্তিক সামারি</span>
                         </button>
                         <button onclick="switchTpExamSub('mumtaz')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-trophy text-amber-500 text-lg"></i>
-                            <span>৫. সকল মুমতায</span>
+                            <span> সকল মুমতায</span>
                         </button>
                         <button onclick="switchTpExamSub('fail')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-circle-xmark text-red-500 text-lg"></i>
-                            <span>৬. সকল ফেল</span>
+                            <span> সকল ফেল</span>
                         </button>
                     </div>
                 </div>
@@ -54063,16 +54147,6 @@ window.switchTpTab = async function(tab) {
             } else {
                 wrap.innerHTML = `<div class="bg-white rounded-xl p-6 text-center text-slate-500">ছুটির আবেদন মডিউল পাওয়া যায়নি।</div>`;
             }
-        } else if (tab === 'admission' || tab === 'live-events' || tab === 'academic-calendar' || tab === 'notice' || tab === 'policies' || tab === 'attendance' || tab === 'accounting' || tab === 'exam-new') { // ★ exam-new যোগ হলো
-            content.innerHTML = `
-                <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
-                    <i class="fa-solid fa-arrow-left"></i> মেনু
-                </button>
-                <div class="text-center py-12 bg-white rounded-xl border border-slate-200">
-                    <i class="fa-solid fa-tools text-5xl text-slate-300 mb-3"></i>
-                    <p class="text-slate-600 font-bold text-sm">এই সেকশনটি শীঘ্রই আসছে</p>
-                </div>
-            `;
         } else if (tab === 'live-events') {
             const dashboard = document.getElementById('tp-dashboard-area');
             const content = document.getElementById('tp-dynamic-content');
@@ -54129,9 +54203,11 @@ async function renderTpLiveEvents(container) {
         <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
             <i class="fa-solid fa-arrow-left"></i> মেনু
         </button>
-        <div class="bg-gradient-to-r from-amber-500 to-amber-700 text-white rounded-xl p-4 shadow-md mb-4">
-            <h2 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-calendar-star"></i> আসন্ন ইভেন্টসমূহ</h2>
-            <p class="text-xs opacity-90 mt-1">আগামী ৩ মাসের ইভেন্ট</p>
+        <!-- ★★★ নতুন হেডার: সাদা ব্যাকগ্রাউন্ড, সবুজ বর্ডার, এক লাইনে ★★★ -->
+        <div class="bg-white border-2 border-emerald-500 text-emerald-900 rounded-xl p-3 md:p-4 shadow-sm mb-4 flex items-center gap-2 flex-wrap">
+            <i class="fa-solid fa-calendar-star text-emerald-600 text-lg md:text-xl"></i>
+            <h2 class="text-base md:text-lg font-bold">আসন্ন ইভেন্টসমূহ</h2>
+            <span class="text-xs md:text-sm font-semibold text-slate-500">(আগামী ৩ মাসের ইভেন্ট)</span>
         </div>
         <div id="tp-live-events-wrap">
             <div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl text-amber-600"></i></div>
@@ -54249,36 +54325,80 @@ async function renderTpLiveEvents(container) {
             const dateBn = ev._eventDate.toLocaleDateString('bn-BD', { day: 'numeric', month: 'long', year: 'numeric' });
             const dayName = ev._eventDate.toLocaleDateString('bn-BD', { weekday: 'long' });
             
-            // ৭ দিনের ভেতরের ইভেন্ট হলে সবুজ, নাহলে সোনালী
+            // ৭ দিনের ভেতরের ইভেন্ট হলে সবুজ, নাহলে সাদা
             const daysDiff = Math.ceil((ev._eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
             const isRecent = daysDiff <= 7;
             
-            const bgClass = isRecent ? 'bg-gradient-to-r from-emerald-500 to-emerald-700' : 'bg-gradient-to-r from-amber-400 to-amber-600';
             const icon = categoryIcons[ev.category] || 'fa-calendar-day';
 
-            return `
-                <div class="${bgClass} rounded-xl p-4 text-white shadow-md mb-3 relative overflow-hidden">
-                    <i class="fa-solid ${icon} absolute -right-4 -bottom-4 text-6xl opacity-10"></i>
-                    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">${isRecent ? 'আসন্ন' : 'পরবর্তী'}</span>
-                                <span class="text-[10px] opacity-90">${dayName}</span>
+            // ★★★ যদি ৭ দিনের ভেতরের ইভেন্ট হয় (সবুজ) ★★★
+            if (isRecent) {
+                return `
+                    <div class="bg-gradient-to-r from-emerald-500 to-emerald-700 rounded-xl p-4 text-white shadow-md mb-3 relative overflow-hidden">
+                        <i class="fa-solid ${icon} absolute -right-4 -bottom-4 text-6xl opacity-10"></i>
+                        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">আসন্ন</span>
+                                    <span class="text-[10px] opacity-90">${dayName}</span>
+                                </div>
+                                <h3 class="text-sm md:text-base font-bold leading-tight text-white">${ev.title}</h3>
+                                ${ev.details ? `<p class="text-[11px] opacity-90 mt-1">${ev.details}</p>` : ''}
+                                <p class="text-[11px] opacity-80 mt-2">
+                                    <i class="fa-regular fa-calendar"></i> ${dateBn}
+                                    ${ev.time ? ` • <i class="fa-regular fa-clock"></i> ${ev.time}` : ''}
+                                </p>
                             </div>
-                            <h3 class="text-sm md:text-base font-bold leading-tight">${ev.title}</h3>
-                            ${ev.details ? `<p class="text-[11px] opacity-90 mt-1">${ev.details}</p>` : ''}
-                            <p class="text-[11px] opacity-80 mt-2">
-                                <i class="fa-regular fa-calendar"></i> ${dateBn}
-                                ${ev.time ? ` • <i class="fa-regular fa-clock"></i> ${ev.time}` : ''}
-                            </p>
-                        </div>
-                        <div class="text-center md:text-right bg-black/20 px-3 py-2 rounded-lg border border-white/20 flex-shrink-0" id="tp-countdown-${ev.id || Math.random()}">
-                            <span class="text-[9px] opacity-80 block mb-1">বাকী আছে</span>
-                            <div class="text-sm font-bold text-amber-100 countdown-text">হিসাব হচ্ছে...</div>
+                            <div class="text-center md:text-right bg-black/20 px-3 py-2 rounded-lg border border-white/20 flex-shrink-0" id="tp-countdown-${ev.id || Math.random()}">
+                                <span class="text-[9px] opacity-80 block mb-1">বাকী আছে</span>
+                                <div class="text-sm font-bold text-amber-100 countdown-text">হিসাব হচ্ছে...</div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
+                `;
+            } 
+            // ★★★ ৭ দিনের বেশি দূরের ইভেন্ট (সাদা ও কালারফুল) ★★★
+            else {
+                // ক্যাটাগরি অনুযায়ী কালার (আইকন ও লেখার জন্য)
+                const catColors = {
+                    start: { icon: 'text-blue-500', title: 'text-blue-900', border: 'border-blue-200' },
+                    exam: { icon: 'text-red-500', title: 'text-red-900', border: 'border-red-200' },
+                    holiday: { icon: 'text-emerald-500', title: 'text-emerald-900', border: 'border-emerald-200' },
+                    mahfil: { icon: 'text-amber-500', title: 'text-amber-900', border: 'border-amber-200' },
+                    result: { icon: 'text-indigo-500', title: 'text-indigo-900', border: 'border-indigo-200' },
+                    course: { icon: 'text-pink-500', title: 'text-pink-900', border: 'border-pink-200' },
+                    competition: { icon: 'text-orange-500', title: 'text-orange-900', border: 'border-orange-200' },
+                    admin: { icon: 'text-slate-500', title: 'text-slate-900', border: 'border-slate-200' }
+                };
+                const color = catColors[ev.category] || catColors.admin;
+
+                return `
+                    <div class="bg-white rounded-xl p-4 shadow-sm border-l-4 ${color.border} border-y border-r border-slate-200 mb-3 relative overflow-hidden transition hover:shadow-md">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">পরবর্তী</span>
+                                    <span class="text-[10px] text-slate-500 font-bold">${dayName}</span>
+                                </div>
+                                <h3 class="text-sm md:text-base font-bold leading-tight ${color.title}">
+                                    <i class="fa-solid ${icon} ${color.icon} mr-1.5"></i> ${ev.title}
+                                </h3>
+                                ${ev.details ? `<p class="text-[11px] text-slate-500 mt-1 ml-6">${ev.details}</p>` : ''}
+                                <p class="text-[11px] text-slate-500 mt-2 ml-6">
+                                    <i class="fa-regular fa-calendar text-slate-400"></i> ${dateBn}
+                                    ${ev.time ? ` • <i class="fa-regular fa-clock text-slate-400"></i> ${ev.time}` : ''}
+                                </p>
+                            </div>
+                            
+                            <!-- কাউন্টডাউন বক্স (সাদা বক্সের জন্য হালকা ধূসর) -->
+                            <div class="text-center md:text-right bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 flex-shrink-0" id="tp-countdown-${ev.id || Math.random()}">
+                                <span class="text-[9px] text-slate-500 font-bold block mb-1">বাকী আছে</span>
+                                <div class="text-sm font-bold text-slate-700 countdown-text">হিসাব হচ্ছে...</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
         }).join('');
 
         wrap.innerHTML = `<div class="space-y-2">${eventsHTML}</div>`;
