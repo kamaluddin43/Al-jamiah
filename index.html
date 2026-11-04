@@ -32707,6 +32707,7 @@ async function handleUserLogin(user) {
             
             // ★ ছাত্র ডাটা লোড
             if(typeof loadStudentsFromFirestore === 'function') await loadStudentsFromFirestore(); 
+            if(typeof loadExamSettings === 'function') await loadExamSettings();
             
             console.log('✅ All data loaded');
         } catch (err) {
@@ -38934,6 +38935,16 @@ window.switchResultTab = function(tab) {
 };
 
 async function renderResultDeptPage() {
+    try {
+        if (currentUser && window.fbDB && window.fbFuncs) {
+            const { doc, getDoc } = window.fbFuncs;
+            const snap = await getDoc(doc(window.fbDB, 'config', 'examSettings'));
+            if (snap.exists() && snap.data().publishStatus !== undefined) {
+                _examPublishStatus = snap.data().publishStatus === true;
+            }
+        }
+    } catch (e) { console.warn('Publish refresh failed:', e); }
+
     if (!_examPublishStatus && currentUserData?.role === 'teacher') { document.getElementById('res-dept-content').innerHTML = '<div class="p-10 text-center text-red-500 font-bold">রেজাল্ট এখনো পাবলিশ করা হয়নি।</div>'; return; }
     const dept = _currentResultDept;
     const headerEl = document.getElementById('res-dept-header');
@@ -41185,6 +41196,11 @@ window.loadExamSettings = async function() {
     try {
         if (!window.fbDB || !window.fbFuncs) {
             console.warn('⚠️ Firestore ready নয়, শুধু LocalStorage ব্যবহার হচ্ছে');
+            return;
+        }
+
+        if (!currentUser) {
+            console.warn('⚠️ currentUser null — Firestore skip');
             return;
         }
         
@@ -53531,6 +53547,21 @@ window.closeGuardianLogin = function() {
     }
 };
 
+// ★★★ নতুন — গার্ডিয়ানের জন্য publish status লোড ★★★
+async function loadPublishStatusForGuardian() {
+    try {
+        if (!window.fbDB || !window.fbFuncs) return;
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, 'config', 'examSettings'));
+        if (snap.exists() && snap.data().publishStatus !== undefined) {
+            _examPublishStatus = snap.data().publishStatus === true;
+            console.log('✅ Guardian: publish status =', _examPublishStatus);
+        }
+    } catch (err) {
+        console.warn('⚠️ Guardian publish check failed:', err);
+    }
+}
+
 // ═══════════════════ গার্ডিয়ান লগইন — সম্পূর্ণ নতুন (বাগ-ফিক্সড) ═══════════════════
 window.verifyGuardianLogin = async function() {
     const studentIdInput = document.getElementById('gl-student-id').value.trim();
@@ -53774,6 +53805,7 @@ window.verifyGuardianLogin = async function() {
         // ★★★ নতুন যোগ করুন: ডিভাইসে সেশন সেভ করা ★★★
         localStorage.setItem('gp_student_id', foundStudent.studentId || foundStudent.id);
         localStorage.setItem('gp_mobile', mobileInput);
+        await loadPublishStatusForGuardian();
         closeGuardianLogin();
         showGuardianPortal();
         showToast('✅ সফলভাবে লগইন হয়েছে', 'success');
@@ -54026,7 +54058,6 @@ window.showTeacherPortal = function() {
 
     document.body.insertAdjacentHTML('beforeend', portalHTML);
     
-    // ★★★ এই অংশটুকু নতুন করে বসান ★★★
     // ইনিশিয়ালি ডাটা লোড করার জন্য
     setTimeout(async () => {
         if (typeof loadStudentsFromFirestore === 'function') {
@@ -62668,12 +62699,11 @@ async function renderGpAdmissionPrograms(container) {
 }
 // ★★★ পাবলিশ বাটন টগল ফাংশন ★★★
 window.toggleExamPublishStatus = async function() {
+    // ★ ফ্লিপ
     _examPublishStatus = !_examPublishStatus;
-    
-    // লোকাল স্টোরেজ (fallback)
     localStorage.setItem('madrasa_publish_status', _examPublishStatus);
     
-    // ★★★ Firestore-এ সেভ করুন ★★★
+    // ★ Firestore এ সেভ
     try {
         const { doc, setDoc, serverTimestamp } = window.fbFuncs;
         await setDoc(doc(window.fbDB, 'config', 'examSettings'), {
@@ -62681,6 +62711,8 @@ window.toggleExamPublishStatus = async function() {
             updatedAt: serverTimestamp(),
             updatedBy: currentUser?.uid || 'admin'
         }, { merge: true });
+        
+        console.log('☁️ Publish status saved to Firestore:', _examPublishStatus);
         
         showToast(
             _examPublishStatus 
@@ -62690,9 +62722,10 @@ window.toggleExamPublishStatus = async function() {
         );
     } catch (err) {
         console.error('❌ Publish status save failed:', err);
-        showToast('⚠️ লোকাল সেভ হয়েছে, Firestore-এ ব্যর্থ', 'warn');
+        showToast('⚠️ Firestore-এ সেভ ব্যর্থ: ' + err.message, 'error');
     }
     
+    // ★ UI রিফ্রেশ
     if (typeof renderResultDeptPage === 'function') {
         renderResultDeptPage();
     }
