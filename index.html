@@ -41152,7 +41152,10 @@ window.buildAwardListHTML = function(dept) {
 // সেটিংস লোড, সেভ ও UI আপডেট লজিক
 // ═══════════════════════════════════════════
 
-window.loadExamSettings = function() {
+window.loadExamSettings = async function() {
+    // ═══════════════════════════════════════════════════════
+    // ধাপ ১: প্রথমে LocalStorage থেকে লোড করি (দ্রুত UI-এর জন্য)
+    // ═══════════════════════════════════════════════════════
     const savedAward = localStorage.getItem('madrasa_award_limit'); if (savedAward) _awardLimit = parseInt(savedAward);
     const savedMerit = localStorage.getItem('madrasa_merit_limit'); if (savedMerit) _meritLimit = parseInt(savedMerit);
     const savedPass = localStorage.getItem('madrasa_default_pass'); if (savedPass) _defaultPassMark = parseInt(savedPass);
@@ -41166,10 +41169,97 @@ window.loadExamSettings = function() {
     const savedWeights = localStorage.getItem('madrasa_term_weights');
     if (savedWeights) _termWeights = JSON.parse(savedWeights);
 
-    // ★ নতুন লোড
     _requireSubjectPass = localStorage.getItem('madrasa_req_sub_pass') === 'true';
     _mandatorySubjects = JSON.parse(localStorage.getItem('madrasa_mandatory_subs') || '[]');
     _watermarkText = localStorage.getItem('madrasa_watermark') || 'মাকাদীরে আসবাক';
+    
+    // গ্রেড স্কেল (আগে থেকে ছিল, সেটাও লোড)
+    const savedGrades = localStorage.getItem('madrasa_grade_scale');
+    if (savedGrades) {
+        try { window._gradeScale = JSON.parse(savedGrades); } catch(e){}
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ধাপ ২: Firestore থেকে ফ্রেশ ডাটা লোড করি (সব ডিভাইসে সিঙ্ক)
+    // ═══════════════════════════════════════════════════════
+    try {
+        if (!window.fbDB || !window.fbFuncs) {
+            console.warn('⚠️ Firestore ready নয়, শুধু LocalStorage ব্যবহার হচ্ছে');
+            return;
+        }
+        
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, 'config', 'examSettings'));
+        
+        if (snap.exists()) {
+            const data = snap.data();
+            console.log('☁️ Exam settings loaded from Firestore:', data);
+            
+            // ─── প্রতিটি ফিল্ড আলাদাভাবে চেক করে আপডেট ───
+            if (data.publishStatus !== undefined) {
+                _examPublishStatus = data.publishStatus === true;
+                localStorage.setItem('madrasa_publish_status', _examPublishStatus);
+            }
+            if (data.marksLock !== undefined) {
+                _marksEntryLocked = data.marksLock === true;
+                localStorage.setItem('madrasa_marks_lock', _marksEntryLocked);
+            }
+            if (data.awardLimit !== undefined) {
+                _awardLimit = parseInt(data.awardLimit) || 3;
+                localStorage.setItem('madrasa_award_limit', _awardLimit);
+            }
+            if (data.meritLimit !== undefined) {
+                _meritLimit = parseInt(data.meritLimit) || 10;
+                localStorage.setItem('madrasa_merit_limit', _meritLimit);
+            }
+            if (data.defaultPassMark !== undefined) {
+                _defaultPassMark = parseInt(data.defaultPassMark) || 33;
+                localStorage.setItem('madrasa_default_pass', _defaultPassMark);
+            }
+            if (data.hideFailedInMerit !== undefined) {
+                _hideFailedInMerit = data.hideFailedInMerit === true;
+                localStorage.setItem('madrasa_hide_fail', _hideFailedInMerit);
+            }
+            if (data.requireSubjectPass !== undefined) {
+                _requireSubjectPass = data.requireSubjectPass === true;
+                localStorage.setItem('madrasa_req_sub_pass', _requireSubjectPass);
+            }
+            if (data.mandatorySubjects !== undefined) {
+                _mandatorySubjects = data.mandatorySubjects || [];
+                localStorage.setItem('madrasa_mandatory_subs', JSON.stringify(_mandatorySubjects));
+            }
+            if (data.watermarkText !== undefined) {
+                _watermarkText = data.watermarkText || 'মাকাদীরে আসবাক';
+                localStorage.setItem('madrasa_watermark', _watermarkText);
+            }
+            if (data.termWeights !== undefined) {
+                _termWeights = data.termWeights;
+                localStorage.setItem('madrasa_term_weights', JSON.stringify(_termWeights));
+            }
+            if (data.seatCapacity !== undefined) {
+                _seatCapacity = parseInt(data.seatCapacity) || 2;
+                localStorage.setItem('madrasa_seat_capacity', _seatCapacity);
+            }
+            if (data.seatSorting !== undefined) {
+                _seatSorting = data.seatSorting || 'roll';
+                localStorage.setItem('madrasa_seat_sorting', _seatSorting);
+            }
+            if (data.gradeScale !== undefined) {
+                window._gradeScale = data.gradeScale;
+                localStorage.setItem('madrasa_grade_scale', JSON.stringify(data.gradeScale));
+            }
+            
+            console.log('✅ Publish status Firestore থেকে লোড:', _examPublishStatus);
+        } else {
+            console.log('ℹ️ Firestore-এ examSettings নেই — প্রথমবার LocalStorage ডাটা আপলোড করি');
+            
+            // ★ প্রথমবার: LocalStorage-এর ডাটা Firestore-এ সেভ করি
+            await saveExamSettingsToFirestore();
+        }
+        
+    } catch (err) {
+        console.warn('⚠️ Firestore exam settings load failed, LocalStorage ব্যবহার হচ্ছে:', err);
+    }
 };
 
 // পেইজ লোড হওয়ার সময় সেটিংস লোড হবে
@@ -41245,8 +41335,60 @@ window.saveExamSettings = function() {
     const gMaqbul = document.getElementById('setting-grade-maqbul').value;
     localStorage.setItem('madrasa_grade_scale', JSON.stringify({ mumtaz: gMumtaz, jj: gJJ, jayed: gJayed, maqbul: gMaqbul }));
     
+    // ═══════════════════════════════════════════════════════
+    // ★★★ নতুন যোগ করুন: Firestore-এও সেভ করি (সব ডিভাইসে সিঙ্ক) ★★★
+    // ═══════════════════════════════════════════════════════
+    if (window.fbDB && window.fbFuncs && currentUser) {
+        const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+        setDoc(doc(window.fbDB, 'config', 'examSettings'), {
+            publishStatus: _examPublishStatus,
+            marksLock: _marksEntryLocked,
+            awardLimit: _awardLimit,
+            meritLimit: _meritLimit,
+            defaultPassMark: _defaultPassMark,
+            hideFailedInMerit: _hideFailedInMerit,
+            requireSubjectPass: _requireSubjectPass,
+            mandatorySubjects: _mandatorySubjects,
+            watermarkText: _watermarkText,
+            termWeights: _termWeights,
+            seatCapacity: _seatCapacity,
+            seatSorting: _seatSorting,
+            gradeScale: { mumtaz: gMumtaz, jj: gJJ, jayed: gJayed, maqbul: gMaqbul },
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser.uid
+        }, { merge: true })
+        .then(() => console.log('☁️ Exam settings Firestore-এ সেভ হয়েছে'))
+        .catch(err => console.error('❌ Firestore save failed:', err));
+    }
+    // ═══════════════════════════════════════════════════════
+    
     showToast('✅ পরীক্ষা সেটিংস সফলভাবে সেভ হয়েছে', 'success');
 };
+
+async function saveExamSettingsToFirestore() {
+    try {
+        const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+        await setDoc(doc(window.fbDB, 'config', 'examSettings'), {
+            publishStatus: _examPublishStatus,
+            marksLock: _marksEntryLocked,
+            awardLimit: _awardLimit,
+            meritLimit: _meritLimit,
+            defaultPassMark: _defaultPassMark,
+            hideFailedInMerit: _hideFailedInMerit,
+            requireSubjectPass: _requireSubjectPass,
+            mandatorySubjects: _mandatorySubjects,
+            watermarkText: _watermarkText,
+            termWeights: _termWeights,
+            seatCapacity: _seatCapacity,
+            seatSorting: _seatSorting,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser?.uid || 'unknown'
+        });
+        console.log('✅ LocalStorage ডাটা Firestore-এ আপলোড হয়েছে');
+    } catch (err) {
+        console.error('❌ Initial Firestore save failed:', err);
+    }
+}
 
 window.toggleMandatorySubjectsUI = function() {
     const cb = document.getElementById('setting-require-subject-pass');
@@ -62525,25 +62667,37 @@ async function renderGpAdmissionPrograms(container) {
     }
 }
 // ★★★ পাবলিশ বাটন টগল ফাংশন ★★★
-window.toggleExamPublishStatus = function() {
+window.toggleExamPublishStatus = async function() {
     _examPublishStatus = !_examPublishStatus;
     
-    // লোকাল স্টোরেজে সেভ করা
+    // লোকাল স্টোরেজ (fallback)
     localStorage.setItem('madrasa_publish_status', _examPublishStatus);
     
-    // সাকসেস মেসেজ
-    showToast(
-        _examPublishStatus 
-            ? '✅ রেজাল্ট অফিসিয়ালি পাবলিশ হয়েছে (সব পোর্টালে দেখা যাবে)' 
-            : '🔒 রেজাল্ট আনপাবলিশ করা হয়েছে (কেউ দেখতে পাবে না)', 
-        _examPublishStatus ? 'success' : 'info'
-    );
+    // ★★★ Firestore-এ সেভ করুন ★★★
+    try {
+        const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+        await setDoc(doc(window.fbDB, 'config', 'examSettings'), {
+            publishStatus: _examPublishStatus,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser?.uid || 'admin'
+        }, { merge: true });
+        
+        showToast(
+            _examPublishStatus 
+                ? '✅ রেজাল্ট অফিসিয়ালি পাবলিশ হয়েছে' 
+                : '🔒 রেজাল্ট আনপাবলিশ করা হয়েছে', 
+            _examPublishStatus ? 'success' : 'info'
+        );
+    } catch (err) {
+        console.error('❌ Publish status save failed:', err);
+        showToast('⚠️ লোকাল সেভ হয়েছে, Firestore-এ ব্যর্থ', 'warn');
+    }
     
-    // UI রিফ্রেশ
     if (typeof renderResultDeptPage === 'function') {
         renderResultDeptPage();
     }
 };
+
 // ═══════════════════════════════════════════════════════════════
 // ★★★ শিক্ষকদের জন্য ছুটির আবেদন ম্যানেজমেন্ট (নতুন ফাংশন) ★★★
 // ═══════════════════════════════════════════════════════════════
