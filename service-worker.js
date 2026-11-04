@@ -1,5 +1,5 @@
 // ★★★ ক্যাশ ভার্সন আপডেট করা হলো (v3 থেকে v4) ★★★
-const CACHE_NAME = 'al-jamiah-v5.10.3';
+const CACHE_NAME = 'al-jamiah-v5.10.৪';
 
 const ASSETS_TO_CACHE = [
   './',
