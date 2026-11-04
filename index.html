@@ -53884,40 +53884,98 @@ window.showTeacherPortal = function() {
 
     document.body.insertAdjacentHTML('beforeend', portalHTML);
     
-    // ★★★ সমস্যার সমাধান: সরাসরি switchTpTab না কল করে একটি সেফ ডিফল্ট ভিউ দেখাই ★★★
-    const contentArea = document.getElementById('tp-tab-content');
-    if (contentArea) {
-        contentArea.innerHTML = `
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center mt-4">
-                <i class="fa-solid fa-hand-wave text-4xl text-amber-400 mb-3"></i>
-                <h3 class="text-lg font-bold text-slate-800">স্বাগতম, ${teacherName}!</h3>
-                <p class="text-sm text-slate-500 mt-2">উপরের মেনু থেকে আপনার প্রয়োজনীয় অপশনটি নির্বাচন করুন।</p>
-            </div>
-        `;
-    }
-    loadTpProfileStats();
+    // ★★★ এই অংশটুকু নতুন করে বসান ★★★
+    // ইনিশিয়ালি ডাটা লোড করার জন্য
+    setTimeout(async () => {
+        if (typeof loadStudentsFromFirestore === 'function') {
+            await loadStudentsFromFirestore();
+        }
+        
+        // ★ ফিক্স: studentsCache লোড হওয়ার পর নিশ্চিত রিফ্রেশ
+        if (window.studentsCache && window.studentsCache.length > 0) {
+            loadTpProfileStats();
+        } else {
+            // ক্যাশ থেকে রিট্রাই
+            setTimeout(() => loadTpProfileStats(), 300);
+        }
+    }, 300);
+
+    // ★★★ নতুন যোগ করুন: লাইভ আপডেট লিসেনার (রিয়েল-টাইম) ★★★
+    setTimeout(() => {
+        if (typeof startStudentsRealtimeListener === 'function') {
+            startStudentsRealtimeListener();
+        }
+    }, 1000);
 };
 
 async function loadTpProfileStats() {
     try {
-        // ১. ডাটা লোড নিশ্চিত করা
-        if (typeof studentsCache === 'undefined' || studentsCache.length === 0) {
-            if (typeof loadStudentsFromFirestore === 'function') {
-                await loadStudentsFromFirestore();
+        console.log("⏳ loadTpProfileStats চলছে...");
+
+        // ═══════════════════════════════════════════════════════════
+        // ★★★ ধাপ ১: সব source থেকে ডাটা সংগ্রহ করি (priority order) ★★★
+        // ═══════════════════════════════════════════════════════════
+        let cacheData = [];
+
+        // Priority ১: window.studentsCache (সবচেয়ে নির্ভরযোগ্য — real-time listener এখানে লেখে)
+        if (window.studentsCache && window.studentsCache.length > 0) {
+            cacheData = window.studentsCache;
+            console.log("📦 Source: window.studentsCache");
+        }
+        // Priority ২: module-level studentsCache
+        else if (typeof studentsCache !== 'undefined' && studentsCache && studentsCache.length > 0) {
+            cacheData = studentsCache;
+            window.studentsCache = studentsCache; // sync back
+            console.log("📦 Source: studentsCache");
+        }
+        // Priority ৩: LocalStorage cache (offline fallback)
+        else {
+            try {
+                const cached = localStorage.getItem('madrasa_students_cache_v1');
+                if (cached) {
+                    cacheData = JSON.parse(cached) || [];
+                    window.studentsCache = cacheData;
+                    if (typeof studentsCache !== 'undefined') studentsCache = cacheData;
+                    console.log("📦 Source: LocalStorage cache (" + cacheData.length + ")");
+                }
+            } catch (e) {
+                console.warn('⚠️ LocalStorage parse failed:', e);
             }
         }
 
-        // ২. শিক্ষকের অনুমোদিত শ্রেণি বের করা
-        const allowed = typeof getTeacherAllowedClasses === 'function' ? getTeacherAllowedClasses() : [];
+        // ═══════════════════════════════════════════════════════════
+        // ★★★ ধাপ ২: এখনো খালি হলে, Firestore থেকে লোড করি (যদি লোড না হয়) ★★★
+        // ═══════════════════════════════════════════════════════════
+        if (cacheData.length === 0 && !window._isStudentsLoading) {
+            if (typeof loadStudentsFromFirestore === 'function') {
+                console.log("🔄 ফায়ারবেস থেকে ডাটা লোড হচ্ছে...");
+                await loadStudentsFromFirestore();
+                // লোডের পর আবার সব source থেকে চেষ্টা
+                cacheData = window.studentsCache || studentsCache || [];
+                console.log("📦 After load:", cacheData.length);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // ★★★ ধাপ ৩: শিক্ষকের অনুমোদিত ক্লাস ★★★
+        // ═══════════════════════════════════════════════════════════
+        const allowed = typeof getTeacherAllowedClasses === 'function' 
+            ? getTeacherAllowedClasses() 
+            : [];
         const classNames = allowed.map(k => k.split('::')[1]);
-        
-        // ৩. মোট ছাত্র সংখ্যা (বিদায়/বহিষ্কৃত বাদ দিয়ে)
-        const totalStudents = (studentsCache || []).filter(s => 
+
+        // ═══════════════════════════════════════════════════════════
+        // ★★★ ধাপ ৪: সক্রিয় ছাত্র গণনা ★★★
+        // ═══════════════════════════════════════════════════════════
+        const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+        const totalStudents = cacheData.filter(s => 
             allowed.includes(s.dept + '::' + s.className) &&
-            !['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'].includes((s.remark?.type || '').trim())
+            !excludedRemarks.includes((s.remark?.type || '').trim())
         ).length;
 
-        // ৪. DOM-এ মান বসানো
+        // ═══════════════════════════════════════════════════════════
+        // ★★★ ধাপ ৫: DOM আপডেট ★★★
+        // ═══════════════════════════════════════════════════════════
         const classEl = document.getElementById('tp-profile-classes');
         if (classEl) {
             if (classNames.length > 0) {
@@ -53928,13 +53986,16 @@ async function loadTpProfileStats() {
         }
         
         const studentEl = document.getElementById('tp-profile-total-students');
-        if (studentEl) studentEl.textContent = toBanglaNumber(totalStudents);
-
-        // ৫. উপস্থিতি (হাজিরা সিস্টেম তৈরি হলে এখানে আপডেট হবে)
-        const presentEl = document.getElementById('tp-profile-present-students');
-        if (presentEl) {
-            presentEl.textContent = '—'; 
+        if (studentEl) {
+            studentEl.textContent = toBanglaNumber(totalStudents);
         }
+
+        console.log("✅ প্রোফাইল স্ট্যাটস আপডেট:", { 
+            classes: classNames.length,
+            allowed: allowed.length,
+            students: totalStudents,
+            cacheLength: cacheData.length
+        });
 
     } catch (err) {
         console.error('❌ loadTpProfileStats error:', err);
@@ -59527,7 +59588,10 @@ async function startStudentsRealtimeListener() {
     // পুরনো লিসেনার বন্ধ
     if (_studentsUnsubscribe) _studentsUnsubscribe();
     if (_admissionFormsUnsubscribe) _admissionFormsUnsubscribe();
-    if (!currentUser) return;
+    if (!currentUser || !window.currentUserData) {
+        console.warn('⚠️ Listener skipped — user not ready');
+        return;
+    }
     
     const { collection, onSnapshot, getDocs } = window.fbFuncs;
     
@@ -59631,6 +59695,12 @@ async function startStudentsRealtimeListener() {
                 // ২.৩ "ফলাফল এন্ট্রি" খোলা থাকলে
                 if (window._tpExamState.sub === 'entry') {
                     if (typeof loadTpMarksEntryTable === 'function') loadTpMarksEntryTable();
+                }
+                
+                if (document.getElementById('teacher-portal-view')) {
+                    if (typeof loadTpProfileStats === 'function') {
+                        loadTpProfileStats();
+                    }
                 }
             }
         } catch (err) {
