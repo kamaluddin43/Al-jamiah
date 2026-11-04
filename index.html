@@ -32697,6 +32697,9 @@ async function handleUserLogin(user) {
     if (userData && (userData.role === 'admin' || userData.role === 'teacher')) {
         window.currentUserData = userData;
         currentUserData = userData;
+        // ★★★ নিশ্চিত করি currentUser সেট আছে ★★★
+        currentUser = user; 
+        window.currentUser = user;
         
         // ১. ডাটা লোড করা
         try {
@@ -53823,6 +53826,10 @@ window.verifyGuardianLogin = async function() {
 // ★★★ শিক্ষক পোর্টাল (Teacher Portal) ★★★
 // ═══════════════════════════════════════════════════════════════
 window.showTeacherPortal = function() {
+    // ★★★ নিশ্চিত করি currentUser ফায়ারবেস থেকে সঠিকভাবে লোড হয়েছে ★★★
+    if (!currentUser && window.fbAuth && window.fbAuth.currentUser) {
+        currentUser = window.fbAuth.currentUser;
+    }
     if (window.currentUserData) {
         localStorage.setItem('teacher_session', JSON.stringify(window.currentUserData));
     }
@@ -55586,24 +55593,17 @@ window.switchTpExamNewSub = async function(sub) {
         // ডিফল্টভাবে আমার রুটিন
         window.switchTpRoutineTab('my');
     } else if (sub === 'question-maker') {
-        // ★★★ ১. মূল অ্যাপের সব কিছু লুকিয়ে ফেলা (শিক্ষক বুঝতে পারবে না) ★★★
+        // ★★★ ১. মূল অ্যাপের সব কিছু লুকিয়ে ফেলা ★★★
         document.querySelectorAll('body > header, body > main, body > footer').forEach(el => {
             el.style.display = 'none';
             el.classList.add('hidden');
         });
 
-        // ★★★ ২. শিক্ষক পোর্টাল দেখানো (যাতে স্ক্রল ও হেডার ঠিক থাকে) ★★★
+        // ★★★ ২. শিক্ষক পোর্টাল দেখানো ★★★
         const portalView = document.getElementById('teacher-portal-view');
         if (portalView) portalView.style.display = 'block';
 
-        // ★★★ ৩. প্রশ্ন মেকারের পুরো HTML টিচার পোর্টালের কনটেন্ট এরিয়ায় কপি করা ★★★
-        const qmOriginal = document.getElementById('exam-view-question-maker');
-        if (!qmOriginal) {
-            wrap.innerHTML = `<div class="text-center py-10 text-red-500">প্রশ্ন মেকার পাওয়া যায়নি</div>`;
-            return;
-        }
-
-        // মেইন কনটেন্ট এরিয়ায় প্রশ্ন মেকারের ক্লোন বসাই
+        // ★★★ ৩. শিক্ষক পোর্টালের পরিষ্কার কন্টেইনার তৈরি ★★★
         wrap.innerHTML = `
             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <button onclick="switchTpTab('exam-new')" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg shadow-sm transition">
@@ -55611,40 +55611,91 @@ window.switchTpExamNewSub = async function(sub) {
                 </button>
                 <h3 class="text-sm md:text-base font-bold text-slate-800">প্রশ্ন মেকার</h3>
             </div>
-            <div id="tp-qm-container"></div>
+            
+            <!-- ★★★ বিষয় সিলেক্টর বার ★★★ -->
+            <div class="bg-white rounded-xl shadow-sm border-2 border-orange-300 p-3 mb-3">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-book-open text-orange-600"></i>
+                        <span>বিষয় নির্বাচন:</span>
+                    </label>
+                    <select id="tp-qm-subject" onchange="tpChangeSubject(this.value)" class="rounded-lg border-slate-300 border p-2 text-sm font-medium bg-white flex-1 min-w-[160px]">
+                        <option value="arabic" selected>🕌 আরবি</option>
+                        <option value="bangla">🇧🇩 বাংলা</option>
+                        <option value="english">🇬🇧 ইংরেজি</option>
+                        <option value="math">🔢 গণিত</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="tp-qm-container" class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 md:p-6"></div>
         `;
 
-        const tpQmContainer = document.getElementById('tp-qm-container');
-        
-        // ★★★ ৪. মূল প্রশ্ন মেকারের ভেতরের কন্টেন্টটি কপি করে এখানে বসাই (হুবহু) ★★★
-        // যাতে মূল সেকশনের সব জাভাস্ক্রিপ্ট ইভেন্ট (onclick) ঠিকমতো কাজ করে
-        tpQmContainer.innerHTML = qmOriginal.innerHTML;
+        // ★★★ ৪. সাবজেক্ট অনুযায়ী সেকশন সুইচ করার ফাংশন ★★★
+        window.tpChangeSubject = function(subject) {
+            const container = document.getElementById('tp-qm-container');
+            container.innerHTML = ''; // আগের কন্টেন্ট মুছে ফেলা
 
-        // ★★★ ৫. প্রশ্ন মেকারের বিষয় সিলেক্টর বারটি এখানেও বসাই (যদি থাকে) ★★★
-        const subjectBar = document.getElementById('qm-common-subject-bar');
-        if (subjectBar) {
-            subjectBar.classList.remove('hidden');
-            tpQmContainer.insertAdjacentHTML('afterbegin', subjectBar.outerHTML);
-            
-            // যেহেতু কপি করা হয়েছে, তাই নতুন সিলেক্টরটির ইভেন্টগুলো আবার বাইন্ড করতে হবে
-            const newSel = tpQmContainer.querySelector('#qm-subject-selector');
-            if (newSel) {
-                newSel.onchange = function() {
-                    if (typeof switchQmSubject === 'function') switchQmSubject(this.value);
-                };
+            // মূল সেকশনের কোন ভিউটি দেখাতে হবে তার আইডি
+            let targetViewId = '';
+            if (subject === 'arabic') targetViewId = 'exam-view-question-maker';
+            else if (subject === 'bangla') targetViewId = 'exam-view-bangla-qm';
+            else if (subject === 'english') targetViewId = 'exam-view-english-qm';
+            else if (subject === 'math') targetViewId = 'exam-view-math-qm';
+
+            const targetView = document.getElementById(targetViewId);
+
+            if (targetView) {
+                // মূল ভিউটি আন-হাইড করা
+                targetView.classList.remove('hidden');
+                
+                // পুরো ভিউটিকে পোর্টালের ভেতরে নিয়ে আসা (appendChild)
+                container.appendChild(targetView);
+
+                // অপ্রয়োজনীয় "পরীক্ষা মেনু" বাটন রিমুভ করা
+                container.querySelectorAll('button').forEach(btn => {
+                    if (btn.textContent.includes('পরীক্ষা মেনু') || btn.textContent.includes('হোম')) {
+                        const parentDiv = btn.closest('.sticky') || btn.closest('div');
+                        if (parentDiv && parentDiv.parentNode) parentDiv.remove();
+                    }
+                });
+
+                // ড্রপডাউনগুলো সচল করা (আরবি হলে)
+                if (subject === 'arabic') {
+                    setTimeout(() => {
+                        if (typeof populateAqmYearDropdown === 'function') populateAqmYearDropdown();
+                        if (typeof populateAqmClassDropdown === 'function') populateAqmClassDropdown();
+                    }, 100);
+                }
+                // বাংলা হলে
+                else if (subject === 'bangla') {
+                    setTimeout(() => {
+                        if (typeof populateBmqYearDropdown === 'function') populateBmqYearDropdown();
+                        if (typeof populateBmqClassDropdown === 'function') populateBmqClassDropdown();
+                    }, 100);
+                }
+                // ইংরেজি হলে
+                else if (subject === 'english') {
+                    setTimeout(() => {
+                        if (typeof populateEmqYearDropdown === 'function') populateEmqYearDropdown();
+                        if (typeof populateEmqClassDropdown === 'function') populateEmqClassDropdown();
+                    }, 100);
+                }
+                // গণিত হলে
+                else if (subject === 'math') {
+                    setTimeout(() => {
+                        if (typeof populateMmqYearDropdown === 'function') populateMmqYearDropdown();
+                        if (typeof populateMmqClassDropdown === 'function') populateMmqClassDropdown();
+                    }, 100);
+                }
+            } else {
+                container.innerHTML = `<div class="text-center py-10 text-red-500">এই বিষয়ের ফরম্যাট পাওয়া যায়নি!</div>`;
             }
-        }
+        };
 
-        // ★★★ ৬. ইনিশিয়ালাইজেশন ফাংশন কল করা ★★★
+        // ★★★ ৫. প্রথমবার লোড হওয়ার সময় ডিফল্টভাবে "আরবি" ওপেন করা ★★★
         setTimeout(() => {
-            if (typeof populateAqmYearDropdown === 'function') populateAqmYearDropdown();
-            if (typeof populateAqmClassDropdown === 'function') populateAqmClassDropdown();
-            
-            const subjSel = tpQmContainer.querySelector('#qm-subject-selector');
-            if (subjSel) {
-                subjSel.value = 'arabic';
-                if (typeof switchQmSubject === 'function') switchQmSubject('arabic');
-            }
+            window.tpChangeSubject('arabic');
         }, 100);
     } else if (sub === 'hall') {
         // ★★★ ৩. পরীক্ষার হল নেগরানী ★★★
@@ -55872,6 +55923,29 @@ window._tpExamState = {
 };
 
 window.switchTpExamSub = async function(sub) {
+    // switchTpExamSub ফাংশনের শুরুতে যোগ করুন
+    if (sub === 'class-view' || sub === 'dept-result' || sub === 'summary' || sub === 'mumtaz' || sub === 'fail') {
+        // ফায়ারবেস থেকে লেটেস্ট পাবলিশ স্ট্যাটাস চেক করা
+        try {
+            const { doc, getDoc } = window.fbFuncs;
+            const snap = await getDoc(doc(window.fbDB, 'config', 'examSettings'));
+            if (snap.exists() && snap.data().publishStatus !== undefined) {
+                _examPublishStatus = snap.data().publishStatus === true;
+            }
+        } catch (e) { console.warn('Publish check failed:', e); }
+
+        // যদি আনপাবলিশড থাকে, তবে রেজাল্ট দেখাবে না
+        if (!_examPublishStatus) {
+            content.innerHTML = `
+                <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-8 text-center mt-4">
+                    <i class="fa-solid fa-lock text-5xl text-amber-500 mb-3"></i>
+                    <h3 class="text-lg font-bold text-amber-900">রেজাল্ট এখনো পাবলিশ হয়নি</h3>
+                    <p class="text-sm text-amber-700 mt-2">অফিসিয়ালি রেজাল্ট পাবলিশ না হওয়া পর্যন্ত ফলাফল দেখতে পারবেন না।</p>
+                    <p class="text-xs text-slate-500 mt-3">অনুগ্রহ করে এডমিনের সাথে যোগাযোগ করুন।</p>
+                </div>`;
+            return; // এখানেই থেমে যাবে, নিচের কোড রান হবে না
+        }
+    }
     const content = document.getElementById('tp-dynamic-content');
     if (!content) return;
 
@@ -59913,6 +59987,14 @@ console.log('✅ Real-time listener মডিউল লোড হয়েছে
 // ═══════════════════════════════════════════════════════════════
 
 async function renderGpResults(container) {
+    try {
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, 'config', 'examSettings'));
+        if (snap.exists() && snap.data().publishStatus !== undefined) {
+            _examPublishStatus = snap.data().publishStatus === true;
+        }
+    } catch (e) { console.warn('Guardian publish check failed:', e); }
+    
     const student = _guardianSession;
     if (!student) {
         container.innerHTML = `<p class="text-center text-red-500 py-6">সেশন এক্সপায়ার — আবার লগইন করুন</p>`;
