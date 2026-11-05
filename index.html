@@ -11713,6 +11713,7 @@ const DEFAULT_CALENDAR_EVENTS = [];
 const CAL_CATEGORY_COLORS = {
     start:       { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af', icon: 'fa-play-circle',  label: 'শুরু' },
     exam:        { bg: '#fee2e2', border: '#dc2626', text: '#991b1b', icon: 'fa-file-pen',     label: 'পরীক্ষা' },
+    exam_prep:   { bg: '#f3e8ff', border: '#9333ea', text: '#4c1d95', icon: 'fa-book-open-reader', label: 'পরীক্ষার প্রস্তুতি' },
     holiday:     { bg: '#d1fae5', border: '#065f46', text: '#065f46', icon: 'fa-mug-hot',      label: 'ছুটি' },
     mahfil:      { bg: '#fef3c7', border: '#d97706', text: '#92400e', icon: 'fa-bullhorn',     label: 'মাহফিল' },
     result:      { bg: '#e0e7ff', border: '#4f46e5', text: '#3730a3', icon: 'fa-award',        label: 'ফলাফল' },
@@ -25330,13 +25331,15 @@ window.onErYearChange = function() {
 window.onErExamTypeChange = function() {
     erState.examType = document.getElementById('er-exam-type')?.value || '';
     
-    // ★ শিরোনাম auto-fill
+    // ★★★ নতুন ফিক্স: পরীক্ষার ধরন পরিবর্তনের সাথে সাথে শিরোনাম (Title) অটো আপডেট হবে ★★★
     if (erState.examType) {
         const deptLang = ER_DEPT_CONFIG[erState.dept]?.lang || 'bn';
         const titles = ER_EXAM_TITLES[erState.examType];
+        
         if (titles) {
             const titleInput = document.getElementById('er-exam-title');
-            if (titleInput && !titleInput.value.trim()) {
+            if (titleInput) {
+                // আগের লেখা থাকলেও সরাসরি নতুন লেখাটি বসিয়ে দেব
                 titleInput.value = deptLang === 'ar' ? titles.ar : titles.bn;
             }
         }
@@ -25482,30 +25485,80 @@ function renderExamRoutineTable() {
     erState.classes.forEach((cls, clsIdx) => {
         let cellsHTML = '';
         
-        erState.days.forEach((d, dayIdx) => {
-            const cellBooks = (cls.cells && cls.cells[d.date]) || [];
-            const hasBooks = cellBooks.length > 0;
-            
-            // ★ সেল কনটেন্ট — একাধিক কিতাব একটার নিচে একটা
-            let cellContent = '';
-            if (hasBooks) {
-                cellContent = cellBooks.map((book, bi) => 
-                    `<div style="font-family:'Amiri','Hind Siliguri',serif;font-size:11.5px;line-height:1.4;padding:2px 0;${bi > 0 ? 'border-top:1px dashed #e2e8f0;margin-top:2px;padding-top:3px;' : ''}">
-                        ${escapeErHtml(book)}
-                    </div>`
-                ).join('');
-            } else {
-                cellContent = `<span style="color:#cbd5e1;font-size:10px;">—</span>`;
+    erState.days.forEach((d, dayIdx) => {
+        // ★★★ পুরানো ও নতুন ফরম্যাট দুটোই হ্যান্ডেল ★★★
+        const cellData = (cls.cells && cls.cells[d.date]) || null;
+        let morningBooks = [];
+        let afternoonBooks = [];
+        
+        if (Array.isArray(cellData)) {
+            // পুরানো ফরম্যাট (শুধু array) → সকাল হিসেবে ধরি
+            morningBooks = cellData;
+        } else if (cellData) {
+            // নতুন ফরম্যাট
+            morningBooks = cellData.morning || [];
+            afternoonBooks = cellData.afternoon || [];
+        }
+        
+        const hasAny = morningBooks.length > 0 || afternoonBooks.length > 0;
+        const hasBoth = morningBooks.length > 0 && afternoonBooks.length > 0;
+        
+        let cellContent = '';
+        if (hasAny) {
+            // ★★★ সকালের কিতাব ★★★
+            // ব্যাজ দেখাবেনা যদি শুধু সকাল হয়, আর দেখাবে যদি সকাল+বিকাল দুটোই থাকে
+            let morningHTML = '';
+            if (morningBooks.length > 0) {
+                const morningBadge = hasBoth
+                    ? `<div style="display:inline-block;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:99px;font-size:9px;font-weight:bold;margin-bottom:2px;"><i class="fa-solid fa-sun"></i> সকাল</div>`
+                    : '';
+                
+                morningHTML = `
+                    <div style="${hasBoth ? 'border-bottom:1px dashed #cbd5e1;padding-bottom:3px;margin-bottom:3px;' : ''}">
+                        ${morningBadge}
+                        ${morningBooks.map(book =>
+                            `<div style="font-family:'Amiri','Hind Siliguri',serif;font-size:11.5px;line-height:1.4;padding:1px 0;">
+                                ${escapeErHtml(book)}
+                            </div>`
+                        ).join('')}
+                    </div>
+                `;
             }
             
-            cellsHTML += `
-                <td style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;vertical-align:middle;background:${hasBooks ? '#fffbeb' : '#f8fafc'};cursor:pointer;"
-                    onclick="openExamRoutineCellEditor(${clsIdx}, ${dayIdx})"
-                    title="ক্লিক করে কিতাব নির্বাচন করুন">
-                    ${cellContent}
-                </td>
-            `;
-        });
+            // ★★★ বিকালের কিতাব ★★★
+            let afternoonHTML = '';
+            if (afternoonBooks.length > 0) {
+                afternoonHTML = `
+                    <div>
+                        <div style="display:inline-block;background:#e0e7ff;color:#3730a3;padding:1px 6px;border-radius:99px;font-size:9px;font-weight:bold;margin-bottom:2px;"><i class="fa-solid fa-moon"></i> বিকাল</div>
+                        ${afternoonBooks.map(book =>
+                            `<div style="font-family:'Amiri','Hind Siliguri',serif;font-size:11.5px;line-height:1.4;padding:1px 0;">
+                                ${escapeErHtml(book)}
+                            </div>`
+                        ).join('')}
+                    </div>
+                `;
+            }
+            
+            cellContent = morningHTML + afternoonHTML;
+        } else {
+            cellContent = `<span style="color:#cbd5e1;font-size:10px;">—</span>`;
+        }
+        
+        // ব্যাকগ্রাউন্ড কালার: সকাল+বিকাল দুটোই থাকলে হালকা মিশ্র রঙ
+        let cellBg = '#f8fafc';
+        if (hasBoth) cellBg = '#fef9e7';
+        else if (morningBooks.length > 0) cellBg = '#fffbeb';
+        else if (afternoonBooks.length > 0) cellBg = '#eef2ff';
+        
+        cellsHTML += `
+            <td style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;vertical-align:top;background:${cellBg};cursor:pointer;"
+                onclick="openExamRoutineCellEditor(${clsIdx}, ${dayIdx})"
+                title="ক্লিক করে কিতাব ও সেশন সম্পাদনা করুন">
+                ${cellContent}
+            </td>
+        `;
+    });
         
         rowsHTML += `
             <tr>
@@ -25562,8 +25615,10 @@ function escapeErHtml(str) {
 }
 
 // ═══════════════════ সেলে ক্লিক → কিতাব সিলেক্ট মডাল ═══════════════════
+// ═══════════════════════════════════════════════════════════════
+// ★★★ পরীক্ষার রুটিন সেল এডিটর (সকাল/বিকাল সেশন সহ) ★★★
+// ═══════════════════════════════════════════════════════════════
 window.openExamRoutineCellEditor = function(clsIdx, dayIdx) {
-    // ★ শিক্ষক হলে এডিট ব্লক
     if (currentUserData?.role !== 'admin') {
         showToast('🔒 শুধু এডমিন কিতাব বদলাতে পারবেন', 'warn');
         return;
@@ -25572,9 +25627,7 @@ window.openExamRoutineCellEditor = function(clsIdx, dayIdx) {
     const day = erState.days[dayIdx];
     if (!cls || !day) return;
     
-    const isAr = ER_DEPT_CONFIG[erState.dept]?.lang === 'ar';
-    
-    // ★ এই শ্রেণির কিতাব তালিকা (configData.books থেকে)
+    // ★ এই শ্রেণির কিতাব তালিকা
     const booksList = (configData?.books || {})[cls.nameAr] || 
                      (configData?.books || {})[cls.nameBn] || [];
     
@@ -25583,25 +25636,49 @@ window.openExamRoutineCellEditor = function(clsIdx, dayIdx) {
         return;
     }
     
-    // ★ বর্তমানে সিলেক্ট করা কিতাব
-    const currentBooks = (cls.cells && cls.cells[day.date]) || [];
+    // ★★★ বর্তমানে সেভ করা ডেটা (পুরানো ও নতুন ফরম্যাট দুটোই হ্যান্ডেল) ★★★
+    const cellData = (cls.cells && cls.cells[day.date]) || null;
+    let morningBooks = [];
+    let afternoonBooks = [];
+
+    if (Array.isArray(cellData)) {
+        // পুরানো ফরম্যাট (শুধু array) → সকাল হিসেবে ধরি
+        morningBooks = cellData;
+    } else if (cellData) {
+        // নতুন ফরম্যাট
+        morningBooks = cellData.morning || [];
+        afternoonBooks = cellData.afternoon || [];
+    }
     
-    // ★ মডাল
+    // ★ মডাল তৈরি
     const modal = document.createElement('div');
     modal.id = 'er-cell-editor-modal';
     modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
     
-    const checkboxesHTML = booksList.map((book, idx) => {
-        const isChecked = currentBooks.includes(book);
+    const checkboxesHTML = booksList.map((book) => {
+        const isMorning = morningBooks.includes(book);
+        const isAfternoon = afternoonBooks.includes(book);
+        const safeBook = book.replace(/"/g, '&quot;');
         return `
-            <label class="flex items-center gap-3 p-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-purple-50 transition mb-1.5">
-                <input type="checkbox" 
-                       value="${book.replace(/"/g, '&quot;')}"
-                       ${isChecked ? 'checked' : ''}
-                       class="er-cell-book-cb w-4 h-4 rounded text-purple-600"
-                       onchange="onErCellBookToggle(this)">
-                <span class="text-sm font-arabic" dir="rtl">${book}</span>
-            </label>
+            <div class="flex items-center gap-2 p-2 border border-slate-200 rounded-lg mb-1.5 bg-white">
+                <span class="text-sm font-arabic flex-1" dir="rtl">${book}</span>
+                
+                <label class="er-session-chip flex items-center gap-1 cursor-pointer px-2 py-1 rounded border-2 transition ${isMorning ? 'bg-amber-100 border-amber-500' : 'bg-slate-50 border-slate-200'}">
+                    <input type="checkbox" 
+                        class="er-book-morning w-3.5 h-3.5 rounded text-amber-600"
+                        value="${safeBook}"
+                        ${isMorning ? 'checked' : ''}>
+                    <span class="text-[10px] font-bold ${isMorning ? 'text-amber-800' : 'text-slate-500'}">☀️ সকাল</span>
+                </label>
+                
+                <label class="er-session-chip flex items-center gap-1 cursor-pointer px-2 py-1 rounded border-2 transition ${isAfternoon ? 'bg-indigo-100 border-indigo-500' : 'bg-slate-50 border-slate-200'}">
+                    <input type="checkbox" 
+                        class="er-book-afternoon w-3.5 h-3.5 rounded text-indigo-600"
+                        value="${safeBook}"
+                        ${isAfternoon ? 'checked' : ''}>
+                    <span class="text-[10px] font-bold ${isAfternoon ? 'text-indigo-800' : 'text-slate-500'}">🌙 বিকাল</span>
+                </label>
+            </div>
         `;
     }).join('');
     
@@ -25610,7 +25687,7 @@ window.openExamRoutineCellEditor = function(clsIdx, dayIdx) {
             <div style="background:linear-gradient(135deg, #7c3aed, #6d28d9);color:white;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;">
                 <div>
                     <h3 style="margin:0;font-size:16px;font-weight:bold;">
-                        <i class="fa-solid fa-book"></i> কিতাব নির্বাচন
+                        <i class="fa-solid fa-book"></i> কিতাব ও সেশন নির্বাচন
                     </h3>
                     <p style="margin:4px 0 0;font-size:11px;opacity:0.9;">
                         <strong>${cls.nameAr || cls.nameBn}</strong> — ${day.dayNameBn} (${day.displayDate})
@@ -25622,10 +25699,25 @@ window.openExamRoutineCellEditor = function(clsIdx, dayIdx) {
             </div>
             
             <div style="padding:14px;overflow-y:auto;flex:1;">
+                
+                <!-- ★★★ সেশন সিলেক্টর (নতুন) ★★★ -->
+                <div class="mb-4 bg-amber-50 border-2 border-amber-300 rounded-lg p-3">
+                    <p class="text-xs font-bold text-amber-900 mb-1">
+                        <i class="fa-solid fa-info-circle"></i> কীভাবে ব্যবহার করবেন:
+                    </p>
+                    <ul class="text-[11px] text-amber-800 list-disc pl-4 space-y-1">
+                        <li>প্রতিটি কিতাবের পাশে <strong>☀️ সকাল</strong> বা <strong>🌙 বিকাল</strong> টিক দিন।</li>
+                        <li>একটি কিতাব শুধু সকাল, শুধু বিকাল, অথবা দুটোতেই থাকতে পারে।</li>
+                        <li>একই সেশনে একাধিক কিতাব থাকলে সেগুলো মিলে <strong>একটি ১০০ নম্বরের পত্র</strong> হবে।</li>
+                        <li>কোনো সেশন সিলেক্ট না করলে সেটি <strong>সকাল</strong> হিসেবে ধরা হবে।</li>
+                    </ul>
+                </div>
+
                 <p class="text-xs text-slate-500 mb-3">
                     <i class="fa-solid fa-info-circle"></i>
-                    একাধিক কিতাব নির্বাচন করা যাবে। কিন্তু একই দিনে একই কিতাব দুইবার দেখাবে না।
+                    একই সেশনে একাধিক কিতাব নির্বাচন করা যাবে (মিলে একটি পত্র হবে)।
                 </p>
+                
                 ${checkboxesHTML}
             </div>
             
@@ -25641,6 +25733,34 @@ window.openExamRoutineCellEditor = function(clsIdx, dayIdx) {
     `;
     
     document.body.appendChild(modal);
+    
+    // ★★★ চেকবক্সে ক্লিক করলে সংশ্লিষ্ট চিপের রঙ আপডেট ★★★
+    modal.querySelectorAll('.er-book-morning').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const label = this.closest('label');
+            const span = label.querySelector('span');
+            if (this.checked) {
+                label.className = 'er-session-chip flex items-center gap-1 cursor-pointer px-2 py-1 rounded border-2 bg-amber-100 border-amber-500 transition';
+                span.className = 'text-[10px] font-bold text-amber-800';
+            } else {
+                label.className = 'er-session-chip flex items-center gap-1 cursor-pointer px-2 py-1 rounded border-2 bg-slate-50 border-slate-200 transition';
+                span.className = 'text-[10px] font-bold text-slate-500';
+            }
+        });
+    });
+    modal.querySelectorAll('.er-book-afternoon').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const label = this.closest('label');
+            const span = label.querySelector('span');
+            if (this.checked) {
+                label.className = 'er-session-chip flex items-center gap-1 cursor-pointer px-2 py-1 rounded border-2 bg-indigo-100 border-indigo-500 transition';
+                span.className = 'text-[10px] font-bold text-indigo-800';
+            } else {
+                label.className = 'er-session-chip flex items-center gap-1 cursor-pointer px-2 py-1 rounded border-2 bg-slate-50 border-slate-200 transition';
+                span.className = 'text-[10px] font-bold text-slate-500';
+            }
+        });
+    });
     
     // ★ ব্যাকড্রপে ক্লিক
     modal.addEventListener('click', e => {
@@ -25663,11 +25783,15 @@ window.closeErCellEditor = function() {
 };
 
 window.onErCellBookToggle = function(cb) {
-    // ★ এখন কিছু করার দরকার নেই — save-এ পড়ব
-    // ★ যদি চাই ইনস্ট্যান্ট warning দিতে পারি
+    // এখন কিছু করার দরকার নেই — save-এ পড়ব
 };
 
-// ═══════════════════ ক্যালেন্ডার থেকে তারিখ লোড ═══════════════════
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ক্যালেন্ডার থেকে তারিখ লোড (সম্পূর্ণ ঠিক করা ভার্সন) ★★★
+// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ১. ক্যালেন্ডার থেকে তারিখ লোড (সর্বোচ্চ শক্তিশালী ভার্সন) ★★★
+// ═══════════════════════════════════════════════════════════════
 window.loadDatesFromCalendar = async function() {
     if (!erState.year) {
         showToast('⚠️ আগে শিক্ষাবর্ষ সিলেক্ট করুন', 'warn');
@@ -25678,137 +25802,223 @@ window.loadDatesFromCalendar = async function() {
         return;
     }
     
-    showToast('📅 ক্যালেন্ডার থেকে তারিখ লোড হচ্ছে...', 'info');
+    showToast('📅 ক্যালেন্ডার স্ক্যান করা হচ্ছে...', 'info');
     
     try {
-        // ★ Firestore থেকে সব events লোড
         const { doc, getDoc } = window.fbFuncs;
         const ref = doc(window.fbDB, 'calendars', 'main');
         const snap = await getDoc(ref);
         
         if (!snap.exists()) {
-            showToast('📅 ক্যালেন্ডারে কোনো ইভেন্ট নেই', 'warn');
+            showToast('📅 ক্যালেন্ডারে কোনো ডেটা নেই', 'warn');
             return;
         }
         
         const allEvents = snap.data().events || [];
-        
-        // ★ session filter
+        if (allEvents.length === 0) {
+            showToast('📅 ক্যালেন্ডারে কোনো ইভেন্ট নেই', 'warn');
+            return;
+        }
+
+        // সেশন ফিল্টারিং (শুধু বর্তমান শিক্ষাবর্ষের ইভেন্ট)
         const cleanYear = String(erState.year).replace(/\s*\(.*?\)\s*/g, '').trim();
-        const examTypeBn = ER_EXAM_TITLES[erState.examType]?.bn || '';
-        const examTypeAr = ER_EXAM_TITLES[erState.examType]?.ar || '';
         
-        // ★ এই পরীক্ষার সাথে সম্পর্কিত ইভেন্ট খুঁজি
-        // ধরন: "১ম সাময়িক পরীক্ষা" বা "الاختبار الأول" word দিয়ে
-        const relatedEvents = allEvents.filter(e => {
-            // session match
+        // ★★★ এখানে কোনো কড়া নাম মেলানোর লজিক নেই। 
+        // বছরের সাথে মিললেই সব ইভেন্ট স্ক্যান করা হবে।
+        const yearEvents = allEvents.filter(e => {
             if (e.session && e.session !== 'all') {
                 const eSess = String(e.session).replace(/\s*\(.*?\)\s*/g, '').trim();
                 if (eSess !== cleanYear) return false;
             }
-            
-            // পরীক্ষার নাম match
-            const title = (e.title || '') + ' ' + (e.details || '');
-            if (examTypeBn && title.includes(examTypeBn.split(' ')[0])) return true;
-            if (examTypeAr && title.includes(examTypeAr)) return true;
-            
-            return false;
+            return true;
         });
+
+        console.log(`🔍 "${erState.year}" এর মোট ইভেন্ট পাওয়া গেছে: ${yearEvents.length} টি`);
         
-        // ★ সংশ্লিষ্ট ইভেন্ট না পেলে সব exam ক্যাটাগরির ইভেন্ট দেখি
-        let targetEvents = relatedEvents;
-        if (targetEvents.length === 0) {
-            targetEvents = allEvents.filter(e => e.category === 'exam');
-        }
-        
-        if (targetEvents.length === 0) {
-            showToast('📅 এই পরীক্ষার সাথে সম্পর্কিত তারিখ পাওয়া যায়নি', 'warn');
-            return;
-        }
-        
-        // ★ হিজরি তারিখ বা গ্রেগরিয়ান তারিখ parse
-        const isAr = ER_DEPT_CONFIG[erState.dept]?.lang === 'ar';
-        
-        // ★ নির্দিষ্ট পরীক্ষার জন্য ঐ ইভেন্টের তারিখ বের করি
-        //   (হিজরি রেঞ্জ parse করি)
-        const examEvent = targetEvents.find(e => 
-            examTypeBn && (e.title || '').includes(examTypeBn.split(' ')[0])
-        ) || targetEvents[0];
-        
-        // ★ গ্রেগরিয়ান তারিখ থেকে রেঞ্জ বের করি
-        let startDate = null;
-        let endDate = null;
-        
-        // ★ gregorianDate থেকে parse (যেমন: "১৫ জুলাই ২০২৬" বা "15/07/2026")
-        const gregStr = examEvent.gregorianDate || '';
-        
-        // পদ্ধতি: বাংলা সংখ্যা → ইংরেজি
-        function toEngNum(s) {
-            const map = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9' };
-            return String(s).replace(/[০-৯]/g, d => map[d] || d);
-        }
-        
-        // ★ মাসের নাম → মাসের সংখ্যা
-        const monthMap = {
-            'january': 1, 'jan': 1, 'জানুয়ারি': 1, 'জানু': 1,
-            'february': 2, 'feb': 2, 'ফেব্রুয়ারি': 2, 'ফেব': 2,
-            'march': 3, 'mar': 3, 'মার্চ': 3,
-            'april': 4, 'apr': 4, 'এপ্রিল': 4,
-            'may': 5, 'মে': 5,
-            'june': 6, 'jun': 6, 'জুন': 6,
-            'july': 7, 'jul': 7, 'জুলাই': 7,
-            'august': 8, 'aug': 8, 'আগস্ট': 8,
-            'september': 9, 'sep': 9, 'সেপ্টেম্বর': 9, 'সেপ্টে': 9,
-            'october': 10, 'oct': 10, 'অক্টোবর': 10, 'অক্টো': 10,
-            'november': 11, 'nov': 11, 'নভেম্বর': 11, 'নভে': 11,
-            'december': 12, 'dec': 12, 'ডিসেম্বর': 12, 'ডিসে': 12
-        };
-        
-        // ★ "১৫-২৩ জুলাই ২০২৬" বা "১৫ জুলাই ২০২৬" parse করি
-        const datePattern = /(\d+)\s*[-–]\s*(\d+)\s+(\S+)\s+(\d{4})/;
-        const singlePattern = /(\d+)\s+(\S+)\s+(\d{4})/;
-        
-        const engGregStr = toEngNum(gregStr);
-        let match = engGregStr.match(datePattern);
-        
-        if (match) {
-            const [, startDay, endDay, monthName, year] = match;
-            const month = monthMap[monthName.toLowerCase()] || monthMap[monthName] || 7;
-            startDate = `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
-            endDate = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
-        } else {
-            match = engGregStr.match(singlePattern);
-            if (match) {
-                const [, day, monthName, year] = match;
-                const month = monthMap[monthName.toLowerCase()] || monthMap[monthName] || 7;
-                startDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                // ★ ডিফল্ট ৯ দিন
-                const endD = new Date(startDate);
-                endD.setDate(endD.getDate() + 8);
-                endDate = endD.toISOString().split('T')[0];
+        let allStartDates = [];
+        let allEndDates = [];
+        let foundEvents = [];
+
+        // ★★★ প্রতিটি ইভেন্ট থেকে তারিখ খুঁজে বের করার মেগা-লজিক ★★★
+        yearEvents.forEach(ev => {
+            const parsed = extractDatesFromEvent(ev, cleanYear);
+            
+            if (parsed) {
+                allStartDates.push(parsed.start);
+                allEndDates.push(parsed.end);
+                foundEvents.push(`"${ev.title}" (${formatDateToISO(parsed.start)} → ${formatDateToISO(parsed.end)})`);
             }
-        }
-        
-        if (!startDate || !endDate) {
-            // ★ কিছু parse না হলে ডিফল্ট
-            showToast('⚠️ ক্যালেন্ডারের তারিখ parse করা যায়নি — ম্যানুয়ালি দিন', 'warn');
+        });
+
+        if (allStartDates.length === 0) {
+            showToast('⚠️ ক্যালেন্ডারে কোনো বৈধ তারিখ পাওয়া যায়নি।', 'warn');
             return;
         }
-        
-        // ★ UI-তে বসাই
+
+        // সবচেয়ে আগের শুরুর তারিখ এবং সবচেয়ে পরের শেষ তারিখ
+        const minStart = new Date(Math.min(...allStartDates.map(d => d.getTime())));
+        const maxEnd = new Date(Math.max(...allEndDates.map(d => d.getTime())));
+
+        const startDate = formatDateToISO(minStart);
+        const endDate = formatDateToISO(maxEnd);
+
+        // ফিল্ডে ভ্যালু বসানো
         document.getElementById('er-start-date').value = startDate;
         document.getElementById('er-end-date').value = endDate;
-        
         erState.startDate = startDate;
         erState.endDate = endDate;
+
+        console.log('✅ যে ইভেন্টগুলো থেকে তারিখ নেওয়া হয়েছে:', foundEvents);
         
-        showToast(`✅ ক্যালেন্ডার থেকে লোড: ${startDate} → ${endDate}`, 'success');
-        
+        const totalDays = Math.round((maxEnd - minStart) / (1000 * 60 * 60 * 24)) + 1;
+        showToast(`✅ ${allStartDates.length}টি ইভেন্ট থেকে: ${startDate} → ${endDate} (${totalDays} দিন)`, 'success');
+
     } catch (err) {
         console.error('❌ loadDatesFromCalendar error:', err);
         showToast('❌ লোড ব্যর্থ: ' + err.message, 'error');
     }
 };
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ২. Date → YYYY-MM-DD ফরম্যাট হেল্পার ★★★
+// ═══════════════════════════════════════════════════════════════
+function formatDateToISO(d) {
+    if (!d || isNaN(d.getTime())) return '';
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ৩. এক ইভেন্ট থেকে তারিখ বের করার মেগা-পার্সার ★★★
+// ═══════════════════════════════════════════════════════════════
+function extractDatesFromEvent(event, academicYear) {
+    // বাংলা/আরবি সংখ্যা থেকে ইংরেজি
+    const toEngNum = (str) => {
+        if (!str) return '';
+        const map = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9',
+                      '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9' };
+        return String(str).replace(/[০-৯٠-٩]/g, d => map[d] || d);
+    };
+
+    // মাসের নামের ডিকশনারি
+    const engMonths = { january:0, february:1, march:2, april:3, may:4, june:5, july:6, august:7, september:8, october:9, november:10, december:11,
+                        jan:0, feb:1, mar:2, apr:3, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+    const bnMonths = { 'জানুয়ারি':0, 'জানুয়ারী':0, 'ফেব্রুয়ারি':1, 'ফেব্রুয়ারী':1, 'মার্চ':2, 'এপ্রিল':3, 'মে':4, 'জুন':5,
+                       'জুলাই':6, 'আগস্ট':7, 'সেপ্টেম্বর':8, 'সেপ্টেম্বার':8, 'অক্টোবর':9, 'নভেম্বর':10, 'ডিসেম্বর':11 };
+
+    // ইভেন্টের সব টেক্সট একসাথে জোড়া লাগাই
+    const fullText = toEngNum(`${event.title || ''} ${event.details || ''}`).trim();
+    const gregText = toEngNum(`${event.gregorianDate || ''}`).trim();
+
+    // বছর বের করার চেষ্টা
+    let defaultYear = new Date().getFullYear();
+    if (academicYear) {
+        const yMatch = String(academicYear).match(/\b(20\d{2})\b/);
+        if (yMatch) defaultYear = parseInt(yMatch[1]);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // ১. gregorianDate ফিল্ডে সরাসরি তারিখ থাকলে সেটা আগে চেক করি
+    // ─────────────────────────────────────────────────────────
+    if (gregText) {
+        // ISO (2026-10-14)
+        const isoMatches = gregText.match(/\b(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})\b/g);
+        if (isoMatches && isoMatches.length > 0) {
+            const parseISO = (str) => {
+                const p = str.split(/[-\/]/);
+                return new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+            };
+            const start = parseISO(isoMatches[0]);
+            const end = isoMatches.length > 1 ? parseISO(isoMatches[1]) : new Date(start);
+            if (!isNaN(start.getTime())) return { start, end };
+        }
+
+        // 15 July 2026 / ১৫ জুলাই ২০২৬
+        const monthNamesArr = Object.keys(bnMonths).concat(Object.keys(engMonths)).join('|');
+        
+        // Range: "5-10 July 2026"
+        const rangeRegex = new RegExp(`(\\d{1,2})\\s*[-–]\\s*(\\d{1,2})\\s+(${monthNamesArr})\\s*,?\\s*(\\d{4})`, 'i');
+        const rangeMatch = gregText.match(rangeRegex);
+        if (rangeMatch) {
+            const sDay = parseInt(rangeMatch[1]);
+            const eDay = parseInt(rangeMatch[2]);
+            const mStr = rangeMatch[3].toLowerCase();
+            const yr = parseInt(rangeMatch[4]);
+            const mIdx = bnMonths[mStr] !== undefined ? bnMonths[mStr] : engMonths[mStr];
+            if (mIdx !== undefined) {
+                return { start: new Date(yr, mIdx, sDay), end: new Date(yr, mIdx, eDay) };
+            }
+        }
+
+        // Single: "15 July 2026"
+        const singleRegex = new RegExp(`(\\d{1,2})\\s+(${monthNamesArr})\\s*,?\\s*(\\d{4})`, 'i');
+        const singleMatch = gregText.match(singleRegex);
+        if (singleMatch) {
+            const sDay = parseInt(singleMatch[1]);
+            const mStr = singleMatch[2].toLowerCase();
+            const yr = parseInt(singleMatch[3]);
+            const mIdx = bnMonths[mStr] !== undefined ? bnMonths[mStr] : engMonths[mStr];
+            if (mIdx !== undefined) {
+                const d = new Date(yr, mIdx, sDay);
+                return { start: d, end: new Date(d) };
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // ২. ইভেন্টের title/details-এ সরাসরি তারিখ লেখা থাকলে (ISO)
+    // ─────────────────────────────────────────────────────────
+    const isoMatches = fullText.match(/\b(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})\b/g);
+    if (isoMatches && isoMatches.length > 0) {
+        const parseISO = (str) => {
+            const p = str.split(/[-\/]/);
+            return new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+        };
+        const start = parseISO(isoMatches[0]);
+        const end = isoMatches.length > 1 ? parseISO(isoMatches[1]) : new Date(start);
+        if (!isNaN(start.getTime())) return { start, end };
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // ৩. হিজরি থেকে কনভার্ট (যদি অন্য কিছু না পাওয়া যায়)
+    // ─────────────────────────────────────────────────────────
+    if (event.hijriMonth && event.hijriDate) {
+        const HIJRI_REF = {
+            '2026-2027': { shawwal:'2026-03-21', zilqad:'2026-04-20', zilhajj:'2026-05-19', muharram:'2026-06-17', safar:'2026-07-16', rabiul_awwal:'2026-08-15', rabiul_akhir:'2026-09-14', jumadal_ula:'2026-10-13', jumadal_akhirah:'2026-11-12', rajab:'2026-12-11', shaban:'2027-01-10', ramadan:'2027-02-08' },
+            '2027-2028': { shawwal:'2027-03-10', zilqad:'2027-04-09', zilhajj:'2027-05-08', muharram:'2027-06-06', safar:'2027-07-05', rabiul_awwal:'2027-08-04', rabiul_akhir:'2027-09-02', jumadal_ula:'2027-10-02', jumadal_akhirah:'2027-10-31', rajab:'2027-11-30', shaban:'2027-12-29', ramadan:'2028-01-28' }
+        };
+        
+        const yearDefaults = HIJRI_REF[academicYear];
+        if (yearDefaults && yearDefaults[event.hijriMonth]) {
+            const hijriStr = toEngNum(event.hijriDate);
+            const dayMatches = hijriStr.match(/\d{1,2}/g);
+            
+            if (dayMatches) {
+                const sDay = parseInt(dayMatches[0]);
+                const eDay = dayMatches.length > 1 ? parseInt(dayMatches[1]) : sDay;
+                
+                if (sDay >= 1 && sDay <= 30 && eDay >= sDay && eDay <= 30) {
+                    const monthStart = new Date(yearDefaults[event.hijriMonth] + 'T00:00:00Z');
+                    if (!isNaN(monthStart.getTime())) {
+                        const s = new Date(monthStart);
+                        s.setUTCDate(monthStart.getUTCDate() + (sDay - 1));
+                        const e = new Date(monthStart);
+                        e.setUTCDate(monthStart.getUTCDate() + (eDay - 1));
+                        
+                        return { 
+                            start: new Date(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()),
+                            end: new Date(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate())
+                        };
+                    }
+                }
+            }
+        }
+    }
+
+    return null; // কিছুই না পাওয়া গেলে
+}
 
 // ═══════════════════ শ্রেণি / দিন এডিট ═══════════════════
 window.addExamRoutineClass = function() {
@@ -25905,20 +26115,26 @@ window.saveErCellBooks = function(clsIdx, dateStr) {
     const cls = erState.classes[clsIdx];
     if (!cls) return;
     
-    const selected = Array.from(document.querySelectorAll('.er-cell-book-cb:checked'))
-        .map(cb => cb.value);
+    // ★★★ সকাল ও বিকালের কিতাব আলাদাভাবে সংগ্রহ ★★★
+    const morningBooks = Array.from(document.querySelectorAll('.er-book-morning:checked')).map(cb => cb.value);
+    const afternoonBooks = Array.from(document.querySelectorAll('.er-book-afternoon:checked')).map(cb => cb.value);
     
-    // ★ Conflict চেক
+    // ★ Conflict চেক (শুধু অন্য শ্রেণিতে একই কিতাব আছে কিনা)
     const conflicts = [];
+    const allSelected = [...new Set([...morningBooks, ...afternoonBooks])];
     
-    // ★ ১) একই দিনে, একই শ্রেণিতে আগের কিতাব ছিল কিনা
-    const oldBooks = (cls.cells && cls.cells[dateStr]) || [];
-    
-    // ★ ২) অন্য শ্রেণিতে এই দিনে একই কিতাব আছে কিনা
-    selected.forEach(book => {
+    allSelected.forEach(book => {
         erState.classes.forEach((otherCls, otherIdx) => {
             if (otherIdx === clsIdx) return;
-            const otherBooks = (otherCls.cells && otherCls.cells[dateStr]) || [];
+            
+            const otherCellData = (otherCls.cells && otherCls.cells[dateStr]) || null;
+            let otherBooks = [];
+            if (Array.isArray(otherCellData)) {
+                otherBooks = otherCellData;
+            } else if (otherCellData) {
+                otherBooks = [...(otherCellData.morning || []), ...(otherCellData.afternoon || [])];
+            }
+            
             if (otherBooks.includes(book)) {
                 conflicts.push({
                     book: book,
@@ -25928,7 +26144,6 @@ window.saveErCellBooks = function(clsIdx, dateStr) {
         });
     });
     
-    // ★ Conflict থাকলে warning দেখাই
     if (conflicts.length > 0) {
         const conflictMsg = conflicts.map(c => 
             `• "${c.book}" — ইতিমধ্যে "${c.otherClass}" শ্রেণিতে আছে`
@@ -25946,15 +26161,24 @@ window.saveErCellBooks = function(clsIdx, dateStr) {
     
     if (!cls.cells) cls.cells = {};
     
-    if (selected.length === 0) {
+    // ★ কিছুই সিলেক্ট না থাকলে ডিলিট
+    if (morningBooks.length === 0 && afternoonBooks.length === 0) {
         delete cls.cells[dateStr];
     } else {
-        cls.cells[dateStr] = selected;
+        // ★★★ নতুন ফরম্যাটে সেভ (সকাল ও বিকাল আলাদা) ★★★
+        cls.cells[dateStr] = {
+            morning: morningBooks,
+            afternoon: afternoonBooks
+        };
     }
     
     closeErCellEditor();
     renderExamRoutineTable();
-    showToast(`✅ ${selected.length}টি কিতাব সংরক্ষিত`, 'success');
+    
+    const parts = [];
+    if (morningBooks.length > 0) parts.push(`সকাল ${morningBooks.length}টি`);
+    if (afternoonBooks.length > 0) parts.push(`বিকাল ${afternoonBooks.length}টি`);
+    showToast(`✅ সংরক্ষিত — ${parts.join(', ')}`, 'success');
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -39336,6 +39560,9 @@ let _customMarksColumns = {}; // ★ নতুন: কাস্টম কলা�
 let _deletedMarksColumns = {}; // ★ নতুন: কোনগুলো ডিলিট করা হয়েছে তা মনে রাখার জন্য
 let _marksColumnOrder = {}; // ★ নতুন: কলামের অর্ডার মনে রাখার জন্য
 
+window._marksEntrySource = 'default'; // 'default' | 'saved' | 'routine'
+window._routineMarksColumns = []; 
+
 window.openMarksEntryPage = async function() {
     document.getElementById('results-main-menu').classList.add('hidden');
     document.getElementById('results-dept-page').classList.add('hidden');
@@ -39414,41 +39641,50 @@ window.renderMarksEntryTable = async function() {
         return;
     }
 
-    // ১. কলামের লিস্ট তৈরি (অর্ডার অনুযায়ী)
-    let tempColumns = [];
-    
-    // ডিফল্ট কলামগুলো তৈরি করি
-    _marksEntrySubjects.forEach((sub, idx) => {
-        const colKey = `default_${idx}`;
-        if (!_deletedMarksColumns[currentClass]?.includes(colKey)) {
-            tempColumns.push({ type: 'default', key: colKey, index: idx, label: sub });
-        }
-    });
-
-    // কাস্টম কলামগুলো তৈরি করি
-    const classCustomCols = _customMarksColumns[currentClass] || [];
-    classCustomCols.forEach(col => {
-        if (!_deletedMarksColumns[currentClass]?.includes(col.key)) {
-            tempColumns.push({ type: 'custom', key: col.key, label: col.label, books: col.books });
-        }
-    });
-
-    // ★★★ কনফিগ থেকে অর্ডার অনুযায়ী সাজাই ★★★
-    const savedOrder = _marksColumnOrder[currentClass] || [];
+    // ★★★ ১. কলামের লিস্ট তৈরি (সোর্স অনুযায়ী) ★★★
     let currentColumns = [];
-    
-    // যে কলামগুলো সেভ করা অর্ডারে আছে, সেগুলো আগে বসাই
-    savedOrder.forEach(key => {
-        const found = tempColumns.find(c => c.key === key);
-        if (found) currentColumns.push(found);
-    });
 
-    // যেগুলো নতুন যোগ হয়েছে বা অর্ডারে নেই, সেগুলো শেষে বসাই
-    tempColumns.forEach(col => {
-        if (!currentColumns.find(c => c.key === col.key)) {
-            currentColumns.push(col);
+    if (window._marksEntrySource === 'routine') {
+        // ─── রুটিন থেকে লোড করা কলাম ───
+        currentColumns = window._routineMarksColumns || [];
+        if (currentColumns.length === 0) {
+            table.innerHTML = '<tr><td class="p-4 text-center text-amber-600">রুটিন থেকে কোন বিষয় লোড করা হয়নি। উপরের "পরীক্ষার রুটিন" বাটনে ক্লিক করুন।</td></tr>';
+            return;
         }
-    });
+    } 
+    else if (window._marksEntrySource === 'saved') {
+        // ─── সেভ করা ফরম্যাট থেকে লোড ───
+        let tempColumns = [];
+        _marksEntrySubjects.forEach((sub, idx) => {
+            const colKey = `default_${idx}`;
+            if (!_deletedMarksColumns[currentClass]?.includes(colKey)) {
+                tempColumns.push({ type: 'default', key: colKey, index: idx, label: sub });
+            }
+        });
+        const classCustomCols = _customMarksColumns[currentClass] || [];
+        classCustomCols.forEach(col => {
+            if (!_deletedMarksColumns[currentClass]?.includes(col.key)) {
+                tempColumns.push({ type: 'custom', key: col.key, label: col.label, books: col.books });
+            }
+        });
+        const savedOrder = _marksColumnOrder[currentClass] || [];
+        savedOrder.forEach(key => {
+            const found = tempColumns.find(c => c.key === key);
+            if (found) currentColumns.push(found);
+        });
+        tempColumns.forEach(col => {
+            if (!currentColumns.find(c => c.key === col.key)) currentColumns.push(col);
+        });
+    } 
+    else {
+        // ─── ডিফল্ট (এডমিন প্যানেলের সব কিতাব) ───
+        _marksEntrySubjects.forEach((sub, idx) => {
+            const colKey = `default_${idx}`;
+            if (!_deletedMarksColumns[currentClass]?.includes(colKey)) {
+                currentColumns.push({ type: 'default', key: colKey, index: idx, label: sub });
+            }
+        });
+    }
 
     // ২. সর্টিং লজিক
     if (_spreadsheetSort.col !== null) {
@@ -39537,9 +39773,14 @@ window.renderMarksEntryTable = async function() {
         </th>`;
     });
 
-    headHTML += `<th class="p-1 border bg-slate-100 sticky top-0 z-10 w-12 text-center hover:bg-emerald-200 transition cursor-pointer" onclick="openAddColumnModal('${currentClass}')" title="নতুন কলাম যোগ করুন">
-        <i class="fa-solid fa-plus text-emerald-700"></i>
-    </th>`;
+    // ★ নতুন কলাম যোগ বাটন (শুধু ডিফল্ট ও সেভকৃত ভিউতে দেখাবে)
+    if (window._marksEntrySource !== 'routine') {
+        headHTML += `<th class="p-1 border bg-slate-100 sticky top-0 z-10 w-12 text-center hover:bg-emerald-200 transition cursor-pointer" onclick="openAddColumnModal('${currentClass}')" title="নতুন কলাম যোগ করুন">
+            <i class="fa-solid fa-plus text-emerald-700"></i>
+        </th>`;
+    } else {
+        headHTML += `<th class="p-1 border bg-slate-100 sticky top-0 z-10 w-12"></th>`;
+    }
 
     // ★★★ নতুন: লাইভ রেজাল্টের ৩টি কলামের হেডার (+ বাটনের পর) ★★★
     headHTML += `<th class="p-1 border bg-blue-100 text-blue-800 sticky top-0 z-10 w-16 text-center text-xs font-bold">মোট</th>`;
@@ -39552,22 +39793,47 @@ window.renderMarksEntryTable = async function() {
         let cellsHTML = '';
         currentColumns.forEach((col) => {
             let val = '';
-            if (col.type === 'default') {
-                // আগের ডাটা (resultMarks) এবং নতুন ডাটা (resultMarksObj) দুটোই চেক করি
-                val = student.resultMarksObj?.[col.key] !== undefined 
-                    ? student.resultMarksObj[col.key] 
-                    : (student.resultMarks && student.resultMarks[col.index] !== undefined ? student.resultMarks[col.index] : '');
-            } else {
-                val = student.customMarks?.[col.key] || '';
-            }
+            
+            if (window._marksEntrySource === 'routine') {
+                // ★ রুটিন কলাম: একাধিক কিতাবের মোট নম্বর দেখাবে
+                let existingSum = 0;
+                let hasAny = false;
+                (col.books || []).forEach(bookName => {
+                    const bookKey = `rtbook_${bookName.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '')}`;
+                    const v = student.customMarks?.[bookKey];
+                    if (v !== undefined && v !== null && v !== '') {
+                        existingSum += Number(v);
+                        hasAny = true;
+                    }
+                });
+                val = hasAny ? existingSum : '';
 
-            cellsHTML += `<td class="p-0 border text-center">
-                <input type="text" inputmode="numeric" 
-                       data-row="${rIdx}" data-student-id="${student.id}" data-col-key="${col.key}" data-col-type="${col.type}" 
-                       value="${val !== null ? val : ''}" 
-                       class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm mark-input outline-none bg-transparent"
-                       onkeydown="handleSpreadsheetKeydown(event)">                                          
-            </td>`;
+                cellsHTML += `<td class="p-0 border text-center">
+                    <input type="text" inputmode="numeric" 
+                           data-row="${rIdx}" data-student-id="${student.id}" data-col-key="${col.key}" data-col-type="routine_multi" 
+                           data-books="${encodeURIComponent(JSON.stringify(col.books))}"
+                           value="${val}" 
+                           class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm mark-input outline-none bg-transparent"
+                           onkeydown="handleSpreadsheetKeydown(event)">
+                </td>`;
+            } else {
+                // ডিফল্ট বা সেভকৃত ভিউ
+                if (col.type === 'default') {
+                    val = student.resultMarksObj?.[col.key] !== undefined 
+                        ? student.resultMarksObj[col.key] 
+                        : (student.resultMarks && student.resultMarks[col.index] !== undefined ? student.resultMarks[col.index] : '');
+                } else {
+                    val = student.customMarks?.[col.key] || '';
+                }
+
+                cellsHTML += `<td class="p-0 border text-center">
+                    <input type="text" inputmode="numeric" 
+                           data-row="${rIdx}" data-student-id="${student.id}" data-col-key="${col.key}" data-col-type="${col.type}" 
+                           value="${val !== null ? val : ''}" 
+                           class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm mark-input outline-none bg-transparent"
+                           onkeydown="handleSpreadsheetKeydown(event)">                                          
+                </td>`;
+            }
         });
 
         cellsHTML += `<td class="p-0 border bg-slate-50"></td>`;
@@ -39587,7 +39853,53 @@ window.renderMarksEntryTable = async function() {
 
     table.innerHTML = `<thead>${headHTML}</thead><tbody id="spreadsheet-body">${rowsHTML}</tbody>`;
 
-    // ★★★ নতুন ফিক্স: টেবিল তৈরি হওয়ার পরপরই সেভ করা মার্ক থেকে লাইভ হিসাব বসাই ★★★
+    // ★★★ ৫. টপ অ্যাকশন বার (হেডার লাইনে বসানোর ফাইনাল লজিক) ★★★
+    let topBarHTML = `
+        <div class="flex bg-slate-200 p-1 rounded-lg shadow-inner gap-1 flex-wrap">
+            <button onclick="switchMarksEntrySource('default')" 
+                    class="px-3 py-1.5 text-xs font-bold rounded-md transition ${window._marksEntrySource === 'default' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:bg-slate-300'}">
+                <i class="fa-solid fa-list"></i> ডিফল্ট
+            </button>
+            <button onclick="switchMarksEntrySource('saved')" 
+                    class="px-3 py-1.5 text-xs font-bold rounded-md transition ${window._marksEntrySource === 'saved' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:bg-slate-300'}">
+                <i class="fa-solid fa-floppy-disk"></i> সেভকৃত
+            </button>
+            <button onclick="switchMarksEntrySource('routine')" 
+                    class="px-3 py-1.5 text-xs font-bold rounded-md transition ${window._marksEntrySource === 'routine' ? 'bg-purple-600 text-white shadow' : 'text-slate-600 hover:bg-slate-300'}">
+                <i class="fa-solid fa-calendar-check"></i> পরীক্ষার রুটিন
+            </button>
+        </div>
+    `;
+
+    // ★★★ হেডার লাইনে বাটনগুলো বসানোর লজিক ★★★
+    const pageTitleDiv = document.querySelector('#result-marks-entry-page h2');
+    
+    // আগের কোনো ডুপ্লিকেট থাকলে মুছে ফেলি
+    document.getElementById('marks-entry-topbar')?.remove();
+    
+    if (pageTitleDiv) {
+        // h2 টি যে flex container এর ভেতরে আছে (যেখানে সেভ বাটনও আছে) সেটা খুঁজি
+        const headerWrapper = pageTitleDiv.closest('.flex.justify-between') || pageTitleDiv.parentElement;
+        
+        // headerWrapper এর ভেতরে যদি আগে থেকেই সেভ বাটন থাকে, সেটাকে ডান দিকে রাখার জন্য একটু স্পেস দিই
+        // এবং নতুন ৩টি বাটনের একটি কন্টেইনার তৈরি করি
+        
+        const topBarDiv = document.createElement('div');
+        topBarDiv.id = 'marks-entry-topbar';
+        topBarDiv.className = 'flex items-center gap-2'; // পাশাপাশি থাকার জন্য
+        topBarDiv.innerHTML = topBarHTML;
+        
+        // নতুন বাটনগুলোকে সেভ বাটনের ঠিক আগে বসাই
+        const saveBtn = headerWrapper.querySelector('button[onclick="saveAllMarks()"]');
+        if (saveBtn) {
+            saveBtn.parentElement.insertBefore(topBarDiv, saveBtn);
+        } else {
+            // যদি সেভ বাটন কোনো প্যাডিং ক্লাসের ভেতরে থাকে
+            headerWrapper.appendChild(topBarDiv);
+        }
+    }
+
+    // ★★★ লাইভ হিসাব আপডেট ★★★
     setTimeout(() => {
         realStudents.forEach((_, rIdx) => {
             if (typeof updateRowLiveStats === 'function') {
@@ -39595,6 +39907,135 @@ window.renderMarksEntryTable = async function() {
             }
         });
     }, 50);
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ সোর্স পরিবর্তনের ফাংশন ★★★
+// ═══════════════════════════════════════════════════════════════
+window.switchMarksEntrySource = function(source) {
+    if (source === 'routine' && window._routineMarksColumns.length === 0) {
+        loadColumnsFromExamRoutine();
+        return;
+    }
+    window._marksEntrySource = source;
+    renderMarksEntryTable();
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ রুটিন থেকে কলাম লোড করার ফাংশন ★★★
+// ═══════════════════════════════════════════════════════════════
+window.loadColumnsFromExamRoutine = async function() {
+    const dept = document.getElementById('marks-entry-dept').value;
+    const className = document.getElementById('marks-entry-class').value;
+    if (!dept || !className) return showToast('⚠️ আগে বিভাগ ও জামাত নির্বাচন করুন', 'warn');
+
+    showToast('⏳ রুটিন থেকে বিষয় লোড হচ্ছে...', 'info');
+
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        const year = getCurrentYear();
+        
+        const q = query(
+            collection(window.fbDB, 'examRoutines'),
+            where('academicYear', '==', year),
+            where('dept', '==', dept)
+        );
+        const snap = await getDocs(q);
+        if (snap.empty) return showToast('⚠️ এই বিভাগের কোনো পরীক্ষার রুটিন পাওয়া যায়নি', 'warn');
+
+        const routines = [];
+        snap.forEach(d => routines.push(d.data()));
+        routines.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        const routine = routines[0];
+
+        // ★★★ স্মার্ট ম্যাচিং (ব্র্যাকেট, স্পেস, বাংলা-আরবি অক্ষর ইগনোর করে) ★★★
+        const cleanString = (str) => String(str || '').replace(/\(.*?\)/g, '').replace(/[^\u0980-\u09FF\u0600-\u06FFa-zA-Z0-9]/g, '').trim().toLowerCase();
+        
+        const targetClean = cleanString(className);
+        
+        const classData = (routine.classes || []).find(c => {
+            const arClean = cleanString(c.nameAr);
+            const bnClean = cleanString(c.nameBn);
+            
+            // হুবহু মিল বা একটার ভেতর আরেকটা থাকলে
+            if (arClean === targetClean || bnClean === targetClean) return true;
+            if (arClean && (arClean.includes(targetClean) || targetClean.includes(arClean))) return true;
+            if (bnClean && (bnClean.includes(targetClean) || targetClean.includes(bnClean))) return true;
+            
+            return false;
+        });
+
+        if (!classData) {
+            window._routineMarksColumns = [];
+            window._marksEntrySource = 'routine';
+            renderMarksEntryTable(); // "কোন বিষয় লোড করা হয়নি" দেখাবে
+            return showToast(`⚠️ "${className}" জামাতের কোনো তথ্য রুটিনে নেই`, 'warn');
+        }
+
+        const daySessions = {};
+        Object.keys(classData.cells || {}).forEach(dateStr => {
+            const cell = classData.cells[dateStr];
+            if (!cell) return;
+            
+            let morning = [];
+            let afternoon = [];
+            
+            if (Array.isArray(cell)) {
+                morning = cell;
+            } else if (cell.morning || cell.afternoon) {
+                morning = cell.morning || [];
+                afternoon = cell.afternoon || [];
+            }
+
+            if (morning.length > 0 || afternoon.length > 0) {
+                daySessions[dateStr] = { morning, afternoon };
+            }
+        });
+
+        const newCols = [];
+        const sortedDates = Object.keys(daySessions).sort();
+
+        sortedDates.forEach((dateStr) => {
+            const { morning, afternoon } = daySessions[dateStr];
+            
+            if (morning.length > 0) {
+                newCols.push({
+                    type: 'routine',
+                    key: `rt_m_${dateStr}`,
+                    label: morning.join(' + '),
+                    books: morning,
+                    session: 'morning'
+                });
+            }
+            if (afternoon.length > 0) {
+                newCols.push({
+                    type: 'routine',
+                    key: `rt_a_${dateStr}`,
+                    label: afternoon.join(' + '),
+                    books: afternoon,
+                    session: 'afternoon'
+                });
+            }
+        });
+
+        if (newCols.length === 0) {
+            window._routineMarksColumns = [];
+            window._marksEntrySource = 'routine';
+            renderMarksEntryTable(); // খালি টেবিল দেখাবে
+            return showToast(`⚠️ "${className}" জামাতের রুটিনে কোনো কিতাব এন্ট্রি করা হয়নি`, 'warn');
+        }
+
+        window._routineMarksColumns = newCols;
+        window._marksEntrySource = 'routine';
+        _marksEntrySubjects = newCols; 
+        
+        showToast(`✅ রুটিন থেকে ${newCols.length}টি কলাম লোড হয়েছে`, 'success');
+        renderMarksEntryTable();
+
+    } catch (err) {
+        console.error('❌ loadColumnsFromExamRoutine:', err);
+        showToast('❌ লোড ব্যর্থ: ' + err.message, 'error');
+    }
 };
 
 // ★ এক্সেলের মতো সর্টিং (ফিক্সড)
@@ -39968,6 +40409,20 @@ window.saveAllMarks = async function() {
             studentDataToSave[sId].resultMarksObj[colKey] = safeVal;
         } else if (type === 'custom') {
             studentDataToSave[sId].customMarks[colKey] = safeVal;
+        } 
+        // ★★★ এই নতুন অংশটি যোগ করুন ★★★
+        else if (type === 'routine_multi') {
+            const booksArr = JSON.parse(decodeURIComponent(inp.dataset.books));
+            const totalMark = safeVal || 0;
+            
+            booksArr.forEach((bookName, idx) => {
+                const bookKey = `rtbook_${bookName.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '')}`;
+                // প্রথম কিতাবে পুরো নম্বর সেভ, বাকিগুলোতে 0
+                studentDataToSave[sId].customMarks[bookKey] = (idx === 0) ? totalMark : 0; 
+            });
+            
+            // ডামি কি-ও রাখি যাতে রুটিন লোড করার পর নম্বর ফিরে পায়
+            studentDataToSave[sId].customMarks[colKey] = totalMark; 
         }
     });
 
