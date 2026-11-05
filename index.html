@@ -7101,7 +7101,6 @@ function getStudentRankInClass(student) {
     return rank;
 }
 
-// ★ ক্লাসে মোট পাশ/ফেল সংখ্যা
 // ★ ক্লাসে মোট পাশ/ফেল সংখ্যা (section-aware + অসম্পূর্ণ নম্বর বাদ)
 function getClassPassFailStats(dept, className, section) {
     const classmates = studentsCache.filter(s => 
@@ -11701,6 +11700,9 @@ let calState = {
     events: []       // বর্তমান সিলেকশনের সব ইভেন্ট
 };
 
+// ★★★ এই লাইনটি যোগ করুন ★★★
+window.calState = calState;
+
 // Firestore + LocalStorage-এ events cache key
 const CALENDAR_STORAGE_KEY = 'madrasa_calendar_events_v1';
 
@@ -13607,7 +13609,13 @@ function buildHijriMonthGrid(options) {
         
         // Dept check
         if (e.dept && e.dept !== 'all' && cleanDept !== 'all') {
-            if (e.dept !== cleanDept) return false;
+            const normalizeDept = (d) => {
+                const s = String(d).trim().toLowerCase();
+                if (s === 'non_res' || s.includes('অনাবাসিক')) return 'non_res';
+                if (s.includes('শরীয়াহ') || s.includes('নূরানী') || s.includes('হিফয') || s === 'shariah_noorani') return 'shariah_noorani';
+                return s;
+            };
+            if (normalizeDept(e.dept) !== normalizeDept(cleanDept)) return false;
         }
         
         return true;
@@ -53841,6 +53849,19 @@ window.showTeacherPortal = function() {
     }
     
     if (!settings) settings = {};
+
+    // ★★★ নতুন যোগ করুন: শিক্ষক পোর্টালে বছর ও কনফিগ লোড করা ★★★
+    if (typeof loadDefaultYearsFromConfig === 'function') {
+        loadDefaultYearsFromConfig().then(() => {
+            console.log('✅ Teacher Portal Default Years Loaded:', {
+                activeRes: activeResidentialYear,
+                activeNonRes: activeNonResidentialYear
+            });
+        });
+    }
+    if (!configData || !configData.books) {
+        if (typeof loadConfigFromFirestore === 'function') loadConfigFromFirestore();
+    }
     
     // ★ শিক্ষকের পূর্ণ তথ্য বের করুন
     const teacherName = currentUserData.teacherName || currentUserData.name || 'শিক্ষক';
@@ -54691,81 +54712,239 @@ async function renderTpLiveEvents(container) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ★★★ শিক্ষক পোর্টাল - একাডেমিক ক্যালেন্ডার (মূল সেকশনের ট্রিক) ★★★
+// ★★★ শিক্ষক পোর্টাল — একাডেমিক ক্যালেন্ডার (মাসিক + বাৎসরিক ক্যানভাস ভিউ) ★★★
 // ═══════════════════════════════════════════════════════════════
-
 async function renderTpAcademicCalendar(container) {
-    // ★★★ ১. শিক্ষক পোর্টাল হাইড করা ★★★
-    const portalView = document.getElementById('teacher-portal-view');
-    if (portalView) portalView.style.display = 'none';
+    // ★ ১. শুধু সাব-ট্যাব বাটন (অতিরিক্ত হেডার বাদ দেওয়া হয়েছে)
+    container.innerHTML = `
+        <div class="space-y-3 pb-10">
+            <!-- ক্যানভাস ট্যাব -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3">
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="switchTpCalendarView('monthly')" id="tp-cal-tab-monthly"
+                            class="flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition">
+                        <i class="fa-solid fa-calendar"></i> মাসিক ভিউ
+                    </button>
+                    <button onclick="switchTpCalendarView('yearly')" id="tp-cal-tab-yearly"
+                            class="flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition">
+                        <i class="fa-solid fa-calendar-days"></i> বাৎসরিক ভিউ
+                    </button>
+                </div>
+            </div>
 
-    // ★★★ ২. মূল অ্যাপ দেখানো (শুধু ক্যালেন্ডার অংশ) ★★★
-    document.querySelectorAll('header, main, footer').forEach(el => {
-        el.style.display = 'block';
-        el.classList.remove('hidden');
-    });
+            <!-- ক্যালেন্ডার কনটেইনার -->
+            <div id="tp-calendar-canvas" class="min-h-[400px]">
+                <div class="text-center py-10 text-slate-400">
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i>
+                    <p>ক্যালেন্ডার লোড হচ্ছে...</p>
+                </div>
+            </div>
+        </div>
+    `;
 
-    // সব ট্যাব হাইড করে শুধু ক্যালেন্ডার দেখানো
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-    const calTab = document.getElementById('tab-calendar');
-    if (calTab) {
-        calTab.classList.remove('hidden');
-        calTab.style.display = 'block';
-    }
+    // ★ ২. স্টেট ও বাটন হাইলাইট
+    window._tpCalendarView = window._tpCalendarView || 'monthly';
+    updateTpCalendarTabs();
 
-    // ★★★ ৩. ফিরে যাওয়ার বাটন তৈরি ★★★
-    let backBtn = document.getElementById('tp-back-to-portal-btn');
-    if (!backBtn) {
-        backBtn = document.createElement('button');
-        backBtn.id = 'tp-back-to-portal-btn';
-        backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> ফিরে যান';
-        backBtn.style.cssText = 'position:fixed;top:70px;left:15px;z-index:9999;background:#0d9488;color:white;padding:8px 16px;border-radius:8px;font-weight:bold;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.1);cursor:pointer;border:none;display:flex;align-items:center;gap:8px;';
-        backBtn.onclick = function() {
-            // মূল অ্যাপ হাইড করা
-            document.querySelectorAll('header, main, footer').forEach(el => {
-                el.style.display = 'none';
-            });
-            // মূল অ্যাপের সব ট্যাব হাইড
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            
-            // শিক্ষক পোর্টাল দেখানো
-            if (portalView) portalView.style.display = 'block';
-            
-            // বাটন সরানো
-            backBtn.remove();
-        };
-        document.body.appendChild(backBtn);
-    }
-
-    // ★★★ ৪. ক্যালেন্ডার ইনিশিয়ালাইজ করা (মূল সেকশনের মতো) ★★★
-    setTimeout(async () => {
-        if (typeof populateCalendarDropdowns === 'function') {
-            populateCalendarDropdowns();
-        }
-        
-        // ডিফল্টভাবে বর্তমান বছর ও শিক্ষকের বিভাগ সিলেক্ট করা
-        const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
-        const teacherMeta = findTeacherByName(teacherName) || { dept: '' };
-        
-        const sessSel = document.getElementById('cal-session');
-        if (sessSel && !sessSel.value) sessSel.value = getCurrentYear();
-        
-        const deptSel = document.getElementById('cal-dept');
-        if (deptSel) {
-            const deptKeyMap = { 'শরীয়াহ': 'shariah_noorani', 'নূরানী-নাযেরা': 'shariah_noorani', 'অনাবাসিক': 'non_res', 'হিফযুল কুরআন': 'shariah_noorani' };
-            deptSel.value = deptKeyMap[teacherMeta.dept] || 'shariah_noorani';
-        }
-
-        // ক্যালেন্ডার ডাটা লোড ও রেন্ডার
-        calState.session = sessSel?.value || '';
-        calState.dept = deptSel?.value || '';
-        calState.view = 'calgrid'; // বাৎসরিক/ক্যালেন্ডার গ্রিড ভিউ ডিফল্ট
-        
-        if (calState.session && calState.dept && typeof checkCalReadiness === 'function') {
-            checkCalReadiness();
-        }
-    }, 100);
+    // ★ ৩. মূল সেকশনের ক্যালেন্ডার লোড করি
+    await loadTpCalendarCanvas();
 }
+
+// ─── ট্যাব হাইলাইট আপডেট ───
+function updateTpCalendarTabs() {
+    const view = window._tpCalendarView || 'monthly';
+    ['monthly', 'yearly'].forEach(v => {
+        const btn = document.getElementById('tp-cal-tab-' + v);
+        if (!btn) return;
+        if (v === view) {
+            btn.className = 'flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition bg-cyan-700 text-white shadow';
+        } else {
+            btn.className = 'flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition bg-white text-slate-600 hover:bg-slate-100 border border-slate-200';
+        }
+    });
+}
+
+// ─── ট্যাব সুইচ ───
+window.switchTpCalendarView = function(view) {
+    window._tpCalendarView = view;
+    updateTpCalendarTabs();
+    loadTpCalendarCanvas();
+};
+
+// ─── মূল সেকশনের ক্যালেন্ডার ক্যানভাস লোড করে শিক্ষক পোর্টালে বসানোর ফাংশন ───
+async function loadTpCalendarCanvas() {
+    const wrap = document.getElementById('tp-calendar-canvas');
+    if (!wrap) return;
+
+    wrap.innerHTML = `<div class="text-center py-10 text-slate-400">
+        <i class="fa-solid fa-circle-notch fa-spin text-2xl"></i>
+        <p class="text-xs mt-2">ক্যালেন্ডার প্রস্তুত হচ্ছে...</p>
+    </div>`;
+
+    try {
+        // ─── ধাপ ১: শিক্ষকের ডিপার্টমেন্ট ───
+        const teacherName = window.currentUserData?.teacherName || window.currentUserData?.name || '';
+        const teacherMeta = typeof window.findTeacherByName === 'function' ? window.findTeacherByName(teacherName) : { dept: '' };
+        
+        const deptKeyMap = { 
+            'শরীয়াহ': 'shariah_noorani', 'নূরানী-নাযেরা': 'shariah_noorani', 
+            'অনাবাসিক': 'non_res', 'হিফযুল কুরআন': 'shariah_noorani' 
+        };
+        const teacherDept = deptKeyMap[teacherMeta?.dept] || 'shariah_noorani';
+
+        // ─── ধাপ ২: calState সেট ───
+        const currentYear = typeof window.getCurrentYear === 'function' ? window.getCurrentYear() : '';
+        const yearForDept = (teacherDept === 'non_res') 
+            ? (window.activeNonResidentialYear || currentYear)
+            : (window.activeResidentialYear || currentYear);
+
+        if (!window.calState) window.calState = {};
+        
+        window.calState.session = yearForDept;
+        window.calState.dept = teacherDept;
+        window.calState.view = 'calgrid'; // মূল সেকশনের গ্রিড ভিউ
+        window.calState.calgridMode = (window._tpCalendarView === 'yearly') ? 'yearly' : 'monthly';
+        
+        if (!window.calState.calgridMonth) {
+            window.calState.calgridMonth = (teacherDept === 'non_res') ? 'january' : 'shawwal';
+        }
+
+        // ─── ধাপ ৩: রেন্ডারিং কনটেইনার ───
+        const mainTabCalendar = document.getElementById('tab-calendar');
+        const mainCalContent = document.getElementById('cal-content');
+        
+        if (!mainCalContent) {
+            wrap.innerHTML = `<div class="p-6 text-center text-red-600 font-bold">মূল ক্যালেন্ডার কনটেইনার পাওয়া যায়নি</div>`;
+            return;
+        }
+
+        const wasTabHidden = mainTabCalendar?.classList.contains('hidden');
+        if (mainTabCalendar) mainTabCalendar.classList.remove('hidden');
+        mainCalContent.style.cssText = `
+            position: fixed !important; left: -99999px !important; top: 0 !important;
+            width: 1200px !important; display: block !important; visibility: visible !important;
+        `;
+
+        mainCalContent.innerHTML = ''; // খালি করি
+
+        // ★★★ ধাপ ৪: আসল ফিক্স — সরাসরি ডাটা লোড এবং রেন্ডার করি ★★★
+        if (typeof window.loadCalendarEvents === 'function') {
+            // ১. ইভেন্ট লোড করি
+            window.calState.events = await window.loadCalendarEvents(window.calState.session, window.calState.dept);
+            
+            // ২. ভিউ অনুযায়ী সরাসরি রেন্ডার ফাংশন কল করি
+            if (window.calState.view === 'calgrid') {
+                if (typeof window.renderCalendarGrid === 'function') {
+                    await window.renderCalendarGrid(); 
+                }
+            } else {
+                if (typeof window.renderCalendarContent === 'function') {
+                    await window.renderCalendarContent();
+                }
+            }
+        }
+
+        // রেন্ডার হওয়া HTML তুলে আনি
+        const renderedHTML = mainCalContent.innerHTML;
+
+        // মূল ট্যাবের অবস্থা ফিরিয়ে দিই
+        if (mainTabCalendar && wasTabHidden) mainTabCalendar.classList.add('hidden');
+        mainCalContent.style.cssText = '';
+
+        console.log('📅 TP Calendar — Rendered HTML length:', renderedHTML?.length || 0);
+
+        // ─── ধাপ ৫: HTML পোর্টালে বসাই ───
+        if (!renderedHTML || renderedHTML.trim().length < 200) {
+            wrap.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
+                <i class="fa-solid fa-calendar-xmark text-5xl text-slate-300 mb-3"></i>
+                <p class="font-bold text-slate-700">ক্যালেন্ডার খালি</p>
+                <p class="text-xs text-slate-500 mt-1">এই শিক্ষাবর্ষে কোনো ইভেন্ট নেই।</p>
+            </div>`;
+            return;
+        }
+
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = renderedHTML;
+
+        // অপ্রয়োজনীয় বাটন/বার সরাই
+        tempDiv.querySelectorAll('div').forEach(div => {
+            const text = div.textContent || '';
+            if (text.includes('ক্যালেন্ডার ভিউ:') && !div.querySelector('.cal-grid-month') && !div.querySelector('.yearly-grid')) {
+                div.remove();
+            }
+        });
+        tempDiv.querySelectorAll('button').forEach(btn => {
+            const txt = (btn.textContent || '').toLowerCase();
+            if (txt.includes('নতুন ইভেন্ট') || txt.includes('ডিফল্টে') || txt.includes('এডিট')) {
+                btn.style.display = 'none';
+            }
+        });
+
+        // ★★★ এখানে বসাবেন: ড্রপডাউন ও বাটন ফিক্স ★★★
+        const selects = tempDiv.querySelectorAll('select');
+        selects.forEach(sel => {
+            sel.removeAttribute('onchange');
+            sel.setAttribute('onchange', 'tpCalendarCustomNav(this.value)');
+        });
+
+        const btns = tempDiv.querySelectorAll('button');
+        btns.forEach(btn => {
+            const txt = btn.textContent || '';
+            if (txt.includes('আগের')) {
+                btn.removeAttribute('onclick');
+                btn.setAttribute('onclick', 'tpCalendarCustomNav("prev")');
+            } else if (txt.includes('পরের')) {
+                btn.removeAttribute('onclick');
+                btn.setAttribute('onclick', 'tpCalendarCustomNav("next")');
+            }
+        });
+
+        wrap.innerHTML = `<div class="tp-calendar-wrapper" style="width:100%; overflow-x:auto;">${tempDiv.innerHTML}</div>`;
+
+        console.log('✅ TP Calendar রেন্ডার সফল!');
+
+    } catch (err) {
+        console.error('❌ loadTpCalendarCanvas:', err);
+        wrap.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <p class="font-bold text-red-800">ক্যালেন্ডার লোড ব্যর্থ</p>
+            <p class="text-xs text-red-600 mt-1">${err.message}</p>
+        </div>`;
+    }
+}
+
+// ★★★ পোর্টালের জন্য কাস্টম নেভিগেশন ফাংশন ★★★
+window.tpCalendarCustomNav = async function(val) {
+    if (!window.calState) window.calState = {};
+
+    const isNonRes = window.calState.dept === 'non_res';
+    const months = isNonRes 
+        ? ['january','february','march','april','may','june','july','august','september','october','november','december']
+        : ['shawwal','zilqad','zilhajj','muharram','safar','rabiul_awwal','rabiul_akhir','jumadal_ula','jumadal_akhirah','rajab','shaban','ramadan'];
+
+    let newMonth = val;
+
+    // যদি আগের বা পরের বাটনে ক্লিক করা হয়
+    if (val === 'prev' || val === 'next') {
+        let idx = months.indexOf(window.calState.calgridMonth);
+        if (idx === -1) idx = 0;
+        
+        if (val === 'prev') idx = (idx - 1 + months.length) % months.length;
+        else idx = (idx + 1) % months.length;
+        
+        newMonth = months[idx];
+    }
+
+    // স্টেট আপডেট
+    window.calState.calgridMonth = newMonth;
+    
+    // ★★★ আসল ম্যাজিক: মেইন সেকশনের রেন্ডারিং কন্টেইনার আগেই খালি করে দিই ★★★
+    // যাতে পুরনো ডাটা ক্যাশ না থাকে
+    const mainCalContent = document.getElementById('cal-content');
+    if (mainCalContent) mainCalContent.innerHTML = '';
+
+    // পোর্টালের ক্যানভাস রি-লোড করি (যা ভেতরে ভেতরে মেইন ফাংশন কল করবে)
+    await loadTpCalendarCanvas();
+};
 
 // ═══════════════════════════════════════════════════════════════
 // ★★★ শিক্ষক পোর্টাল - নোটিশ বোর্ড ★★★
@@ -55923,9 +56102,15 @@ window._tpExamState = {
 };
 
 window.switchTpExamSub = async function(sub) {
-    // switchTpExamSub ফাংশনের শুরুতে যোগ করুন
+    // ★★★ ১. প্রথমে content ভেরিয়েবলটি ডিক্লেয়ার করা (সবচেয়ে জরুরি) ★★★
+    const content = document.getElementById('tp-dynamic-content');
+    if (!content) return;
+
+    const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
+    window._tpExamState.teacherName = teacherName;
+
+    // ★★★ ২. রেজাল্ট ভিউগুলোর জন্য পাবলিশ স্ট্যাটাস চেক ★★★
     if (sub === 'class-view' || sub === 'dept-result' || sub === 'summary' || sub === 'mumtaz' || sub === 'fail') {
-        // ফায়ারবেস থেকে লেটেস্ট পাবলিশ স্ট্যাটাস চেক করা
         try {
             const { doc, getDoc } = window.fbFuncs;
             const snap = await getDoc(doc(window.fbDB, 'config', 'examSettings'));
@@ -55934,9 +56119,14 @@ window.switchTpExamSub = async function(sub) {
             }
         } catch (e) { console.warn('Publish check failed:', e); }
 
-        // যদি আনপাবলিশড থাকে, তবে রেজাল্ট দেখাবে না
+        // যদি আনপাবলিশড থাকে, তবে রেজাল্ট ব্লক করে মেসেজ দেখাবে
         if (!_examPublishStatus) {
             content.innerHTML = `
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                    <button onclick="switchTpTab('exam')" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg shadow-sm transition">
+                        <i class="fa-solid fa-arrow-left"></i> পরীক্ষা মেনু
+                    </button>
+                </div>
                 <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-8 text-center mt-4">
                     <i class="fa-solid fa-lock text-5xl text-amber-500 mb-3"></i>
                     <h3 class="text-lg font-bold text-amber-900">রেজাল্ট এখনো পাবলিশ হয়নি</h3>
@@ -55946,11 +56136,6 @@ window.switchTpExamSub = async function(sub) {
             return; // এখানেই থেমে যাবে, নিচের কোড রান হবে না
         }
     }
-    const content = document.getElementById('tp-dynamic-content');
-    if (!content) return;
-
-    const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
-    window._tpExamState.teacherName = teacherName;
 
     let title = '';
     if (sub === 'entry') title = '১. ফলাফল এন্ট্রি';
@@ -59981,10 +60166,6 @@ console.log('✅ Real-time listener মডিউল লোড হয়েছে
 // ═══════════════════════════════════════════════════════════════
 // ★★★ গার্ডিয়ান পোর্টাল — রেজাল্ট মডিউল (সম্পূর্ণ নতুন) ★★★
 // ═══════════════════════════════════════════════════════════════
-// ★ এই মডিউল হুবহু "রেজাল্ট" সেকশনের ফরম্যাট ব্যবহার করে:
-//   - আমার সন্তানের → buildMarksheetHTML (একই ফরম্যাট, একই CSS)
-//   - পুরো শ্রেণির → renderResultDeptPage এর টেবিল ফরম্যাট
-// ═══════════════════════════════════════════════════════════════
 
 async function renderGpResults(container) {
     try {
@@ -60074,7 +60255,7 @@ async function renderGpResults(container) {
                     guardian: fd.guardianName || student.guardian,
                     studentId: fd.studentId || student.studentId,
                     dept: fd.dept || form.dept || student.dept,
-                    className: fd.nextClass || form.data?.personal?.nextClass || student.className,
+                    className: student.className || fd.nextClass || form.data?.personal?.nextClass || '',
                     section: student.section || 'নাই',
                     dob: fd.dob || student.dob,
                     mobile1: fd.mobile1 || student.mobile1,
@@ -60151,7 +60332,115 @@ async function renderGpResults(container) {
         if (window._gpResultTab === 'my') {
             container.innerHTML = tabsHTML + buildGpFullMarksheetPreview(mergedStudent);
         } else {
-            container.innerHTML = tabsHTML + buildGpClassResultPreview(mergedStudent);
+            // ═══════════════════════════════════════════════════════
+            // 🪄 FIXED: students + admissionForms দুটোই লোড
+            // ═══════════════════════════════════════════════════════
+            try {
+                container.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-slate-400"></i><p class="text-xs mt-2">শ্রেণির ফলাফল লোড হচ্ছে...</p></div>`;
+
+                const cleanStr = (str) => String(str || '')
+                    .replace(/\(.*?\)/g, '')
+                    .replace(/\s+/g, '')
+                    .trim()
+                    .toLowerCase();
+
+                const myDept = cleanStr(mergedStudent.dept);
+                const myClass = cleanStr(mergedStudent.className);
+
+                // ★★★ দুটো কালেকশন parallel-এ লোড ★★★
+                const [studentsSnap, formsSnap] = await Promise.all([
+                    getDocs(collection(window.fbDB, 'students')),
+                    getDocs(collection(window.fbDB, 'admissionForms'))
+                ]);
+
+                const classStudents = [];
+                const seen = new Set();
+
+                // ─── ১. students কালেকশন থেকে (ম্যানুয়াল ছাত্র) ───
+                studentsSnap.forEach(d => {
+                    const s = { id: d.id, ...d.data() };
+                    if (cleanStr(s.dept) === myDept && cleanStr(s.className) === myClass) {
+                        const key = String(s.studentId || s.id).trim();
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            classStudents.push(s);
+                        }
+                    }
+                });
+
+                // ─── ২. admissionForms থেকে (approved) ★★★ এটাই আসল ফিক্স ★★★ ───
+                formsSnap.forEach(d => {
+                    const form = { id: d.id, ...d.data() };
+
+                    // approved চেক
+                    const isApproved = form.status === 'approved'
+                        || form.currentStep === 'COMPLETED'
+                        || form.currentStep === 12
+                        || (form.savedSteps && form.savedSteps.includes(11));
+                    if (!isApproved) return;
+
+                    // flatten helper (আপনার সিস্টেমে আছে)
+                    let fd;
+                    try {
+                        fd = (typeof flattenAdmFormData === 'function')
+                            ? flattenAdmFormData(form)
+                            : {
+                                name: form.data?.personal?.name || '',
+                                guardianName: form.data?.guardian?.guardianName || '',
+                                studentId: form.studentId || form.data?.primary?.studentId || '',
+                                dob: form.data?.personal?.dob || '',
+                                mobile1: form.data?.guardian?.mobile1 || '',
+                                mobile2: form.data?.guardian?.mobile2 || '',
+                                currentAddress: form.data?.personal?.currentAddress || '',
+                                dept: form.dept || form.data?.primary?.dept || '',
+                                nextClass: form.data?.personal?.nextClass || '',
+                                studentPhoto: form.data?.primary?.studentPhoto || '',
+                                examMarks: form.data?.examMarks || form.examMarks || {}
+                            };
+                    } catch (e) { return; }
+
+                    // dept + class match
+                    if (cleanStr(fd.dept) !== myDept) return;
+                    if (cleanStr(fd.nextClass) !== myClass) return;
+
+                    // ডুপ্লিকেট চেক
+                    const key = String(fd.studentId || form.id).trim();
+                    if (seen.has(key)) return;
+                    seen.add(key);
+
+                    classStudents.push({
+                        id: 'admission_' + form.id,
+                        name: fd.name || form.data?.personal?.name || '',
+                        guardian: fd.guardianName || form.data?.personal?.fatherName || '',
+                        studentId: fd.studentId || form.studentId || '',
+                        dob: fd.dob || '',
+                        mobile1: fd.mobile1 || '',
+                        mobile2: fd.mobile2 || '',
+                        address: fd.currentAddress || '',
+                        dept: fd.dept || form.dept || '',
+                        className: fd.nextClass || form.data?.personal?.nextClass || '',
+                        section: 'নাই',
+                        remark: null,
+                        photo: fd.studentPhoto || '',
+                        source: 'admission',
+                        admissionFormId: form.id,
+                        resultMarksObj: fd.examMarks || form.data?.examMarks || form.examMarks || {},
+                        customMarks: form.data?.customMarks || form.customMarks || {}
+                    });
+                });
+
+                console.log('🎯 Class students loaded:', {
+                    total: classStudents.length,
+                    fromForms: formsSnap.size,
+                    fromStudents: studentsSnap.size,
+                    sample: classStudents.slice(0, 3).map(c => c.name)
+                });
+
+                container.innerHTML = tabsHTML + buildGpClassResultPreview(mergedStudent, classStudents);
+            } catch (err) {
+                console.error('❌ Class result error:', err);
+                container.innerHTML = `<p class="text-red-500 text-center py-6">শ্রেণির ফলাফল লোড ব্যর্থ: ${err.message}</p>`;
+            }
         }
 
     } catch (err) {
@@ -60239,23 +60528,52 @@ function buildGpFullMarksheetPreview(student) {
 // ═══════════════════════════════════════════════════════════════
 // 【 ট্যাব ২: "পুরো শ্রেণির" — হুবহু রেজাল্ট টেবিল (একই ফরম্যাট) 】
 // ═══════════════════════════════════════════════════════════════
-function buildGpClassResultPreview(myStudent) {
+function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
     const dept = myStudent.dept;
     const className = myStudent.className;
 
-    // ★ ১. একই ক্লাসের সব সক্রিয় ছাত্র
+    // ★★★ FIX: ব্র্যাকেট + সব space বাদ দিয়ে match ★★★
+    const cleanStr = (str) => String(str || '')
+        .replace(/\(.*?\)/g, '')
+        .replace(/\s+/g, '')
+        .trim()
+        .toLowerCase();
+
+    const myDept = cleanStr(dept);
+    const myClass = cleanStr(className);
+
     const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
-    const classmates = (studentsCache || []).filter(s =>
-        s.dept === dept &&
-        s.className === className &&
-        !excludedRemarks.includes((s.remark?.type || '').trim())
-    );
+
+    let pool = [];
+    if (loadedClassmates && loadedClassmates.length > 0) {
+        pool = loadedClassmates;
+    } else if (typeof studentsCache !== 'undefined' && studentsCache.length > 0) {
+        pool = studentsCache;
+    } else if (window.studentsCache && window.studentsCache.length > 0) {
+        pool = window.studentsCache;
+    }
+
+    const classmates = pool.filter(s => {
+        if (cleanStr(s.dept) !== myDept) return false;
+        if (cleanStr(s.className) !== myClass) return false;
+        if (excludedRemarks.includes((s.remark?.type || '').trim())) return false;
+        return true;
+    });
+
+    console.log('🎯 buildGpClassResultPreview:', {
+        dept: myDept, class: myClass,
+        pool: pool.length, matched: classmates.length
+    });
 
     if (classmates.length === 0) {
         return `
             <div class="bg-white rounded-xl shadow-md p-10 text-center">
                 <i class="fa-solid fa-users-slash text-5xl text-slate-300 mb-3"></i>
                 <p class="font-bold text-slate-700">কোন সহপাঠী পাওয়া যায়নি</p>
+                <p class="text-xs text-slate-500 mt-2">
+                    বিভাগ: ${dept} | জামাত: ${className}<br>
+                    পুল: ${pool.length} জন | ম্যাচ: 0 জন
+                </p>
             </div>`;
     }
 
