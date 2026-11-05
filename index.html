@@ -54715,9 +54715,17 @@ async function renderTpLiveEvents(container) {
 // ★★★ শিক্ষক পোর্টাল — একাডেমিক ক্যালেন্ডার (মাসিক + বাৎসরিক ক্যানভাস ভিউ) ★★★
 // ═══════════════════════════════════════════════════════════════
 async function renderTpAcademicCalendar(container) {
-    // ★ ১. শুধু সাব-ট্যাব বাটন (অতিরিক্ত হেডার বাদ দেওয়া হয়েছে)
+    // ★ ১. ট্যাব + মেনু বাটন (একসাথে)
     container.innerHTML = `
         <div class="space-y-3 pb-10">
+            
+            <!-- ★★★ ১. মেনু বাটন (ট্যাবের ঠিক উপরে বা নিচে) ★★★ -->
+            <div class="flex justify-start mb-2">
+                <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+            </div>
+
             <!-- ক্যানভাস ট্যাব -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3">
                 <div class="flex flex-wrap gap-2">
