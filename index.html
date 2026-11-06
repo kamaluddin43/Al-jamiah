@@ -45381,7 +45381,29 @@ function renderAdminMessagesUI(area) {
                     </div>
                     
                     <!-- বার্তার মূল অংশ -->
-                    <p class="text-xs text-slate-800 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(m.message || '')}</p>
+                    ${(() => {
+                        // যদি এটি স্টুডেন্ট ডিউস মেসেজ হয় এবং recipients-এ pendingItems থাকে
+                        if (m._type === 'student_dues_reminder_guardian' && m.recipients && m.recipients.length > 0) {
+                            let fullText = `প্রিয় অভিভাবক,\n\nআসসালামু আলাইকুম।\n\nআপনার সন্তানের নিম্নলিখিত প্রদেয় বাকি আছে:\n\n`;
+                            
+                            // প্রত্যেক ছাত্রের নাম ও বাকি তালিকা যুক্ত করা
+                            m.recipients.forEach((r, i) => {
+                                if (r.pendingItems && r.pendingItems.length > 0) {
+                                    fullText += `${i + 1}. ${r.studentName} (${r.className}):\n`;
+                                    r.pendingItems.forEach(p => {
+                                        fullText += `   - ${p.label}: ৳${p.pending}\n`;
+                                    });
+                                    fullText += `\n`;
+                                }
+                            });
+                            
+                            fullText += `\nঅনুগ্রহ করে দ্রুত পরিশোধ করুন।\n\nধন্যবাদ`;
+                            return escapeHtml(fullText);
+                        }
+                        
+                        // যদি সাধারণ মেসেজ হয়, তবে ডাটাবেসের মেসেজটাই দেখান
+                        return escapeHtml(m.message || '');
+                    })()}
                     <p class="text-[10px] text-slate-500 mt-2">— ${m.sentBy || 'এডমিন'}</p>
                 </div>
             `;
@@ -57099,6 +57121,53 @@ async function renderGpFees(container) {
         
         const dueThisMonth = Math.max(0, monthlyTotal - paidThisMonth);
 
+        // ★★★ নতুন যোগ করা হলো: ছাত্রপ্রদেয় বার্তা লোড ★★★
+        let duesMessagesHTML = '';
+        try {
+            const { collection, getDocs } = window.fbFuncs;
+            const snap = await getDocs(collection(window.fbDB, 'adminMessages'));
+            
+            const myMessages = [];
+            snap.forEach(d => {
+                const data = d.data();
+                if (data._type !== 'student_dues_reminder_guardian') return;
+                if (!data.recipients) return;
+                const isForMe = data.recipients.some(r => 
+                    String(r.studentDbId) === String(student.id) ||
+                    String(r.studentId) === String(student.studentId)
+                );
+                if (isForMe) myMessages.push({ id: d.id, ...data });
+            });
+            
+            myMessages.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            
+            if (myMessages.length > 0) {
+                duesMessagesHTML = `
+                    <div class="mt-4 bg-violet-50 border-2 border-violet-300 rounded-xl p-4">
+                        <h3 class="text-sm font-bold text-violet-900 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-bell text-violet-600"></i>
+                            প্রদেয় বাকি বার্তা (${myMessages.length})
+                        </h3>
+                        ${myMessages.slice(0, 3).map(m => {
+                            const dateStr = m.createdAt?.seconds ? new Date(m.createdAt.seconds * 1000).toLocaleDateString('bn-BD') : '—';
+                            return `
+                                <div class="bg-white rounded-lg p-3 mb-2 border border-violet-200">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="badge bg-violet-600 text-white text-[10px]">প্রদেয় বাকি</span>
+                                        <span class="text-[10px] text-slate-500">${dateStr}</span>
+                                    </div>
+                                    <p class="text-xs text-slate-700 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(m.message)}</p>
+                                    <p class="text-[10px] text-slate-500 mt-2">— ${m.sentBy || 'প্রতিষ্ঠান'}</p>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+        } catch (err) {
+            console.warn('dues messages load:', err);
+        }
+
         container.innerHTML = `
             <div class="space-y-4">
                 <!-- সারসংক্ষেপ -->
@@ -57135,6 +57204,9 @@ async function renderGpFees(container) {
                         </div>
                     </div>
                 </div>
+
+                <!-- ★★★ নতুন যোগ করা হলো: এখানে duesMessagesHTML বসানো হয়েছে ★★★ -->
+                ${duesMessagesHTML}
                 
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
                     <i class="fa-solid fa-info-circle"></i> ফি পরিশোধের জন্য সরাসরি মাদরাসার অফিসে যোগাযোগ করুন অথবা শিক্ষাসচিবের সাথে কথা বলুন।
@@ -57148,7 +57220,6 @@ async function renderGpFees(container) {
     }
 }
 
-// ═══════════════════ ৪. রুটিন ট্যাব ═══════════════════
 // ═══════════════════ ৪. রুটিন ট্যাব (শীত ও গ্রীষ্ম উভয় রুটিন) ═══════════════════
 async function renderGpRoutine(container) {
     const student = _guardianSession;
@@ -61631,15 +61702,22 @@ async function renderGpAdminMessages(area) {
             const data = d.data();
             if (!data.recipients || !Array.isArray(data.recipients)) return;
             
-            // ★ চেক করা এই অভিভাবকের সন্তান রিসিপিয়েন্টের মধ্যে আছে কিনা
-            const isForMe = data.recipients.some(r => 
+            // ★ ১. এই গার্ডিয়ানের সন্তান কি recipients-এ আছে?
+            const myRecipient = data.recipients.find(r => 
                 String(r.studentDbId) === String(student.id) || 
                 (r.studentId && String(r.studentId) === String(student.studentId))
             );
-
-            if (isForMe) {
-                myMessages.push({ id: d.id, ...data });
+            
+            if (!myRecipient) return; // না থাকলে স্কিপ
+            
+            // ★ ২. প্রদেয় বার্তার ক্ষেত্রে - পুরনো মেসেজ (pendingItems ছাড়া) বাদ দিন
+            if (data._type === 'student_dues_reminder_guardian' && 
+                (!myRecipient.pendingItems || myRecipient.pendingItems.length === 0)) {
+                return;
             }
+            
+            // ★ ৩. রিসিপিয়েন্ট ইনলাইন করে রাখি
+            myMessages.push({ id: d.id, ...data, _myRecipient: myRecipient });
         });
 
         // নতুন আগে
@@ -61661,8 +61739,26 @@ async function renderGpAdminMessages(area) {
                 ? new Date(m.createdAt.seconds * 1000).toLocaleString('bn-BD')
                 : '---';
                 
-            // চেক করা এই বার্তাটি কি শুধু এই ছাত্রের জন্য, নাকি গ্রুপ বার্তা
             const isGroupMessage = m.recipients.length > 1;
+            const myRecipient = m._myRecipient;
+
+            // ★★★ ফিক্স: মেসেজের ভেতরের কনটেন্ট তৈরি ★★★
+            let contentHTML = '';
+            
+            if (myRecipient && myRecipient.pendingItems && myRecipient.pendingItems.length > 0) {
+                // যদি পেন্ডিং আইটেম থাকে, তবে সুন্দর করে লিস্ট বানানো
+                contentHTML = `
+                    <div class="mb-2">প্রিয় অভিভাবক <strong>(${myRecipient.guardianName})</strong>,</div>
+                    <div class="mb-3">আসসালামু আলাইকুম। আপনার সন্তান <strong>${myRecipient.studentName}</strong> (${myRecipient.className})-এর নিম্নলিখিত প্রদেয় বাকি আছে:</div>
+                    <ul class="list-disc pl-5 mb-3 font-bold text-red-600">
+                        ${myRecipient.pendingItems.map(p => `<li>${p.label} — ৳${p.pending.toLocaleString('bn-BD')}</li>`).join('')}
+                    </ul>
+                    <div class="text-xs text-slate-500 mt-2">অনুগ্রহ করে দ্রুত পরিশোধ করুন। ধন্যবাদ।</div>
+                `;
+            } else {
+                // যদি পেন্ডিং আইটেম না থাকে, তবে শুধু মূল মেসেজ দেখাবে (নিরাপত্তার জন্য)
+                contentHTML = `<div style="white-space: pre-wrap;">${m.message || ''}</div>`;
+            }
 
             return `
                 <div class="bg-white rounded-xl shadow-sm border-2 border-emerald-300 overflow-hidden mb-3">
@@ -61675,13 +61771,15 @@ async function renderGpAdminMessages(area) {
                         </div>
                     </div>
                     
-                    <div class="px-4 py-3">
-                        <p class="text-sm text-slate-800 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(m.message || '')}</p>
+                    <div class="px-4 py-3 text-sm text-slate-800 leading-relaxed">
+                        ${contentHTML}
                     </div>
                     
                     <div class="px-4 py-2 border-t border-slate-200 bg-slate-50 text-xs flex justify-between items-center">
                         <span class="text-slate-600 font-bold"><i class="fa-solid fa-user-tie"></i> প্রেরক: ${m.sentBy || 'প্রতিষ্ঠান'}</span>
-                        ${isGroupMessage ? `<span class="text-[10px] text-slate-400">(সকলের জন্য)</span>` : `<span class="text-[10px] text-emerald-600 font-bold">(শুধু আপনার জন্য)</span>`}
+                        ${isGroupMessage 
+                            ? `<span class="text-[10px] text-slate-400">(সকলের জন্য)</span>` 
+                            : `<span class="text-[10px] text-emerald-600 font-bold">(শুধু আপনার জন্য)</span>`}
                     </div>
                 </div>
             `;
@@ -62157,6 +62255,9 @@ const ACCT_FS = {
 // ═══════════════════════════════════════════════════════════════
 // 【 মূল মেনু রেন্ডার — ৬টি সাব-মেনু বাটন 】
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// 【 মূল মেনু রেন্ডার — ৭টি সাব-মেনু (ছাত্রপ্রদেয় যোগ) 】
+// ═══════════════════════════════════════════════════════════════
 window.renderAccountingMainMenu = function() {
     const container = document.getElementById('acct-main-menu');
     if (!container) return;
@@ -62169,16 +62270,17 @@ window.renderAccountingMainMenu = function() {
             <h2 class="text-xl md:text-2xl font-bold text-cyan-900 leading-none">হিসাব বিভাগ</h2>
         </div>
 
-        <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 max-w-4xl mx-auto">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 max-w-5xl mx-auto">
             ${[
-                { page:'budget',  label:'১. বাজেট',          icon:'fa-clipboard-list', color:'indigo' },
-                { page:'income',  label:'২. আয়',              icon:'fa-arrow-down',     color:'emerald' },
-                { page:'expense', label:'৩. ব্যয়',             icon:'fa-arrow-up',       color:'rose' },
-                { page:'monthly', label:'৪. মাসিক রিপোর্ট',   icon:'fa-calendar',       color:'teal' },
-                { page:'annual',  label:'৫. বার্ষিক রিপোর্ট', icon:'fa-chart-line',     color:'amber' },
-                { page:'donor',   label:'৬. দাতা তালিকা',     icon:'fa-hand-holding-heart', color:'pink' }
+                { page:'budget',       label:'১. বাজেট',              icon:'fa-clipboard-list',      color:'indigo' },
+                { page:'income',       label:'২. আয়',                  icon:'fa-arrow-down',          color:'emerald' },
+                { page:'expense',      label:'৩. ব্যয়',                 icon:'fa-arrow-up',            color:'rose' },
+                { page:'monthly',      label:'৪. মাসিক রিপোর্ট',       icon:'fa-calendar',            color:'teal' },
+                { page:'annual',       label:'৫. বার্ষিক রিপোর্ট',     icon:'fa-chart-line',          color:'amber' },
+                { page:'donor',        label:'৬. দাতা তালিকা',         icon:'fa-hand-holding-heart',  color:'pink' },
+                { page:'studentdues',  label:'৭. ছাত্রপ্রদেয়',          icon:'fa-user-graduate',       color:'violet' }
             ].map(b => `
-                <button onclick="openAcctPageNew('${b.page}')" class="group bg-gradient-to-br from-${b.color}-500 to-${b.color}-700 hover:from-${b.color}-600 hover:to-${b.color}-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[140px] md:min-h-[170px]">
+                <button onclick="${b.page === 'studentdues' ? "openStudentDuesPage('')" : "openAcctPageNew('" + b.page + "')"}" class="group bg-gradient-to-br from-${b.color}-500 to-${b.color}-700 hover:from-${b.color}-600 hover:to-${b.color}-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[140px] md:min-h-[170px]">
                     <i class="fa-solid ${b.icon} text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
                     <span class="text-sm md:text-base font-bold leading-tight text-center">${b.label}</span>
                 </button>
@@ -62190,10 +62292,28 @@ window.renderAccountingMainMenu = function() {
                 <i class="fa-solid fa-gauge-high"></i> আর্থিক ড্যাশবোর্ড
             </button>
             <button onclick="openAcctAccountsNew()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
-                <i class="fa-solid fa-building-columns"></i> ক্যাশ ও ব্যাংক অ্যাকাউন্ট
+                <i class="fa-solid fa-building-columns"></i> ক্যাশ ও ব্যাংক
             </button>
             <button onclick="openAcctYearManagerNew()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
-                <i class="fa-solid fa-calendar-cog"></i> অর্থবছর ব্যবস্থাপনা
+                <i class="fa-solid fa-calendar-cog"></i> অর্থবছর
+            </button>
+            <button onclick="openAcctBalanceReport()" class="px-4 py-2 bg-cyan-100 hover:bg-cyan-200 text-cyan-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                <i class="fa-solid fa-scale-balanced"></i> ব্যালেন্স
+            </button>
+            <button onclick="openAcctCashbook()" class="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                <i class="fa-solid fa-book"></i> ক্যাশ বুক
+            </button>
+            <button onclick="openAcctTransfers()" class="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                <i class="fa-solid fa-right-left"></i> ট্রান্সফার
+            </button>
+            <button onclick="openAcctFundReport()" class="px-4 py-2 bg-pink-100 hover:bg-pink-200 text-pink-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                <i class="fa-solid fa-hand-holding-heart"></i> ফান্ড
+            </button>
+            <button onclick="openAcctDues()" class="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i> বকেয়া
+            </button>
+            <button onclick="openAcctAuditLog()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                <i class="fa-solid fa-clipboard-list"></i> অডিট
             </button>
         </div>
     `;
@@ -65587,6 +65707,1644 @@ window.openAcctTransfers = async function() {
 
 console.log('✅ হিসাব বিভাগ — পর্ব ২ সম্পূর্ণ লোড হয়েছে');
 console.log('📋 যোগ হয়েছে: আয় এডিট, ট্রান্সফার, ব্যালেন্স, ক্যাশবুক, ফান্ড, বকেয়া, অডিট লগ, রসিদ/ভাউচার প্রিন্ট');
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ছাত্রপ্রদেয় (Student Dues) — কনফিগ ★★★
+// ═══════════════════════════════════════════════════════════════
+
+const STUDENT_DUES_FS = {
+    ONETIME:    'studentDuesOnetime',    // এককালীন প্রদেয়: { studentDbId, items: { admissionForm, admissionFee, sessionFee } }
+    MONTHLY:    'studentDuesMonthly',    // মাসিক প্রদেয়: { studentDbId, yearMonth, items: { food, salary, hostel, electricity, iron } }
+    PAYMENTS:   'studentDuesPayments',   // পরিশোধ: { studentDbId, itemKey, amount, paidAt, paidBy, receiptNo }
+    CONFIG:     'studentDuesConfig'      // কাস্টম আইটেম কনফিগ (হেডার এডিট/ডিলিট/এড)
+};
+
+// ─── ডিফল্ট আইটেম তালিকা ───
+window._studentDuesConfig = {
+    onetime: {
+        title: 'এককালীন',
+        items: [
+            { key: 'admissionForm',  label: 'ভর্তি ফরম',  amount: 0, required: true,  isSystem: false },
+            { key: 'admissionFee',   label: 'ভর্তি ফি',    amount: 0, required: true,  isSystem: false },
+            { key: 'sessionFee',     label: 'সেশন ফি',      amount: 0, required: true,  isSystem: false }
+        ]
+    },
+    monthly: {
+        title: 'মাসিক',
+        items: [
+            { key: 'food',         label: 'মাসিক খোরাকী',  amount: 0, required: true,  isSystem: false },
+            { key: 'salary',       label: 'মাসিক বেতন',    amount: 0, required: true,  isSystem: false },
+            { key: 'hostel',       label: 'আবাসন ফি',       amount: 0, required: true,  isSystem: false },
+            { key: 'electricity',  label: 'বিদ্যুৎ বিল',     amount: 0, required: false, isSystem: false },
+            { key: 'iron',         label: 'আয়রন বিল',      amount: 0, required: false, isSystem: false }
+        ]
+    }
+};
+
+// ─── রানটাইম স্টেট ───
+window._studentDuesState = {
+    subPage: '',                  // '', 'info', 'payment', 'deposit', 'pending'
+    infoTab: 'dept',              // 'dept' | 'class' | 'all'
+    infoDept: '',                 // নির্বাচিত বিভাগ
+    infoClass: '',                // নির্বাচিত শ্রেণি
+    paymentTab: 'onetime',        // 'onetime' | 'monthly'
+    paymentYear: '',              // নির্বাচিত অর্থবছর
+    paymentMonth: '',             // নির্বাচিত মাস (YYYY-MM)
+    paymentDept: '',              // বিভাগ ফিল্টার
+    paymentClass: '',             // শ্রেণি ফিল্টার
+    depositTab: 'onetime',        // 'onetime' | 'monthly'
+    pendingTab: 'onetime',        // 'onetime' | 'monthly'
+    duesCache: {},                // { studentDbId: { onetime: {...}, monthly: { 'YYYY-MM': {...} } } }
+    paymentsCache: [],            // সব পেমেন্ট
+    configLoaded: false
+};
+
+// ─── কনফিগ লোড (একবার) ───
+async function loadStudentDuesConfig() {
+    if (window._studentDuesState.configLoaded) return window._studentDuesConfig;
+    
+    try {
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, STUDENT_DUES_FS.CONFIG, 'main'));
+        if (snap.exists()) {
+            const data = snap.data();
+            if (data.onetime?.items?.length) {
+                window._studentDuesConfig.onetime.items = data.onetime.items;
+            }
+            if (data.monthly?.items?.length) {
+                window._studentDuesConfig.monthly.items = data.monthly.items;
+            }
+        }
+    } catch (err) {
+        console.warn('⚠️ loadStudentDuesConfig:', err);
+    }
+    
+    window._studentDuesState.configLoaded = true;
+    return window._studentDuesConfig;
+}
+
+// ─── কনফিগ সেভ ───
+async function saveStudentDuesConfig() {
+    try {
+        const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+        await setDoc(doc(window.fbDB, STUDENT_DUES_FS.CONFIG, 'main'), {
+            onetime: window._studentDuesConfig.onetime,
+            monthly: window._studentDuesConfig.monthly,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser?.uid || 'unknown'
+        }, { merge: true });
+        return true;
+    } catch (err) {
+        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
+        return false;
+    }
+}
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ছাত্রপ্রদেয় — মূল ডিসপ্যাচার ★★★
+// ═══════════════════════════════════════════════════════════════
+window.openStudentDuesPage = async function(subPage) {
+    window._studentDuesState.subPage = subPage || '';
+    document.getElementById('acct-main-menu').classList.add('hidden');
+    document.getElementById('acct-content').classList.remove('hidden');
+    document.getElementById('acct-back-btn').classList.remove('hidden');
+    document.getElementById('acct-back-btn').classList.add('flex');
+
+    const container = document.getElementById('acct-content');
+    container.innerHTML = `<div class="text-center py-16 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i><p>লোড হচ্ছে...</p></div>`;
+
+    // কনফিগ লোড (একবার)
+    await loadStudentDuesConfig();
+    
+    // ছাত্র ডাটা লোড নিশ্চিত
+    if (!studentsCache || studentsCache.length === 0) {
+        if (typeof loadStudentsFromFirestore === 'function') await loadStudentsFromFirestore();
+    }
+
+    // ★★★ ফিক্স: গ্লোবাল currentYear লোড করা ★★★
+    if (typeof loadCurrentAcctYear === 'function') {
+        await loadCurrentAcctYear(); 
+    }
+
+    // চলতি অর্থবছর ডিফল্ট
+    if (!window._studentDuesState.paymentYear) {
+        const yr = window._acctNew.currentYear;
+        window._studentDuesState.paymentYear = yr?.id || '';
+    }
+    // চলতি মাস ডিফল্ট
+    if (!window._studentDuesState.paymentMonth) {
+        window._studentDuesState.paymentMonth = new Date().toISOString().slice(0, 7);
+    }
+
+    if (subPage === 'info')         await renderStudentDuesInfo(container);
+    else if (subPage === 'payment') await renderStudentDuesPayment(container);
+    else if (subPage === 'deposit') await renderStudentDuesDeposit(container);
+    else if (subPage === 'pending') await renderStudentDuesPending(container);
+    else                            renderStudentDuesMenu(container);
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 【 মূল মেনু (৪টি সাব-বাটন) 】
+// ═══════════════════════════════════════════════════════════════
+function renderStudentDuesMenu(container) {
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-8">
+            <div class="flex items-center justify-center gap-2 mb-6">
+                <div class="w-8 h-8 bg-gradient-to-br from-violet-500 to-violet-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm">
+                    <i class="fa-solid fa-user-graduate"></i>
+                </div>
+                <h2 class="text-xl md:text-2xl font-bold text-violet-900 leading-none">ছাত্রপ্রদেয়</h2>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-4xl mx-auto">
+                
+                <!-- ১. প্রদেয় তথ্য -->
+                <button onclick="openStudentDuesPage('info')" class="group bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-4 text-left">
+                    <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-clipboard-list text-2xl"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-base font-bold mb-1">১. প্রদেয় তথ্য</h3>
+                        <p class="text-xs opacity-90">ছাত্রদের এককালীন ও মাসিক প্রদেয় সেট করুন</p>
+                    </div>
+                </button>
+                
+                <!-- ২. পরিশোধ তথ্য -->
+                <button onclick="openStudentDuesPage('payment')" class="group bg-gradient-to-br from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-4 text-left">
+                    <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-money-bill-wave text-2xl"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-base font-bold mb-1">২. পরিশোধ তথ্য</h3>
+                        <p class="text-xs opacity-90">কোন ছাত্র কী দিয়েছে, কখন দিয়েছে</p>
+                    </div>
+                </button>
+                
+                <!-- ৩. জমা তথ্য -->
+                <button onclick="openStudentDuesPage('deposit')" class="group bg-gradient-to-br from-teal-500 to-teal-700 hover:from-teal-600 hover:to-teal-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-4 text-left">
+                    <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-check-circle text-2xl"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-base font-bold mb-1">৩. জমা তথ্য</h3>
+                        <p class="text-xs opacity-90">যারা প্রদেয় জমা দিয়েছে তাদের তালিকা</p>
+                    </div>
+                </button>
+                
+                <!-- ৪. বাকি তথ্য -->
+                <button onclick="openStudentDuesPage('pending')" class="group bg-gradient-to-br from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-4 text-left">
+                    <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-base font-bold mb-1">৪. বাকি তথ্য</h3>
+                        <p class="text-xs opacity-90">যারা এখনো দেয়নি বা আংশিক দিয়েছে</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    `;
+}
+// ═══════════════════════════════════════════════════════════════
+// 【 সাব-পেজ ১: প্রদেয় তথ্য 】
+// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// 【 সাব-পেজ ১: প্রদেয় তথ্য (অটো-লোড সহ আপডেট করা হলো) 】
+// ═══════════════════════════════════════════════════════════════
+async function renderStudentDuesInfo(container) {
+    const state = window._studentDuesState;
+    const config = window._studentDuesConfig;
+    const depts = configData?.departments || [];
+    
+    // এই পেজের ট্যাব
+    const tabsHTML = `
+        <div class="bg-slate-50 rounded-xl p-2 mb-4 flex flex-wrap gap-1.5 shadow-sm border border-slate-200">
+            <button onclick="switchStudentDuesInfoTab('dept')" class="${state.infoTab === 'dept' ? 'bg-blue-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-3 py-2 rounded-lg text-xs font-bold transition flex-1 md:flex-none flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-layer-group"></i> বিভাগ
+            </button>
+            <button onclick="switchStudentDuesInfoTab('class')" class="${state.infoTab === 'class' ? 'bg-blue-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-3 py-2 rounded-lg text-xs font-bold transition flex-1 md:flex-none flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-chalkboard"></i> শ্রেণি
+            </button>
+            <button onclick="switchStudentDuesInfoTab('all')" class="${state.infoTab === 'all' ? 'bg-blue-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-3 py-2 rounded-lg text-xs font-bold transition flex-1 md:flex-none flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-users"></i> এক নজরে সকল ছাত্র
+            </button>
+        </div>
+    `;
+    
+    // ফিল্টার লজিক
+    let filter = '';
+    let filteredStudents = [];
+    
+    if (state.infoTab === 'dept') {
+        const deptOptions = depts.map(d => `<option value="${d.key}" ${state.infoDept === d.key ? 'selected' : ''}>${d.name}</option>`).join('');
+        filter = `
+            <div class="bg-white rounded-lg p-3 mb-3 border border-slate-200 flex flex-wrap gap-2 items-end">
+                <div class="flex-1 min-w-[180px]">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">বিভাগ</label>
+                    <select onchange="_studentDuesState.infoDept=this.value; openStudentDuesPage('info')" class="w-full rounded border border-slate-300 p-2 text-sm">
+                        <option value="">-- বিভাগ নির্বাচন করুন --</option>
+                        ${deptOptions}
+                    </select>
+                </div>
+                ${state.infoDept ? `
+                    <div class="bg-blue-50 border border-blue-200 rounded p-2 text-xs text-blue-800">
+                        <i class="fa-solid fa-info-circle"></i> এই বিভাগে ${(studentsCache||[]).filter(s => s.dept === state.infoDept).length} জন ছাত্র
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        
+        if (state.infoDept) {
+            filteredStudents = (studentsCache||[]).filter(s => s.dept === state.infoDept);
+        }
+    } else if (state.infoTab === 'class') {
+        const classList = state.infoDept ? getClassesForDept(state.infoDept) : depts.flatMap(d => getClassesForDept(d.key));
+        const classOptions = state.infoDept 
+            ? classList.map(c => `<option value="${c}" ${state.infoClass === c ? 'selected' : ''}>${c}</option>`).join('')
+            : classList.map(c => `<option value="${c}">${c}</option>`).join('');
+        
+        filter = `
+            <div class="bg-white rounded-lg p-3 mb-3 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">বিভাগ</label>
+                    <select onchange="_studentDuesState.infoDept=this.value; _studentDuesState.infoClass=''; openStudentDuesPage('info')" class="w-full rounded border border-slate-300 p-2 text-sm">
+                        <option value="">-- বিভাগ --</option>
+                        ${depts.map(d => `<option value="${d.key}" ${state.infoDept === d.key ? 'selected' : ''}>${d.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">শ্রেণি</label>
+                    <select onchange="_studentDuesState.infoClass=this.value; openStudentDuesPage('info')" class="w-full rounded border border-slate-300 p-2 text-sm font-arabic" ${!state.infoDept ? 'disabled' : ''}>
+                        <option value="">-- শ্রেণি --</option>
+                        ${classOptions}
+                    </select>
+                </div>
+            </div>
+        `;
+        
+        if (state.infoClass) {
+            filteredStudents = (studentsCache||[]).filter(s => s.className === state.infoClass);
+        }
+    } else {
+        filter = `
+            <div class="bg-white rounded-lg p-3 mb-3 border border-slate-200">
+                <p class="text-xs text-slate-600"><i class="fa-solid fa-info-circle"></i> মোট ${(studentsCache||[]).length} জন ছাত্রের প্রদেয় তথ্য দেখানো হচ্ছে।</p>
+            </div>
+        `;
+        filteredStudents = (studentsCache||[]).slice();
+    }
+    
+    // ডাটা লোড করি (এখন অটো-লোড লজিকসহ)
+    const duesData = await loadStudentDuesData(filteredStudents);
+    
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <h3 class="text-base font-bold text-blue-900">
+                    <i class="fa-solid fa-clipboard-list"></i> প্রদেয় তথ্য
+                </h3>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="openStudentDuesConfigEditor()" class="px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-xs font-bold rounded-lg">
+                        <i class="fa-solid fa-cog"></i> হেডার কনফিগার
+                    </button>
+                    <button onclick="saveAllStudentDues()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-lg shadow">
+                        <i class="fa-solid fa-floppy-disk"></i> সব সেভ
+                    </button>
+                </div>
+            </div>
+
+            ${tabsHTML}
+            ${filter}
+
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 text-xs text-amber-900">
+                <i class="fa-solid fa-info-circle"></i> 
+                <strong>নির্দেশনা:</strong> ছাত্রের ভর্তি ফরম বা ডাটা থেকে ফি অটো লোড হয়েছে। প্রয়োজনে এডিট করে <strong>"সব সেভ"</strong> করুন। এগুলো <strong>সম্ভাব্য আয়</strong> — শুধু পরিশোধ করলে মূল আয়ের খাতায় যোগ হবে।
+            </div>
+
+            <div class="overflow-x-auto">
+                ${buildStudentDuesTable(filteredStudents, duesData)}
+            </div>
+        </div>
+    `;
+}
+
+// ─── Tab পরিবর্তন ───
+window.switchStudentDuesInfoTab = function(tab) {
+    window._studentDuesState.infoTab = tab;
+    openStudentDuesPage('info');
+};
+
+// ─── ডাটা লোড (অটো-লোড লজিকসহ সম্পূর্ণ নতুন) ───
+async function loadStudentDuesData(studentsList) {
+    const result = { onetime: {}, monthly: {} };
+    if (studentsList.length === 0) return result;
+    
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const studentDbIds = studentsList.map(s => s.id);
+        
+        // ১. প্রথমে ডাটাবেসে সেভ করা ডাটা খুঁজি
+        const onetimeSnap = await getDocs(collection(window.fbDB, STUDENT_DUES_FS.ONETIME));
+        onetimeSnap.forEach(d => {
+            const data = d.data();
+            if (studentDbIds.includes(data.studentDbId)) {
+                result.onetime[data.studentDbId] = data;
+            }
+        });
+        
+        const monthlySnap = await getDocs(collection(window.fbDB, STUDENT_DUES_FS.MONTHLY));
+        monthlySnap.forEach(d => {
+            const data = d.data();
+            if (studentDbIds.includes(data.studentDbId)) {
+                if (!result.monthly[data.studentDbId]) result.monthly[data.studentDbId] = {};
+                result.monthly[data.studentDbId][data.yearMonth] = data;
+            }
+        });
+
+        // ★★★ ২. নতুন অটো-লোড লজিক: যাদের ডাটাবেসে প্রদেয় নেই, তাদের ছাত্র ডাটা/ভর্তি ফরম থেকে ফি লোড করি ★★★
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        
+        studentsList.forEach(student => {
+            // ─── এককালীন অটো-লোড ───
+            if (!result.onetime[student.id]) {
+                result.onetime[student.id] = {
+                    studentDbId: student.id,
+                    items: {
+                        admissionForm: Number(student.admissionFormFee) || 0,
+                        admissionFee: Number(student.admissionFee) || 0,
+                        sessionFee: Number(student.sessionFee) || 0,
+                        _isAutoLoaded: true
+                    }
+                };
+            }
+            
+            // ─── মাসিক অটো-লোড ───
+            if (!result.monthly[student.id]) result.monthly[student.id] = {};
+            if (!result.monthly[student.id][currentMonth]) {
+                result.monthly[student.id][currentMonth] = {
+                    studentDbId: student.id,
+                    yearMonth: currentMonth,
+                    items: {
+                        food: Number(student.monthlyFood) || 0,
+                        salary: Number(student.monthlySalary) || 0,
+                        hostel: Number(student.hostelFee) || 0,
+                        electricity: 0, // ডাটা না থাকলে ০
+                        iron: 0,
+                        _isAutoLoaded: true
+                    }
+                };
+            }
+        });
+
+    } catch (err) {
+        console.warn('loadStudentDuesData:', err);
+    }
+    return result;
+}
+// ═══════════════════════════════════════════════════════════════
+// 【 প্রদেয় টেবিল — এডিটেবল হেডার + ইনপুট সেল 】
+// ═══════════════════════════════════════════════════════════════
+function buildStudentDuesTable(students, duesData) {
+    const config = window._studentDuesConfig;
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    
+    // হেডার সেল তৈরি
+    const onetimeHeaders = config.onetime.items.map((item, i) => `
+        <th class="p-2 text-[10px] text-center bg-blue-700 text-white relative group" data-dues-head="${item.key}">
+            <input type="text" value="${item.label}" 
+                   onchange="updateStudentDuesItemLabel('onetime', '${item.key}', this.value)"
+                   class="w-full bg-transparent border-0 text-white text-center text-[10px] font-bold focus:ring-1 focus:ring-white/50 rounded" style="min-width:80px">
+            ${!item.isSystem ? `<button onclick="deleteStudentDuesItem('onetime', '${item.key}')" class="absolute top-0 right-0 text-red-200 hover:text-white opacity-0 group-hover:opacity-100 bg-red-600 rounded-full w-4 h-4 flex items-center justify-center" title="ডিলিট"><i class="fa-solid fa-xmark text-[8px]"></i></button>` : ''}
+        </th>
+    `).join('');
+    
+    const monthlyHeaders = config.monthly.items.map((item, i) => `
+        <th class="p-2 text-[10px] text-center bg-teal-700 text-white relative group" data-dues-head="${item.key}">
+            <input type="text" value="${item.label}" 
+                   onchange="updateStudentDuesItemLabel('monthly', '${item.key}', this.value)"
+                   class="w-full bg-transparent border-0 text-white text-center text-[10px] font-bold focus:ring-1 focus:ring-white/50 rounded" style="min-width:80px">
+            ${!item.isSystem ? `<button onclick="deleteStudentDuesItem('monthly', '${item.key}')" class="absolute top-0 right-0 text-red-200 hover:text-white opacity-0 group-hover:opacity-100 bg-red-600 rounded-full w-4 h-4 flex items-center justify-center" title="ডিলিট"><i class="fa-solid fa-xmark text-[8px]"></i></button>` : ''}
+        </th>
+    `).join('');
+    
+    // body সারি
+    let rowsHTML = students.map((s, i) => {
+        const onetime = duesData.onetime[s.id]?.items || {};
+        const monthly = duesData.monthly[s.id]?.[currentMonth]?.items || {};
+        
+        const onetimeCells = config.onetime.items.map(item => `
+            <td class="p-1 border">
+                <input type="number" value="${onetime[item.key] || 0}" 
+                       data-student-id="${s.id}" data-type="onetime" data-item-key="${item.key}"
+                       onchange="onStudentDueChange(this)"
+                       class="w-full text-center text-xs p-1.5 border-0 focus:ring-2 focus:ring-blue-500 rounded"
+                       style="min-width:70px">
+            </td>
+        `).join('');
+        
+        const monthlyCells = config.monthly.items.map(item => `
+            <td class="p-1 border">
+                <input type="number" value="${monthly[item.key] || 0}" 
+                       data-student-id="${s.id}" data-type="monthly" data-item-key="${item.key}" data-year-month="${currentMonth}"
+                       onchange="onStudentDueChange(this)"
+                       class="w-full text-center text-xs p-1.5 border-0 focus:ring-2 focus:ring-teal-500 rounded"
+                       style="min-width:70px">
+            </td>
+        `).join('');
+        
+        return `
+            <tr class="border-b hover:bg-slate-50">
+                <td class="p-2 text-xs text-center">${i + 1}</td>
+                <td class="p-2 text-xs font-bold">${s.name || '—'}</td>
+                <td class="p-2 text-xs font-mono text-center">${s.studentId || '—'}</td>
+                <td class="p-2 text-xs text-center font-arabic">${s.className || '—'}</td>
+                ${onetimeCells}
+                ${monthlyCells}
+            </tr>
+        `;
+    }).join('');
+    
+    if (!rowsHTML) {
+        rowsHTML = `<tr><td colspan="${3 + config.onetime.items.length + config.monthly.items.length}" class="p-6 text-center text-slate-400">কোন ছাত্র নেই</td></tr>`;
+    }
+    
+    return `
+        <table class="w-full border-collapse text-xs" id="student-dues-table" style="min-width:${400 + (config.onetime.items.length + config.monthly.items.length) * 90}px;">
+            <thead>
+                <tr>
+                    <th class="p-2 text-[10px] text-center bg-slate-700 text-white" rowspan="2">#</th>
+                    <th class="p-2 text-[10px] text-center bg-slate-700 text-white" rowspan="2">নাম</th>
+                    <th class="p-2 text-[10px] text-center bg-slate-700 text-white" rowspan="2">আইডি</th>
+                    <th class="p-2 text-[10px] text-center bg-slate-700 text-white" rowspan="2">শ্রেণি</th>
+                    <th class="p-1 text-[10px] text-center bg-blue-800 text-white" colspan="${config.onetime.items.length}">
+                        <div class="flex items-center justify-center gap-1">
+                            <span>এককালীন</span>
+                            <button onclick="addStudentDuesItem('onetime')" class="text-[9px] bg-blue-500 hover:bg-blue-400 rounded-full w-4 h-4 flex items-center justify-center" title="নতুন হেডার"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </th>
+                    <th class="p-1 text-[10px] text-center bg-teal-800 text-white" colspan="${config.monthly.items.length}">
+                        <div class="flex items-center justify-center gap-1">
+                            <span>মাসিক</span>
+                            <button onclick="addStudentDuesItem('monthly')" class="text-[9px] bg-teal-500 hover:bg-teal-400 rounded-full w-4 h-4 flex items-center justify-center" title="নতুন হেডার"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </th>
+                </tr>
+                <tr>
+                    ${onetimeHeaders}
+                    ${monthlyHeaders}
+                </tr>
+            </thead>
+            <tbody>${rowsHTML}</tbody>
+        </table>
+    `;
+}
+
+// ─── সেলে এডিট ───
+window.onStudentDueChange = function(input) {
+    const studentId = input.dataset.studentId;
+    const type = input.dataset.type;
+    const itemKey = input.dataset.itemKey;
+    const yearMonth = input.dataset.yearMonth || '';
+    const amount = parseFloat(input.value) || 0;
+    
+    // স্টেটে জমা করি
+    if (!window._studentDuesState.duesCache) window._studentDuesState.duesCache = {};
+    const cache = window._studentDuesState.duesCache;
+    
+    if (!cache[studentId]) cache[studentId] = { onetime: {}, monthly: {} };
+    if (type === 'onetime') {
+        if (!cache[studentId].onetime) cache[studentId].onetime = {};
+        cache[studentId].onetime[itemKey] = amount;
+    } else {
+        if (!cache[studentId].monthly) cache[studentId].monthly = {};
+        if (!cache[studentId].monthly[yearMonth]) cache[studentId].monthly[yearMonth] = {};
+        cache[studentId].monthly[yearMonth][itemKey] = amount;
+    }
+};
+
+// ─── সব সেভ ───
+window.saveAllStudentDues = async function() {
+    const cache = window._studentDuesState.duesCache;
+    if (!cache || Object.keys(cache).length === 0) {
+        showToast('⚠️ সেভ করার মতো কিছু নেই', 'warn');
+        return;
+    }
+
+    const btn = event?.target?.closest('button');
+    const origHTML = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> সেভ হচ্ছে...';
+    }
+
+    try {
+        const { doc, setDoc, collection, getDocs, query, where, serverTimestamp, addDoc } = window.fbFuncs;
+        let savedCount = 0;
+        
+        for (const studentId of Object.keys(cache)) {
+            const data = cache[studentId];
+            
+            // এককালীন সেভ
+            if (data.onetime && Object.keys(data.onetime).length > 0) {
+                // আগের ডাটা খুঁজি
+                const q1 = query(collection(window.fbDB, STUDENT_DUES_FS.ONETIME), where('studentDbId', '==', studentId));
+                const snap1 = await getDocs(q1);
+                
+                const payload = {
+                    studentDbId: studentId,
+                    items: data.onetime,
+                    updatedAt: serverTimestamp(),
+                    updatedBy: currentUser?.uid || 'unknown'
+                };
+                
+                if (snap1.empty) {
+                    payload.createdAt = serverTimestamp();
+                    await addDoc(collection(window.fbDB, STUDENT_DUES_FS.ONETIME), payload);
+                } else {
+                    await setDoc(doc(window.fbDB, STUDENT_DUES_FS.ONETIME, snap1.docs[0].id), payload, { merge: true });
+                }
+                savedCount++;
+            }
+            
+            // মাসিক সেভ
+            if (data.monthly) {
+                for (const ym of Object.keys(data.monthly)) {
+                    const q2 = query(
+                        collection(window.fbDB, STUDENT_DUES_FS.MONTHLY), 
+                        where('studentDbId', '==', studentId),
+                        where('yearMonth', '==', ym)
+                    );
+                    const snap2 = await getDocs(q2);
+                    
+                    const payload2 = {
+                        studentDbId: studentId,
+                        yearMonth: ym,
+                        items: data.monthly[ym],
+                        updatedAt: serverTimestamp(),
+                        updatedBy: currentUser?.uid || 'unknown'
+                    };
+                    
+                    if (snap2.empty) {
+                        payload2.createdAt = serverTimestamp();
+                        await addDoc(collection(window.fbDB, STUDENT_DUES_FS.MONTHLY), payload2);
+                    } else {
+                        await setDoc(doc(window.fbDB, STUDENT_DUES_FS.MONTHLY, snap2.docs[0].id), payload2, { merge: true });
+                    }
+                    savedCount++;
+                }
+            }
+        }
+        
+        // ক্যাশ রিসেট
+        window._studentDuesState.duesCache = {};
+        
+        showToast(`✅ ${savedCount}টি এন্ট্রি সেভ হয়েছে`, 'success');
+    } catch (err) {
+        console.error('saveAllStudentDues:', err);
+        showToast('❌ ' + err.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+        }
+    }
+};
+
+// ─── হেডার কনফিগ এডিটর ───
+window.updateStudentDuesItemLabel = function(type, itemKey, label) {
+    const items = window._studentDuesConfig[type].items;
+    const item = items.find(i => i.key === itemKey);
+    if (item) item.label = label;
+};
+
+window.addStudentDuesItem = function(type) {
+    const label = prompt('নতুন হেডারের নাম:');
+    if (!label || !label.trim()) return;
+    
+    const key = 'custom_' + type + '_' + Date.now();
+    window._studentDuesConfig[type].items.push({
+        key,
+        label: label.trim(),
+        amount: 0,
+        required: false,
+        isSystem: false
+    });
+    
+    // কনফিগ সেভ
+    saveStudentDuesConfig().then(() => {
+        openStudentDuesPage('info');
+        showToast('✅ নতুন হেডার যোগ হয়েছে', 'success');
+    });
+};
+
+window.deleteStudentDuesItem = async function(type, itemKey) {
+    const item = window._studentDuesConfig[type].items.find(i => i.key === itemKey);
+    if (!item) return;
+    if (item.isSystem) {
+        showToast('⚠️ সিস্টেম হেডার ডিলিট করা যাবে না', 'warn');
+        return;
+    }
+    if (!confirm(`"${item.label}" হেডারটি ডিলিট করবেন? এর ভেতরের সব ডাটা মুছে যাবে।`)) return;
+    
+    window._studentDuesConfig[type].items = window._studentDuesConfig[type].items.filter(i => i.key !== itemKey);
+    
+    // কনফিগ সেভ
+    await saveStudentDuesConfig();
+    
+    // ডাটা ডিলিট
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const fs = type === 'onetime' ? STUDENT_DUES_FS.ONETIME : STUDENT_DUES_FS.MONTHLY;
+        const snap = await getDocs(collection(window.fbDB, fs));
+        
+        // সব ডকুমেন্ট আপডেট
+        for (const d of snap.docs) {
+            const data = d.data();
+            if (data.items && data.items[itemKey] !== undefined) {
+                const { doc, setDoc } = window.fbFuncs;
+                const newItems = { ...data.items };
+                delete newItems[itemKey];
+                await setDoc(doc(window.fbDB, fs, d.id), { items: newItems }, { merge: true });
+            }
+        }
+    } catch (err) {
+        console.warn('delete item from data:', err);
+    }
+    
+    openStudentDuesPage('info');
+    showToast('🗑️ হেডার ডিলিট হয়েছে', 'info');
+};
+
+// ─── হেডার কনফিগার এডিটর (মডাল) ───
+window.openStudentDuesConfigEditor = function() {
+    const config = window._studentDuesConfig;
+    
+    const buildItemList = (type) => {
+        const items = config[type].items;
+        return items.map(item => `
+            <div class="flex items-center gap-2 p-2 border border-slate-200 rounded mb-1">
+                <input type="text" value="${item.label}" 
+                       onchange="updateStudentDuesItemLabel('${type}', '${item.key}', this.value)"
+                       class="flex-1 rounded border border-slate-300 p-1.5 text-xs">
+                ${item.isSystem 
+                    ? '<span class="badge bg-slate-100 text-slate-500 text-[9px]">সিস্টেম</span>' 
+                    : `<button onclick="deleteStudentDuesItem('${type}', '${item.key}'); document.getElementById('student-dues-config-modal')?.remove(); openStudentDuesConfigEditor()" class="text-red-500 p-1"><i class="fa-solid fa-trash text-xs"></i></button>`
+                }
+            </div>
+        `).join('');
+    };
+
+    document.getElementById('student-dues-config-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'student-dues-config-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+            <div class="bg-indigo-700 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold"><i class="fa-solid fa-cog"></i> প্রদেয় হেডার কনফিগার</h3>
+                <button onclick="document.getElementById('student-dues-config-modal').remove()" class="text-white text-2xl">×</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1 space-y-4">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-bold text-blue-800">এককালীন</h4>
+                        <button onclick="addStudentDuesItem('onetime')" class="px-2 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded"><i class="fa-solid fa-plus"></i> নতুন</button>
+                    </div>
+                    ${buildItemList('onetime')}
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-bold text-teal-800">মাসিক</h4>
+                        <button onclick="addStudentDuesItem('monthly')" class="px-2 py-1 bg-teal-100 text-teal-700 text-[10px] font-bold rounded"><i class="fa-solid fa-plus"></i> নতুন</button>
+                    </div>
+                    ${buildItemList('monthly')}
+                </div>
+            </div>
+            <div class="p-3 bg-slate-50 border-t flex justify-end gap-2">
+                <button onclick="saveStudentDuesConfig().then(() => { document.getElementById('student-dues-config-modal').remove(); openStudentDuesPage('info'); showToast('✅ কনফিগ সেভ', 'success'); })" class="px-4 py-2 bg-indigo-700 text-white text-xs font-bold rounded">
+                    <i class="fa-solid fa-floppy-disk"></i> সেভ
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+// ═══════════════════════════════════════════════════════════════
+// 【 সাব-পেজ ২: পরিশোধ তথ্য 】
+// ═══════════════════════════════════════════════════════════════
+async function renderStudentDuesPayment(container) {
+    const state = window._studentDuesState;
+    const config = window._studentDuesConfig;
+    const depts = configData?.departments || [];
+    
+    // অর্থবছর লিস্ট
+    let yearOptions = '<option value="">-- অর্থবছর --</option>';
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, ACCT_FS.YEARS));
+        const years = [];
+        snap.forEach(d => years.push({ id: d.id, ...d.data() }));
+        years.sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || '')));
+        yearOptions = years.map(y => `<option value="${y.id}" ${state.paymentYear === y.id ? 'selected' : ''}>${y.name}</option>`).join('');
+    } catch (err) { console.warn(err); }
+
+    // মাস লিস্ট
+    const monthNames = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+    const currentMonth = state.paymentMonth || new Date().toISOString().slice(0, 7);
+    const [cy, cm] = currentMonth.split('-').map(Number);
+    const monthOptions = monthNames.map((m, i) => {
+        const val = `${cy}-${String(i + 1).padStart(2, '0')}`;
+        return `<option value="${val}" ${state.paymentMonth === val ? 'selected' : ''}>${m}</option>`;
+    }).join('');
+
+    // ক্লাস
+    const classList = state.paymentDept ? getClassesForDept(state.paymentDept) : depts.flatMap(d => getClassesForDept(d.key));
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <h3 class="text-base font-bold text-emerald-900">
+                    <i class="fa-solid fa-money-bill-wave"></i> পরিশোধ তথ্য
+                </h3>
+            </div>
+
+            <!-- ফিল্টার বার -->
+            <div class="bg-slate-50 rounded-lg p-3 mb-3 grid grid-cols-2 md:grid-cols-4 gap-2 border border-slate-200">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">অর্থবছর</label>
+                    <select onchange="
+                        _studentDuesState.paymentYear=this.value; 
+                        // ★★★ নতুন যোগ: সিলেক্ট করা বছরটি গ্লোবাল currentYear-এ আপডেট করা ★★★
+                        if(this.value) { 
+                            _acctNew.currentYearId = this.value; 
+                            _acctNew.currentYear = { id: this.value, name: this.options[this.selectedIndex].text }; 
+                        } else { 
+                            _acctNew.currentYear = null; 
+                        }
+                        openStudentDuesPage('payment');
+                    " class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                        ${yearOptions}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">মাস</label>
+                    <select onchange="_studentDuesState.paymentMonth=this.value; openStudentDuesPage('payment')" class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                        ${monthOptions}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">বিভাগ</label>
+                    <select onchange="_studentDuesState.paymentDept=this.value; _studentDuesState.paymentClass=''; openStudentDuesPage('payment')" class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                        <option value="">সব বিভাগ</option>
+                        ${depts.map(d => `<option value="${d.key}" ${state.paymentDept === d.key ? 'selected' : ''}>${d.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">শ্রেণি</label>
+                    <select onchange="_studentDuesState.paymentClass=this.value; openStudentDuesPage('payment')" class="w-full rounded border border-slate-300 p-1.5 text-xs font-arabic">
+                        <option value="">সব শ্রেণি</option>
+                        ${classList.map(c => `<option value="${c}" ${state.paymentClass === c ? 'selected' : ''}>${c}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+
+            <!-- ট্যাব -->
+            <div class="bg-slate-50 rounded-xl p-2 mb-3 flex gap-1.5 shadow-sm border border-slate-200">
+                <button onclick="switchStudentDuesPaymentTab('onetime')" class="${state.paymentTab === 'onetime' ? 'bg-blue-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-4 py-2 rounded-lg text-xs font-bold transition flex-1 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-calendar-plus"></i> এককালীন
+                </button>
+                <button onclick="switchStudentDuesPaymentTab('monthly')" class="${state.paymentTab === 'monthly' ? 'bg-teal-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-4 py-2 rounded-lg text-xs font-bold transition flex-1 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-calendar-day"></i> মাসিক
+                </button>
+            </div>
+
+            <div id="student-dues-payment-content">
+                <div class="text-center py-10 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>
+            </div>
+        </div>
+    `;
+    
+    await loadStudentDuesPaymentTable();
+}
+
+window.switchStudentDuesPaymentTab = function(tab) {
+    window._studentDuesState.paymentTab = tab;
+    openStudentDuesPage('payment');
+};
+
+async function loadStudentDuesPaymentTable() {
+    const content = document.getElementById('student-dues-payment-content');
+    if (!content) return;
+    
+    const state = window._studentDuesState;
+    const config = window._studentDuesConfig;
+    
+    // ছাত্র ফিল্টার
+    let students = (studentsCache||[]).filter(s => {
+        if (state.paymentDept && s.dept !== state.paymentDept) return false;
+        if (state.paymentClass && s.className !== state.paymentClass) return false;
+        return !['বিদায়','বহিষ্কৃত','ভর্তির অনুপযুক্ত'].includes((s.remark?.type || '').trim());
+    });
+
+    if (students.length === 0) {
+        content.innerHTML = `<p class="text-center text-slate-400 py-6">এই ফিল্টারে কোন ছাত্র নেই</p>`;
+        return;
+    }
+
+    // ডাটা লোড
+    const duesData = await loadStudentDuesData(students);
+    const payments = await loadStudentDuesPayments(students.map(s => s.id), state.paymentTab);
+    
+    // প্রস্তুত টেবিল
+    const isOnetime = state.paymentTab === 'onetime';
+    const items = isOnetime ? config.onetime.items : config.monthly.items;
+    const monthKey = state.paymentMonth;
+    
+    // হেডার
+    const headers = items.map(item => `
+        <th class="p-2 text-[10px] text-center ${isOnetime ? 'bg-blue-700' : 'bg-teal-700'} text-white" style="min-width:110px;">
+            ${item.label}
+        </th>
+    `).join('');
+    
+    // প্রতিটি সারি
+    let rowsHTML = students.map((s, i) => {
+        const studentDues = isOnetime 
+            ? (duesData.onetime[s.id]?.items || {}) 
+            : (duesData.monthly[s.id]?.[monthKey]?.items || {});
+        
+        const cells = items.map(item => {
+            const dueAmount = Number(studentDues[item.key] || 0);
+            
+            // ★★★ এককালীন হলে yearMonth ফাঁকা, মাসিক হলে সিলেক্ট করা মাস ★★★
+            const targetYearMonth = isOnetime ? '' : (monthKey || '');
+            const paymentKey = `${s.id}::${isOnetime ? 'onetime' : 'monthly'}::${item.key}::${targetYearMonth}`;
+            
+            const payment = payments[paymentKey];
+            const paidAmount = payment ? Number(payment.amount) : 0;
+            
+            // ★★★ ০.০১ পার্থক্য থাকলেও যেন পরিশোধিত ধরে (রাউন্ডিং ইস্যু এড়াতে) ★★★
+            const isPaid = dueAmount > 0 && (paidAmount + 0.01) >= dueAmount;
+            const isPartial = paidAmount > 0 && !isPaid;
+            
+            let cellClass = 'bg-slate-50 border-slate-300';
+            let dueColor = 'text-slate-600';
+            let inputColor = 'text-slate-400';
+            
+            if (isPaid) { 
+                cellClass = 'bg-emerald-50 border-emerald-500'; 
+                dueColor = 'text-emerald-700';
+            } else if (isPartial) { 
+                cellClass = 'bg-amber-50 border-amber-500'; 
+                dueColor = 'text-amber-700';
+            } else if (dueAmount > 0) { 
+                cellClass = 'bg-red-50 border-red-400'; 
+                dueColor = 'text-red-700';
+            }
+            
+            return `
+                <td class="p-2 border-2 ${cellClass}" data-payment-cell="${s.id}-${item.key}">
+                    <div class="text-center flex flex-col items-center justify-center min-h-[85px]">
+                        <!-- প্রদেয় লেখা (স্পষ্ট) -->
+                        <div class="text-xs font-bold ${dueColor} mb-1.5 whitespace-nowrap">
+                            প্রদেয়: ৳${dueAmount.toLocaleString('bn-BD')}
+                        </div>
+                        
+                        <!-- পরিশোধিত হলে সবুজ লেবেল + লাল ক্রস বাটন, না হলে ইনপুট -->
+                        ${isPaid ? `
+                            <div class="flex items-center justify-center gap-1 w-full">
+                                <div class="flex-1 py-2 bg-emerald-600 text-white text-[11px] font-bold rounded shadow-sm text-center">
+                                    <i class="fa-solid fa-check-circle"></i> ✓ পরিশোধিত
+                                </div>
+                                <!-- ★★★ নতুন: ভুল হলে বাতিল করার লাল ক্রস বাটন ★★★ -->
+                                <button onclick="undoStudentPayment('${payment.id}')" 
+                                        class="py-2 px-2 bg-red-100 hover:bg-red-600 text-red-600 hover:text-white rounded shadow-sm transition"
+                                        title="ভুল হলে বাতিল করুন">
+                                    <i class="fa-solid fa-xmark text-sm"></i>
+                                </button>
+                            </div>
+                            <div class="text-[11px] text-emerald-800 font-bold mt-1">
+                                ৳${paidAmount.toLocaleString('bn-BD')}
+                            </div>
+                        ` : `
+                            <input type="number" 
+                                   value="${paidAmount || ''}"
+                                   placeholder="৳ পরিমাণ"
+                                   onchange="onStudentPaymentAmountChange('${s.id}', '${isOnetime ? 'onetime' : 'monthly'}', '${item.key}', '${targetYearMonth}', this)"
+                                   class="w-full text-center text-xs p-1.5 border-2 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-md font-bold mb-1">
+                            
+                            ${dueAmount > 0 ? `
+                                <button onclick="toggleStudentPayment('${s.id}', '${isOnetime ? 'onetime' : 'monthly'}', '${item.key}', '${targetYearMonth}', ${dueAmount})" 
+                                        class="w-full py-1.5 ${isPartial ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'} text-white text-[11px] font-bold rounded shadow-sm transition">
+                                    ${isPartial ? 'বাকি পরিশোধ' : 'পরিশোধ করুন'}
+                                </button>
+                            ` : '<div class="text-[10px] text-slate-400 italic py-1">প্রদেয় নেই</div>'}
+                        `}
+                    </div>
+                </td>
+            `;
+        }).join('');
+        
+        return `
+            <tr class="border-b hover:bg-slate-50">
+                <td class="p-2 text-xs text-center">${i + 1}</td>
+                <td class="p-2 text-xs font-bold">${s.name || '—'}</td>
+                <td class="p-2 text-xs font-mono text-center">${s.studentId || '—'}</td>
+                <td class="p-2 text-xs text-center font-arabic">${s.className || '—'}</td>
+                ${cells}
+            </tr>
+        `;
+    }).join('');
+    
+    content.innerHTML = `
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-xs" style="min-width:${400 + items.length * 120}px;">
+                <thead>
+                    <tr>
+                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">#</th>
+                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">নাম</th>
+                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">আইডি</th>
+                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">শ্রেণি</th>
+                        ${headers}
+                    </tr>
+                </thead>
+                <tbody>${rowsHTML}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+// ─── পেমেন্ট ডাটা লোড ───
+async function loadStudentDuesPayments(studentIds, type) {
+    const result = {};
+    if (!studentIds || studentIds.length === 0) return result;
+
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS));
+        
+        // ডিবাগ করার জন্য কনসোল লগ
+        console.log(`🔍 Loading payments for type: ${type}. Found ${snap.size} total payments in DB.`);
+
+        snap.forEach(d => {
+            const data = d.data();
+            
+            // ১. টাইপ মিলছে কিনা (onetime / monthly)
+            if (data.type !== type) return;
+            
+            // ২. স্টুডেন্ট আইডি মিলছে কিনা 
+            const isStudentMatch = studentIds.some(id => String(id) === String(data.studentDbId));
+            if (!isStudentMatch) return;
+
+            // ৩. কি (Key) তৈরি 
+            const safeYearMonth = String(data.yearMonth || '').trim();
+            const key = `${data.studentDbId}::${data.type}::${data.itemKey}::${safeYearMonth}`;
+            
+            // ★★★ ফিক্স: এখানে d.id যুক্ত করা হলো, যাতে Undo (ডিলিট) করা যায় ★★★
+            result[key] = { id: d.id, ...data };
+        });
+    } catch (err) { 
+        console.error('❌ loadStudentDuesPayments error:', err); 
+    }
+    
+    // ★★★ ফিক্স: ক্যাশে সংরক্ষণ ★★★
+    window._studentDuesState.paymentsCache = Object.values(result);
+    
+    return result;
+}
+
+// ─── পরিশোধ টগল ───
+window.toggleStudentPayment = async function(studentId, type, itemKey, yearMonth, dueAmount) {
+    if (!confirm('এই পরিশোধ নিশ্চিত করবেন?')) return;
+    
+    try {
+        // ★★★ ফিক্স ১: এখানে query এবং where যুক্ত করা হয়েছে ★★★
+        const { addDoc, collection, serverTimestamp, getDocs, query, where } = window.fbFuncs;
+        
+        const year = window._acctNew.currentYear;
+        if (!year) return showToast('⚠️ অর্থবছর নেই', 'warn');
+        
+        const student = (studentsCache || []).find(s => s.id === studentId);
+        if (!student) return showToast('❌ ছাত্র পাওয়া যায়নি', 'error');
+        
+        // অলরেডি পেমেন্ট আছে কিনা চেক (ডুপ্লিকেট রোধে)
+        const dupQ = query(
+            collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS),
+            where('studentDbId', '==', studentId),
+            where('type', '==', type),
+            where('itemKey', '==', itemKey),
+            where('yearMonth', '==', yearMonth || '')
+        );
+        const dupSnap = await getDocs(dupQ);
+        
+        if (!dupSnap.empty) {
+            showToast('ℹ️ এই বাবদ ইতিমধ্যে পরিশোধ করা হয়েছে', 'info');
+            await loadStudentDuesPaymentTable(); // UI রিফ্রেশ
+            return;
+        }
+        
+        // রসিদ নম্বর তৈরি
+        const paySnap = await getDocs(collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS));
+        const receiptNo = 'SD-' + String(paySnap.size + 1).padStart(4, '0');
+        
+        const currentYM = type === 'onetime' ? '' : yearMonth;
+        const paymentData = {
+            studentDbId: studentId,
+            studentName: student.name || '',
+            studentId: student.studentId || '',
+            className: student.className || '',
+            dept: student.dept || '',
+            type: type,
+            itemKey: itemKey,
+            yearMonth: currentYM,
+            amount: dueAmount,
+            dueAmount: dueAmount,
+            receiptNo: receiptNo,
+            yearId: year.id,
+            yearName: year.name,
+            paidAt: new Date().toISOString().split('T')[0],
+            paidBy: currentUser?.uid || 'system',
+            createdAt: serverTimestamp()
+        };
+        
+        // সেভ (ছাত্রপ্রদেয় পেমেন্ট)
+        await addDoc(collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS), paymentData);
+        
+        // আয়ের খাতায় অটো যোগ
+        await addDoc(collection(window.fbDB, ACCT_FS.INCOME), {
+            yearId: year.id, 
+            yearName: year.name,
+            date: paymentData.paidAt,
+            category: 'ছাত্রদের মাসিক বেতন',
+            donorName: student.name,
+            mobile: student.mobile1 || '',
+            amount: dueAmount,
+            method: 'cash',
+            receiptNo: receiptNo,
+            note: `ছাত্রপ্রদেয়: ${type === 'onetime' ? 'এককালীন' : 'মাসিক'} — ${itemKey}`,
+            createdAt: serverTimestamp(),
+            createdBy: currentUser?.uid || 'system',
+            _fromStudentDues: true
+        });
+        
+        showToast(`✅ ৳${dueAmount} পরিশোধ নিশ্চিত + আয় যোগ`, 'success');
+        
+        // ক্যাশে পেমেন্ট যোগ করে সরাসরি UI আপডেট
+        if (!window._studentDuesState.paymentsCache) {
+            window._studentDuesState.paymentsCache = [];
+        }
+        window._studentDuesState.paymentsCache.push({
+            id: 'temp_' + Date.now(),
+            ...paymentData
+        });
+        
+        // পুরো টেবিল রিলোড (সব সেল আপডেট হবে)
+        await loadStudentDuesPaymentTable();
+        
+    } catch (err) {
+        console.error('toggleStudentPayment:', err);
+        showToast('❌ ' + err.message, 'error');
+    }
+};
+
+window.undoStudentPayment = async function(paymentId) {
+    if (!paymentId) return showToast('⚠️ পেমেন্ট আইডি পাওয়া যায়নি', 'warn');
+    
+    if (!confirm('আপনি কি নিশ্চিত যে এই পরিশোধটি বাতিল করতে চান? এর ফলে আয়ের খাতা থেকেও টাকাটি বাদ যাবে।')) return;
+
+    try {
+        const { deleteDoc, doc, collection, getDocs, query, where, getDoc } = window.fbFuncs;
+        
+        showToast('⏳ বাতিল করা হচ্ছে...', 'info');
+
+        // ★★★ ১. প্রথমে পেমেন্ট ডাটাটি বের করে নিই (রসিদ নং জানার জন্য) ★★★
+        const payRef = doc(window.fbDB, STUDENT_DUES_FS.PAYMENTS, paymentId);
+        const paySnap = await getDoc(payRef);
+        
+        if (!paySnap.exists()) {
+            return showToast('❌ পেমেন্ট রেকর্ডটি পাওয়া যায়নি', 'error');
+        }
+        
+        const payData = paySnap.data();
+        const receiptNo = payData.receiptNo;
+
+        // ★★★ ২. আয়ের খাতা (acctIncome) থেকে রসিদ নম্বর দিয়ে খুঁজে বের করা ★★★
+        const incomeQ = query(
+            collection(window.fbDB, ACCT_FS.INCOME),
+            where('receiptNo', '==', receiptNo),
+            where('_fromStudentDues', '==', true)
+        );
+        const incomeSnap = await getDocs(incomeQ);
+        
+        // ৩. আয়ের রেকর্ডগুলো ডিলিট করা
+        for (const d of incomeSnap.docs) {
+            await deleteDoc(doc(window.fbDB, ACCT_FS.INCOME, d.id));
+        }
+
+        // ৪. সবশেষে পেমেন্ট রেকর্ডটি ডিলিট করা
+        await deleteDoc(payRef);
+
+        showToast('✅ পরিশোধ বাতিল হয়েছে এবং আয় থেকে বাদ দেওয়া হয়েছে', 'success');
+        
+        // ★★★ ৫. UI রিফ্রেশ করা, যাতে "পরিশোধিত" মুছে গিয়ে আবার "পরিশোধ করুন" আসে ★★★
+        await loadStudentDuesPaymentTable();
+        
+    } catch (err) {
+        console.error('undoStudentPayment:', err);
+        showToast('❌ ' + err.message, 'error');
+    }
+};
+
+window.onStudentPaymentAmountChange = function(studentId, type, itemKey, yearMonth, input) {
+    // ম্যানুয়ালি এডিট করা টাকার পরিমাণ সংরক্ষণ করি
+    const amount = parseFloat(input.value) || 0;
+    // এখানে চাইলে আলাদা "ম্যানুয়াল পরিশোধ" এর জন্য একটা বাটন দিতে পারি
+    // আপাতত ইনপুটের মান শুধু UI-তে দেখানোর জন্য
+    if (amount === 0) {
+        input.value = '';
+    }
+};
+// ═══════════════════════════════════════════════════════════════
+// 【 সাব-পেজ ৩: জমা তথ্য 】
+// ═══════════════════════════════════════════════════════════════
+async function renderStudentDuesDeposit(container) {
+    const state = window._studentDuesState;
+    const depts = configData?.departments || [];
+
+    let yearOptions = '<option value="">-- অর্থবছর --</option>';
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, ACCT_FS.YEARS));
+        const years = []; snap.forEach(d => years.push({ id: d.id, ...d.data() }));
+        years.sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || '')));
+        yearOptions = years.map(y => `<option value="${y.id}" ${state.paymentYear === y.id ? 'selected' : ''}>${y.name}</option>`).join('');
+    } catch (err) { console.warn(err); }
+
+    const monthNames = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+    const currentMonth = state.paymentMonth || new Date().toISOString().slice(0, 7);
+    const [cy] = currentMonth.split('-').map(Number);
+    const monthOptions = monthNames.map((m, i) => {
+        const val = `${cy}-${String(i + 1).padStart(2, '0')}`;
+        return `<option value="${val}" ${state.paymentMonth === val ? 'selected' : ''}>${m}</option>`;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+            <h3 class="text-base font-bold text-teal-900 mb-4"><i class="fa-solid fa-check-circle"></i> জমা তথ্য</h3>
+            
+            <div class="bg-slate-50 rounded-lg p-3 mb-3 grid grid-cols-2 md:grid-cols-4 gap-2 border border-slate-200">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">অর্থবছর</label>
+                    <select onchange="_studentDuesState.paymentYear=this.value; openStudentDuesPage('deposit')" class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                        ${yearOptions}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">মাস</label>
+                    <select onchange="_studentDuesState.paymentMonth=this.value; openStudentDuesPage('deposit')" class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                        ${monthOptions}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">বিভাগ</label>
+                    <select onchange="_studentDuesState.paymentDept=this.value; openStudentDuesPage('deposit')" class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                        <option value="">সব বিভাগ</option>
+                        ${depts.map(d => `<option value="${d.key}" ${state.paymentDept === d.key ? 'selected' : ''}>${d.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">শ্রেণি</label>
+                    <select onchange="_studentDuesState.paymentClass=this.value; openStudentDuesPage('deposit')" class="w-full rounded border border-slate-300 p-1.5 text-xs font-arabic">
+                        <option value="">সব শ্রেণি</option>
+                        ${(state.paymentDept ? getClassesForDept(state.paymentDept) : depts.flatMap(d => getClassesForDept(d.key))).map(c => `<option value="${c}" ${state.paymentClass === c ? 'selected' : ''}>${c}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="bg-slate-50 rounded-xl p-2 mb-3 flex gap-1.5 shadow-sm border border-slate-200">
+                <button onclick="_studentDuesState.depositTab='onetime'; openStudentDuesPage('deposit')" class="${state.depositTab === 'onetime' ? 'bg-blue-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-4 py-2 rounded-lg text-xs font-bold transition flex-1">
+                    <i class="fa-solid fa-calendar-plus"></i> এককালীন
+                </button>
+                <button onclick="_studentDuesState.depositTab='monthly'; openStudentDuesPage('deposit')" class="${state.depositTab === 'monthly' ? 'bg-teal-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-4 py-2 rounded-lg text-xs font-bold transition flex-1">
+                    <i class="fa-solid fa-calendar-day"></i> মাসিক
+                </button>
+            </div>
+
+            <div id="student-dues-deposit-content">
+                <div class="text-center py-10"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>
+            </div>
+        </div>
+    `;
+    
+    await loadStudentDuesDepositTable();
+}
+
+async function loadStudentDuesDepositTable() {
+    const content = document.getElementById('student-dues-deposit-content');
+    const state = window._studentDuesState;
+    if (!content) return;
+    
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        
+        // পেমেন্ট লোড
+        const snap = await getDocs(collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS));
+        const payments = [];
+        snap.forEach(d => payments.push({ id: d.id, ...d.data() }));
+        
+        // ফিল্টার
+        let filtered = payments.filter(p => {
+            if (p.type !== state.depositTab) return false;
+            if (state.paymentYear) {
+                if (p.yearId !== state.paymentYear) return false;
+            }
+            if (state.depositTab === 'monthly' && state.paymentMonth) {
+                if (p.yearMonth !== state.paymentMonth) return false;
+            }
+            if (state.paymentDept && p.dept !== state.paymentDept) return false;
+            if (state.paymentClass && p.className !== state.paymentClass) return false;
+            return true;
+        });
+        
+        filtered.sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')));
+        
+        if (filtered.length === 0) {
+            content.innerHTML = `<p class="text-center text-slate-400 py-8">এই ফিল্টারে কোন জমা নেই</p>`;
+            return;
+        }
+        
+        let rowsHTML = filtered.map((p, i) => `
+            <tr class="border-b hover:bg-teal-50">
+                <td class="p-2 text-xs text-center">${i + 1}</td>
+                <td class="p-2 text-xs font-bold">${p.studentName || '—'}</td>
+                <td class="p-2 text-xs font-mono text-center">${p.studentId || '—'}</td>
+                <td class="p-2 text-xs text-center font-arabic">${p.className || '—'}</td>
+                <td class="p-2 text-xs text-center font-mono">${p.receiptNo || '—'}</td>
+                <td class="p-2 text-xs text-center">${p.paidAt || '—'}</td>
+                <td class="p-2 text-xs text-right font-bold text-emerald-700">৳ ${(Number(p.amount)||0).toLocaleString('bn-BD')}</td>
+            </tr>
+        `).join('');
+        
+        content.innerHTML = `
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-xs">
+                    <thead class="bg-teal-700 text-white">
+                        <tr>
+                            <th class="p-2 text-[10px] text-center">#</th>
+                            <th class="p-2 text-[10px]">নাম</th>
+                            <th class="p-2 text-[10px] text-center">আইডি</th>
+                            <th class="p-2 text-[10px] text-center">শ্রেণি</th>
+                            <th class="p-2 text-[10px] text-center">রসিদ</th>
+                            <th class="p-2 text-[10px] text-center">তারিখ</th>
+                            <th class="p-2 text-[10px] text-right">পরিমাণ</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHTML}</tbody>
+                </table>
+            </div>
+            <p class="text-xs text-slate-600 mt-2">মোট জমা: <strong>${filtered.length}</strong>টি রেকর্ড</p>
+        `;
+    } catch (err) {
+        content.innerHTML = `<p class="text-red-500">লোড ব্যর্থ: ${err.message}</p>`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 【 সাব-পেজ ৪: বাকি তথ্য + বার্তা পাঠানো 】
+// ═══════════════════════════════════════════════════════════════
+async function renderStudentDuesPending(container) {
+    const state = window._studentDuesState;
+    const config = window._studentDuesConfig;
+    const depts = configData?.departments || [];
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <h3 class="text-base font-bold text-amber-900"><i class="fa-solid fa-triangle-exclamation"></i> বাকি তথ্য</h3>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="sendDuesReminderToTeachers()" class="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-bold rounded-lg">
+                        <i class="fa-solid fa-chalkboard-user"></i> শিক্ষককে বার্তা
+                    </button>
+                    <button onclick="sendDuesReminderToGuardians()" class="px-3 py-2 bg-violet-100 hover:bg-violet-200 text-violet-700 text-xs font-bold rounded-lg">
+                        <i class="fa-solid fa-user-shield"></i> গার্ডিয়ানকে বার্তা
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-lg p-3 mb-3 grid grid-cols-2 md:grid-cols-4 gap-2 border border-slate-200">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">বিভাগ</label>
+                    <select onchange="_studentDuesState.paymentDept=this.value; _studentDuesState.paymentClass=''; openStudentDuesPage('pending')" class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                        <option value="">সব বিভাগ</option>
+                        ${depts.map(d => `<option value="${d.key}" ${state.paymentDept === d.key ? 'selected' : ''}>${d.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">শ্রেণি</label>
+                    <select onchange="_studentDuesState.paymentClass=this.value; openStudentDuesPage('pending')" class="w-full rounded border border-slate-300 p-1.5 text-xs font-arabic">
+                        <option value="">সব শ্রেণি</option>
+                        ${(state.paymentDept ? getClassesForDept(state.paymentDept) : depts.flatMap(d => getClassesForDept(d.key))).map(c => `<option value="${c}" ${state.paymentClass === c ? 'selected' : ''}>${c}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">মাস</label>
+                    <select onchange="_studentDuesState.paymentMonth=this.value; openStudentDuesPage('pending')" class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                        ${['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'].map((m, i) => {
+                            const [cy] = (state.paymentMonth || new Date().toISOString().slice(0,7)).split('-');
+                            const val = `${cy}-${String(i+1).padStart(2,'0')}`;
+                            return `<option value="${val}" ${state.paymentMonth === val ? 'selected' : ''}>${m}</option>`;
+                        }).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">ধরন</label>
+                    <select onchange="_studentDuesState.pendingTab=this.value; openStudentDuesPage('pending')" class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                        <option value="onetime" ${state.pendingTab === 'onetime' ? 'selected' : ''}>এককালীন</option>
+                        <option value="monthly" ${state.pendingTab === 'monthly' ? 'selected' : ''}>মাসিক</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="student-dues-pending-content">
+                <div class="text-center py-10"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>
+            </div>
+        </div>
+    `;
+
+    await loadStudentDuesPendingTable();
+}
+
+async function loadStudentDuesPendingTable() {
+    const content = document.getElementById('student-dues-pending-content');
+    const state = window._studentDuesState;
+    const config = window._studentDuesConfig;
+    if (!content) return;
+
+    const isOnetime = state.pendingTab === 'onetime';
+    const monthKey = state.paymentMonth;
+    const items = isOnetime ? config.onetime.items : config.monthly.items;
+
+    // ছাত্র ফিল্টার
+    let students = (studentsCache || []).filter(s => {
+        if (state.paymentDept && s.dept !== state.paymentDept) return false;
+        if (state.paymentClass && s.className !== state.paymentClass) return false;
+        return !['বিদায়','বহিষ্কৃত','ভর্তির অনুপযুক্ত'].includes((s.remark?.type || '').trim());
+    });
+
+    if (students.length === 0) {
+        content.innerHTML = `<p class="text-center text-slate-400 py-6">এই ফিল্টারে কোন ছাত্র নেই</p>`;
+        return;
+    }
+
+    // ডাটা লোড
+    const duesData = await loadStudentDuesData(students);
+    const payments = await loadStudentDuesPayments(students.map(s => s.id), isOnetime ? 'onetime' : 'monthly');
+
+    // প্রতিটি ছাত্রের জন্য "কী কী বাকি" বের করি
+    const pendingList = students.map(s => {
+        const studentDues = isOnetime 
+            ? (duesData.onetime[s.id]?.items || {}) 
+            : (duesData.monthly[s.id]?.[monthKey]?.items || {});
+        
+        const pendingItems = [];
+        let totalPending = 0;
+        
+        items.forEach(item => {
+            const due = Number(studentDues[item.key] || 0);
+            if (due <= 0) return;
+            
+            const paymentKey = `${s.id}::${isOnetime ? 'onetime' : 'monthly'}::${item.key}::${isOnetime ? '' : monthKey}`;
+            const paid = payments[paymentKey] ? Number(payments[paymentKey].amount) : 0;
+            const pending = due - paid;
+            
+            if (pending > 0) {
+                pendingItems.push({ label: item.label, pending, due, paid });
+                totalPending += pending;
+            }
+        });
+        
+        return { student: s, pendingItems, totalPending };
+    }).filter(p => p.totalPending > 0);
+
+    pendingList.sort((a, b) => b.totalPending - a.totalPending);
+
+    if (pendingList.length === 0) {
+        content.innerHTML = `<div class="text-center py-8 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <i class="fa-solid fa-check-circle text-4xl text-emerald-500 mb-2"></i>
+            <p class="font-bold text-emerald-800">সবাই পরিশোধ করেছে!</p>
+        </div>`;
+        return;
+    }
+
+    const totalPendingAll = pendingList.reduce((a, p) => a + p.totalPending, 0);
+
+    let rowsHTML = pendingList.map((p, i) => `
+        <tr class="border-b hover:bg-amber-50">
+            <td class="p-2 text-xs text-center">${i + 1}</td>
+            <td class="p-2 text-xs font-bold">${p.student.name}</td>
+            <td class="p-2 text-xs font-mono text-center">${p.student.studentId || '—'}</td>
+            <td class="p-2 text-xs text-center font-arabic">${p.student.className}</td>
+            <td class="p-2 text-xs">${p.pendingItems.map(x => `<span class="badge bg-amber-100 text-amber-800 text-[9px] mr-1 mb-1">${x.label}: ৳${x.pending}</span>`).join('')}</td>
+            <td class="p-2 text-xs text-right font-bold text-amber-700">৳ ${p.totalPending.toLocaleString('bn-BD')}</td>
+        </tr>
+    `).join('');
+
+    content.innerHTML = `
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 text-xs text-amber-900 flex justify-between items-center">
+            <span><i class="fa-solid fa-info-circle"></i> <strong>${pendingList.length}</strong> জনের বাকি</span>
+            <span class="font-bold">মোট: ৳${totalPendingAll.toLocaleString('bn-BD')}</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-xs">
+                <thead class="bg-amber-700 text-white">
+                    <tr>
+                        <th class="p-2 text-[10px]">#</th>
+                        <th class="p-2 text-[10px]">নাম</th>
+                        <th class="p-2 text-[10px] text-center">আইডি</th>
+                        <th class="p-2 text-[10px] text-center">শ্রেণি</th>
+                        <th class="p-2 text-[10px]">কী কী বাকি</th>
+                        <th class="p-2 text-[10px] text-right">মোট বাকি</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHTML}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 【 বার্তা পাঠানো — শিক্ষক ও গার্ডিয়ান 】
+// ═══════════════════════════════════════════════════════════════
+window.sendDuesReminderToTeachers = async function() {
+    if (!confirm('শিক্ষকদের কাছে বাকি তথ্য বার্তা পাঠাবেন?')) return;
+    
+    try {
+        const state = window._studentDuesState;
+        const config = window._studentDuesConfig;
+        const isOnetime = state.pendingTab === 'onetime';
+        const monthKey = state.paymentMonth;
+        const items = isOnetime ? config.onetime.items : config.monthly.items;
+
+        const students = (studentsCache || []).filter(s => {
+            if (state.paymentDept && s.dept !== state.paymentDept) return false;
+            if (state.paymentClass && s.className !== state.paymentClass) return false;
+            return !['বিদায়','বহিষ্কৃত','ভর্তি-অনুপযুক্ত'].includes((s.remark?.type || '').trim());
+        });
+        
+        const duesData = await loadStudentDuesData(students);
+        const payments = await loadStudentDuesPayments(students.map(s => s.id), isOnetime ? 'onetime' : 'monthly');
+        
+        // শিক্ষক-ক্লাস ম্যাপ (কনফিগ থেকে)
+        const assignments = configData?.assignments || {};
+        const teacherMessages = {}; // { teacherName: [ { studentName, pending } ] }
+        
+        students.forEach(s => {
+            const classKey = `${s.dept}::${s.className}`;
+            const assignedTeachers = assignments[classKey] || [];
+            
+            const studentDues = isOnetime 
+                ? (duesData.onetime[s.id]?.items || {}) 
+                : (duesData.monthly[s.id]?.[monthKey]?.items || {});
+            
+            const pendingItems = [];
+            items.forEach(item => {
+                const due = Number(studentDues[item.key] || 0);
+                if (due <= 0) return;
+                const pKey = `${s.id}::${isOnetime ? 'onetime' : 'monthly'}::${item.key}::${isOnetime ? '' : monthKey}`;
+                const paid = payments[pKey] ? Number(payments[pKey].amount) : 0;
+                const pending = due - paid;
+                if (pending > 0) pendingItems.push({ label: item.label, pending });
+            });
+            
+            if (pendingItems.length === 0) return;
+            
+            assignedTeachers.forEach(tName => {
+                if (!teacherMessages[tName]) teacherMessages[tName] = [];
+                teacherMessages[tName].push({
+                    studentName: s.name,
+                    className: s.className,
+                    pendingItems
+                });
+            });
+        });
+        
+        // প্রতিটি শিক্ষকের জন্য adminMessages-এ বার্তা পাঠাই
+        const { addDoc, collection, serverTimestamp } = window.fbFuncs;
+        let sentCount = 0;
+        
+        for (const teacherName of Object.keys(teacherMessages)) {
+            const studentsList = teacherMessages[teacherName];
+            const messageText = `আপনার জামাতের ${studentsList.length} জন ছাত্রের প্রদেয় বাকি আছে:\n\n` +
+                studentsList.map((s, i) => 
+                    `${i+1}. ${s.studentName} (${s.className}): ${s.pendingItems.map(p => `${p.label} ৳${p.pending}`).join(', ')}`
+                ).join('\n');
+            
+            await addDoc(collection(window.fbDB, 'adminMessages'), {
+                message: messageText,
+                recipients: studentsList.map(s => ({ teacherName: teacherName })),
+                sentToCount: 1,
+                sentBy: currentUserData?.name || 'এডমিন',
+                sentByUid: currentUser?.uid || 'unknown',
+                academicYear: getCurrentYear(),
+                _type: 'student_dues_reminder_teacher',
+                createdAt: serverTimestamp()
+            });
+            sentCount++;
+        }
+        
+        showToast(`✅ ${sentCount} জন শিক্ষককে বার্তা পাঠানো হয়েছে`, 'success');
+    } catch (err) {
+        console.error('sendDuesReminderToTeachers:', err);
+        showToast('❌ ' + err.message, 'error');
+    }
+};
+
+window.sendDuesReminderToGuardians = async function() {
+    if (!confirm('গার্ডিয়ানদের কাছে বাকি তথ্য বার্তা পাঠাবেন?')) return;
+    
+    try {
+        const state = window._studentDuesState;
+        const config = window._studentDuesConfig;
+        const isOnetime = state.pendingTab === 'onetime';
+        const monthKey = state.paymentMonth;
+        const items = isOnetime ? config.onetime.items : config.monthly.items;
+
+        const students = (studentsCache || []).filter(s => {
+            if (state.paymentDept && s.dept !== state.paymentDept) return false;
+            if (state.paymentClass && s.className !== state.paymentClass) return false;
+            return !['বিদায়','বহিষ্কৃত','ভর্তি-অনুপযুক্ত'].includes((s.remark?.type || '').trim());
+        });
+        
+        const duesData = await loadStudentDuesData(students);
+        const payments = await loadStudentDuesPayments(students.map(s => s.id), isOnetime ? 'onetime' : 'monthly');
+        
+        const recipients = [];
+        students.forEach(s => {
+            const studentDues = isOnetime 
+                ? (duesData.onetime[s.id]?.items || {}) 
+                : (duesData.monthly[s.id]?.[monthKey]?.items || {});
+            
+            const pendingItems = [];
+            items.forEach(item => {
+                const due = Number(studentDues[item.key] || 0);
+                if (due <= 0) return;
+                const pKey = `${s.id}::${isOnetime ? 'onetime' : 'monthly'}::${item.key}::${isOnetime ? '' : monthKey}`;
+                const paid = payments[pKey] ? Number(payments[pKey].amount) : 0;
+                const pending = due - paid;
+                if (pending > 0) pendingItems.push({ label: item.label, pending });
+            });
+            
+            if (pendingItems.length === 0) return;
+            
+            recipients.push({
+                studentDbId: s.id,
+                studentName: s.name,
+                studentId: s.studentId,
+                className: s.className,
+                dept: s.dept,
+                guardianName: s.guardian || s.fatherName || 'অভিভাবক',
+                guardianMobile: s.mobile1 || '',
+                pendingItems
+            });
+        });
+        
+        if (recipients.length === 0) {
+            showToast('⚠️ কোন বাকি নেই', 'warn');
+            return;
+        }
+        
+        // প্রতিটি গার্ডিয়ানের জন্য মেসেজ তৈরি করে adminMessages-এ পাঠাই
+        const { addDoc, collection, serverTimestamp } = window.fbFuncs;
+        
+        // ★★★ ফিক্স ১: ডাটাবেসে সেভ করার জন্য মেসেজ টেক্সট (সুন্দর ও জেনেরিক) ★★★
+        const messageText = `প্রিয় অভিভাবক,\n\nআসসালামু আলাইকুম।\n\nআপনার সন্তানের নিম্নলিখিত প্রদেয় বাকি আছে:`;
+        
+        await addDoc(collection(window.fbDB, 'adminMessages'), {
+            message: messageText, // ★ এখানে জেনেরিক হেডার যাচ্ছে
+            recipients: recipients.map(r => ({
+                studentDbId: r.studentDbId,
+                studentName: r.studentName,
+                studentId: r.studentId,
+                className: r.className,
+                dept: r.dept,
+                guardianName: r.guardianName,
+                guardianMobile: r.guardianMobile,
+                // ★★★ ফিক্স ২: প্রত্যেক রিসিপিয়েন্টের ভেতরে তার নিজের pendingItems সেভ করা হলো ★★★
+                pendingItems: r.pendingItems 
+            })),
+            sentToCount: recipients.length,
+            sentBy: currentUserData?.name || 'এডমিন',
+            sentByUid: currentUser?.uid || 'unknown',
+            academicYear: getCurrentYear(),
+            _type: 'student_dues_reminder_guardian',
+            createdAt: serverTimestamp()
+        });
+        
+        showToast(`✅ ${recipients.length} জন গার্ডিয়ানকে বার্তা পাঠানো হয়েছে`, 'success');
+    } catch (err) {
+        console.error('sendDuesReminderToGuardians:', err);
+        showToast('❌ ' + err.message, 'error');
+    }
+};
 </script>
 </body>
 </html>
