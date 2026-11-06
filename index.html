@@ -35204,7 +35204,7 @@ window.toggleTeacherAssignment = async function(teacherName, isChecked) {
 // ★★★ এডমিন — ছাত্র ব্যবস্থাপনা ★★★
 // ═══════════════════════════════════════════════════════════════
 
-let _adminStudentFilter = { dept: '', search: '' };
+let _adminStudentFilter = { dept: '', className: '', search: '' };
 
 async function renderAdminStudents() {
     const content = document.getElementById('adm-content');
@@ -35224,6 +35224,7 @@ async function renderAdminStudents() {
     // ★ ফিল্টার apply
     let filtered = studentsCache.slice();
     if (_adminStudentFilter.dept) filtered = filtered.filter(s => s.dept === _adminStudentFilter.dept);
+    if (_adminStudentFilter.className) filtered = filtered.filter(s => s.className === _adminStudentFilter.className);
     if (_adminStudentFilter.search) {
         const q = _adminStudentFilter.search.toLowerCase();
         filtered = filtered.filter(s =>
@@ -35292,7 +35293,7 @@ async function renderAdminStudents() {
 
     content.innerHTML = `
         <div class="space-y-4">
-            <!-- ★ হেডার + অ্যাকশন -->
+            <!-- ★ হেডার + অ্যাকশন (উপরে থাকবে) -->
             <div class="flex items-center justify-between flex-wrap gap-3">
                 <h3 class="text-base font-bold text-slate-800">
                     <i class="fa-solid fa-user-graduate text-emerald-600"></i> ছাত্র ব্যবস্থাপনা
@@ -35324,26 +35325,48 @@ async function renderAdminStudents() {
                 `).join('')}
             </div>
 
-            <!-- ★ ফিল্টার -->
-            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex flex-wrap gap-3 items-center">
-                <div>
-                    <label class="text-[10px] font-bold text-slate-600 block mb-1">বিভাগ:</label>
-                    <select onchange="_adminStudentFilter.dept=this.value; renderAdminStudents();" class="rounded-lg border-slate-300 border p-1.5 text-xs">
-                        <option value="">সব বিভাগ</option>
-                        ${Object.keys(deptNames).map(k => `<option value="${k}" ${_adminStudentFilter.dept === k ? 'selected' : ''}>${deptNames[k]}</option>`).join('')}
-                    </select>
+            <!-- ★★★ ফিল্টার বার (সঠিক জায়গায় এবং রেসপন্সিভ) ★★★ -->
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex flex-col md:flex-row md:items-center gap-3 w-full">
+                <div class="flex flex-wrap gap-3 flex-1">
+                    <div class="flex-1 min-w-[120px]">
+                        <label class="text-[10px] font-bold text-slate-600 block mb-1">বিভাগ:</label>
+                        <select onchange="_adminStudentFilter.dept=this.value; _adminStudentFilter.className=''; renderAdminStudents();" class="w-full rounded-lg border-slate-300 border p-2 text-xs">
+                            <option value="">সব বিভাগ</option>
+                            ${Object.keys(deptNames).map(k => `<option value="${k}" ${_adminStudentFilter.dept === k ? 'selected' : ''}>${deptNames[k]}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[120px]">
+                        <label class="text-[10px] font-bold text-slate-600 block mb-1">শ্রেণি/জামাত:</label>
+                        <select onchange="_adminStudentFilter.className=this.value; renderAdminStudents();" class="w-full rounded-lg border-slate-300 border p-2 text-xs font-arabic">
+                            <option value="">সব শ্রেণি</option>
+                            ${(() => {
+                                let availableClasses = [];
+                                if (_adminStudentFilter.dept) {
+                                    const rawClasses = getClassesForDept(_adminStudentFilter.dept) || [];
+                                    availableClasses = [...new Set(rawClasses)].sort();
+                                } else {
+                                    const allClasses = new Set();
+                                    studentsCache.forEach(s => { if (s.className) allClasses.add(s.className); });
+                                    availableClasses = Array.from(allClasses).sort();
+                                }
+                                return availableClasses.map(c => 
+                                    `<option value="${c}" ${_adminStudentFilter.className === c ? 'selected' : ''}>${c}</option>`
+                                ).join('');
+                            })()}
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[150px]">
+                        <label class="text-[10px] font-bold text-slate-600 block mb-1">খুঁজুন:</label>
+                        <input type="text" value="${_adminStudentFilter.search}" oninput="_adminStudentFilter.search=this.value; renderAdminStudents();" placeholder="🔍 নাম / অভিভাবক / আইডি" class="w-full rounded-lg border-slate-300 border p-2 text-xs">
+                    </div>
                 </div>
-                <div class="flex-1 min-w-[200px]">
-                    <label class="text-[10px] font-bold text-slate-600 block mb-1">খুঁজুন:</label>
-                    <input type="text" value="${_adminStudentFilter.search}" oninput="_adminStudentFilter.search=this.value; renderAdminStudents();" placeholder="🔍 নাম / অভিভাবক / আইডি" class="w-full rounded-lg border-slate-300 border p-1.5 text-xs">
-                </div>
-                <div class="text-xs text-slate-500 self-end pb-1">
-                    <i class="fa-solid fa-info-circle"></i> দেখানো হচ্ছে: <strong>${filtered.length}</strong> জন
+                <div class="text-xs text-slate-500 font-bold whitespace-nowrap pt-2 md:pt-4 self-start md:self-auto">
+                    দেখানো হচ্ছে: <strong>${filtered.length}</strong> জন
                 </div>
             </div>
 
-            <!-- ★ টেবিল -->
-            <div class="border border-slate-200 rounded-lg overflow-hidden">
+            <!-- ★ টেবিল (নিচে থাকবে) -->
+            <div class="border border-slate-200 rounded-lg overflow-hidden mt-4">
                 <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
                     <table class="w-full text-left text-sm border-collapse" style="min-width:1100px;">
                         <thead class="bg-slate-100 sticky top-0">
