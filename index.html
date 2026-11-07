@@ -2115,7 +2115,7 @@ header button {
                 <!-- উপস্থিতি -->
                 <div class="flex flex-col items-center justify-center text-center border-r border-slate-200 px-0.5 md:px-1">
                     <span class="text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1 leading-tight">
-                        <i class="fa-solid fa-user-check text-emerald-500 block md:inline mb-0.5 md:mb-0"></i> উপস্থিতি
+                        <i class="fa-solid fa-user-check text-emerald-500 block md:inline mb-0.5 md:mb-0"></i> ছাত্র উপস্থিতি
                     </span>
                     <span id="stat-present" class="text-[11px] md:text-lg font-bold text-slate-800">—</span>
                 </div>
@@ -2123,7 +2123,7 @@ header button {
                 <!-- বাকি -->
                 <button onclick="switchTab('accounting'); setTimeout(() => openStudentDuesPage('pending'), 300);" class="flex flex-col items-center justify-center text-center px-0.5 md:px-1 group transition-colors">
                     <span class="text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1 leading-tight group-hover:text-rose-600">
-                        <i class="fa-solid fa-triangle-exclamation text-rose-500 block md:inline mb-0.5 md:mb-0"></i> বাকি
+                        <i class="fa-solid fa-triangle-exclamation text-rose-500 block md:inline mb-0.5 md:mb-0"></i> প্রদেয় বাকি
                     </span>
                     <span id="stat-dues" class="text-[11px] md:text-lg font-bold text-slate-800 group-hover:text-rose-700">০ জন</span>
                 </button>
@@ -2590,11 +2590,11 @@ header button {
         </div>
 
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 max-w-5xl mx-auto">
-            <!-- ১. ফি ও পেমেন্ট -->
-            <button onclick="openGuardianPage('fees')" id="guardian-btn-fees"
+            <!-- ১. গার্ডিয়ান লগইন তথ্য -->
+            <button onclick="openGuardianPage('login-info')" id="guardian-btn-login-info"
                     class="guardian-main-btn group bg-gradient-to-br from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-money-bill-wave text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">১. ফি ও পেমেন্ট</span>
+                <i class="fa-solid fa-right-to-bracket text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm md:text-base font-bold leading-tight text-center">১. লগইন তথ্য</span>
             </button>
 
             <!-- ২. যোগাযোগ -->
@@ -16611,6 +16611,17 @@ window.onAdminCalDeptChange = async function() {
 // ═══════════════════ এডিট মডাল খোলা ═══════════════════
 window.openCalEventModal = async function(preselectMonth) {
     _editingCalEventId = null;
+
+    // ★★★ নতুন যোগ করা হলো: সেভ বাটনকে আবার এনাবল করা ★★★
+    const saveBtn = document.getElementById('cem-save-btn');
+    const saveBtnText = document.getElementById('cem-save-btn-text');
+    if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.dataset.saving = 'false';
+    }
+    if (saveBtnText) {
+        saveBtnText.textContent = 'সংরক্ষণ করুন';
+    }
 
     // ★ শিক্ষাবর্ষ ড্রপডাউন — dept অনুযায়ী populate হবে
     //   (dept reset করার পর onCalEventDeptChange কল হবে, সেটাই populate করবে)
@@ -33303,8 +33314,8 @@ window.renderAdminDept = function() {
                 </button>
             </div>
 
-            <div class="border border-slate-200 rounded-lg overflow-hidden">
-                <table class="w-full text-left text-sm border-collapse">
+            <div class="border border-slate-200 rounded-lg overflow-x-auto">
+                <table class="w-full text-left text-sm border-collapse" style="min-width:500px;">
                     <thead class="bg-slate-100">
                         <tr>
                             <th class="p-3 font-bold text-xs">Key</th>
@@ -33955,21 +33966,53 @@ window.saveAdminConfig = async function() {
                         const matched = validClasses.find(c => c.includes(firstWord));
                         if (matched) { cls.nameAr = matched; cls.nameBn = matched; changed = true; }
                     }
+                    
                     if (cls.cells) {
                         Object.keys(cls.cells).forEach(date => {
-                            cls.cells[date] = cls.cells[date].map(bookName => {
-                                const validBooks = (configData?.books || {})[cls.nameAr] || [];
-                                if (!validBooks.includes(bookName)) {
-                                    const parts = String(bookName).split(/[\s()\-]/);
-                                    const matchedB = validBooks.find(b => parts.some(part => part.length > 2 && b.includes(part)));
-                                    if (matchedB) { changed = true; return matchedB; }
+                            const cellData = cls.cells[date];
+                            
+                            // ★★★ ফিক্স: সেল ডাটা অ্যারে নাকি অবজেক্ট (সকাল/বিকাল) চেক করা হচ্ছে ★★★
+                            if (Array.isArray(cellData)) {
+                                // পুরনো ফরম্যাট (শুধু অ্যারে)
+                                cls.cells[date] = cellData.map(bookName => {
+                                    const validBooks = (configData?.books || {})[cls.nameAr] || [];
+                                    if (!validBooks.includes(bookName)) {
+                                        const parts = String(bookName).split(/[\s()\-]/);
+                                        const matchedB = validBooks.find(b => parts.some(part => part.length > 2 && b.includes(part)));
+                                        if (matchedB) { changed = true; return matchedB; }
+                                    }
+                                    return bookName;
+                                });
+                            } else if (cellData && typeof cellData === 'object') {
+                                // নতুন ফরম্যাট (সকাল/বিকাল অবজেক্ট)
+                                if (Array.isArray(cellData.morning)) {
+                                    cellData.morning = cellData.morning.map(bookName => {
+                                        const validBooks = (configData?.books || {})[cls.nameAr] || [];
+                                        if (!validBooks.includes(bookName)) {
+                                            const parts = String(bookName).split(/[\s()\-]/);
+                                            const matchedB = validBooks.find(b => parts.some(part => part.length > 2 && b.includes(part)));
+                                            if (matchedB) { changed = true; return matchedB; }
+                                        }
+                                        return bookName;
+                                    });
                                 }
-                                return bookName;
-                            });
+                                if (Array.isArray(cellData.afternoon)) {
+                                    cellData.afternoon = cellData.afternoon.map(bookName => {
+                                        const validBooks = (configData?.books || {})[cls.nameAr] || [];
+                                        if (!validBooks.includes(bookName)) {
+                                            const parts = String(bookName).split(/[\s()\-]/);
+                                            const matchedB = validBooks.find(b => parts.some(part => part.length > 2 && b.includes(part)));
+                                            if (matchedB) { changed = true; return matchedB; }
+                                        }
+                                        return bookName;
+                                    });
+                                }
+                            }
                         });
                     }
                 });
             }
+            
             if (changed) {
                 await updateDoc(doc(window.fbDB, 'examRoutines', d.id), { classes: data.classes });
             }
@@ -44163,8 +44206,9 @@ async function renderGuardianPageContent() {
     await loadFeePayments();
     
     // ★ পেইজ অনুযায়ী render
-    if (_currentGuardianPage === 'fees') {
-        renderGuardianFeesPage(container);
+    if (_currentGuardianPage === 'login-info') {
+        renderGuardianLoginInfoPage(container);
+        return;
     } else if (_currentGuardianPage === 'communication') {
         renderGuardianCommunicationPage(container);
     } else if (_currentGuardianPage === 'homework') {
@@ -44283,402 +44327,190 @@ function getStudentTotalPaid(studentDbId) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ১. ফি ও পেমেন্ট পেইজ
+// ★★★ গার্ডিয়ান লগইন তথ্য পেজ ★★★
 // ═══════════════════════════════════════════════════════════════
-let _feePageTab = 'structure';
-
-function renderGuardianFeesPage(container) {
-    const tabsHTML = `
-        <div class="bg-slate-50 rounded-xl p-3 mb-4">
-            <div class="flex flex-wrap gap-2">
-                <button onclick="_feePageTab='structure'; renderGuardianPageContent();" 
-                        class="flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition ${_feePageTab === 'structure' ? 'bg-violet-700 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}">
-                    <i class="fa-solid fa-clipboard-list"></i> ধার্যকৃত ফি
-                </button>
-                <button onclick="_feePageTab='payments'; renderGuardianPageContent();" 
-                        class="flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition ${_feePageTab === 'payments' ? 'bg-emerald-700 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}">
-                    <i class="fa-solid fa-money-bill-wave"></i> প্রদানকৃত ফি
-                </button>
-                <button onclick="_feePageTab='due'; renderGuardianPageContent();" 
-                        class="flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold transition ${_feePageTab === 'due' ? 'bg-red-700 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}">
-                    <i class="fa-solid fa-triangle-exclamation"></i> বকেয়া তালিকা
-                </button>
+async function renderGuardianLoginInfoPage(container) {
+    container.innerHTML = `
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h3 class="text-lg font-bold text-emerald-900 flex items-center gap-2">
+                <i class="fa-solid fa-right-to-bracket text-emerald-600"></i>
+                গার্ডিয়ান লগইন তথ্য
+            </h3>
+            <button onclick="renderGuardianLoginInfoPage(document.getElementById('guardian-detail-content'))"
+                    class="px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                <i class="fa-solid fa-rotate"></i> রিফ্রেশ
+            </button>
+        </div>
+        <div id="guardian-login-info-body">
+            <div class="text-center py-12 text-slate-400">
+                <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2"></i>
+                <p class="text-sm">লোড হচ্ছে...</p>
             </div>
         </div>
     `;
-    
-    if (_feePageTab === 'structure') {
-        container.innerHTML = `<h3 class="text-lg font-bold text-slate-800 mb-3"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i> ফি ও পেমেন্ট</h3>` + tabsHTML + buildFeeStructureHTML();
-    } else if (_feePageTab === 'payments') {
-        container.innerHTML = `<h3 class="text-lg font-bold text-slate-800 mb-3"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i> ফি ও পেমেন্ট</h3>` + tabsHTML + buildFeePaymentsHTML();
-    } else {
-        container.innerHTML = `<h3 class="text-lg font-bold text-slate-800 mb-3"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i> ফি ও পেমেন্ট</h3>` + tabsHTML + buildFeeDueHTML();
-    }
-}
 
-// ═══ ধার্যকৃত ফি টেবিল ═══
-function buildFeeStructureHTML() {
-    const depts = configData?.departments || [];
-    let allClasses = [];
-    depts.forEach(d => {
-        const classes = getClassesForDept(d.key);
-        classes.forEach(c => allClasses.push({ dept: d.key, deptName: d.name, className: c }));
-    });
-    
-    let monthlyExpected = 0;
-    let studentCount = 0;
-    
-    allClasses.forEach(({ dept, className }) => {
-        const fee = getClassFeeStructure(dept, className);
-        const count = (studentsCache || []).filter(s => 
-            s.dept === dept && s.className === className && 
-            !['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'].includes((s.remark?.type || '').trim())
-        ).length;
-        studentCount += count;
-        monthlyExpected += ((Number(fee.monthlyFee) || 0) + (Number(fee.monthlyFood) || 0) + (Number(fee.hostelFee) || 0)) * count;
-    });
-    
-    let rowsHTML = '';
-    allClasses.forEach(({ dept, deptName, className }) => {
-        const fee = getClassFeeStructure(dept, className);
-        const count = (studentsCache || []).filter(s => 
-            s.dept === dept && s.className === className &&
-            !['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'].includes((s.remark?.type || '').trim())
-        ).length;
-        const monthly = (Number(fee.monthlyFee) || 0) + (Number(fee.monthlyFood) || 0) + (Number(fee.hostelFee) || 0);
-        
-        rowsHTML += `
-            <tr class="border-b hover:bg-violet-50">
-                <td class="p-2 text-[10px]"><span class="badge bg-violet-100 text-violet-800">${deptName}</span></td>
-                <td class="p-2 text-sm font-arabic font-bold">${className}</td>
-                <td class="p-2 text-center text-xs">${count}</td>
-                <td class="p-2 text-center"><input type="number" value="${fee.admissionFee || 0}" onchange="updateClassFee('${dept}','${className}','admissionFee', this.value)" class="w-20 text-center rounded border border-slate-300 p-1 text-xs"></td>
-                <td class="p-2 text-center"><input type="number" value="${fee.sessionFee || 0}" onchange="updateClassFee('${dept}','${className}','sessionFee', this.value)" class="w-20 text-center rounded border border-slate-300 p-1 text-xs"></td>
-                <td class="p-2 text-center"><input type="number" value="${fee.monthlyFee || 0}" onchange="updateClassFee('${dept}','${className}','monthlyFee', this.value)" class="w-20 text-center rounded border border-slate-300 p-1 text-xs"></td>
-                <td class="p-2 text-center"><input type="number" value="${fee.monthlyFood || 0}" onchange="updateClassFee('${dept}','${className}','monthlyFood', this.value)" class="w-20 text-center rounded border border-slate-300 p-1 text-xs"></td>
-                <td class="p-2 text-center"><input type="number" value="${fee.hostelFee || 0}" onchange="updateClassFee('${dept}','${className}','hostelFee', this.value)" class="w-20 text-center rounded border border-slate-300 p-1 text-xs"></td>
-                <td class="p-2 text-center font-bold text-violet-700 text-xs">${monthly}</td>
-                <td class="p-2 text-center font-bold text-emerald-700 text-xs">${monthly * count}</td>
-            </tr>
-        `;
-    });
-    
-    return `
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
-            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-                <h4 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-clipboard-list text-violet-600"></i> ধার্যকৃত ফি (ক্লাসভিত্তিক)</h4>
-                <button onclick="saveFeeStructure().then(ok => { if(ok){ showToast('✅ ফি সেভ হয়েছে','success'); renderGuardianPageContent(); } })" class="px-4 py-2 bg-violet-700 hover:bg-violet-800 text-white text-xs font-bold rounded-lg shadow">
-                    <i class="fa-solid fa-floppy-disk"></i> সব সেভ করুন
-                </button>
-            </div>
-            
-            <div class="bg-violet-50 border border-violet-200 rounded-lg p-3 mb-3">
-                <p class="text-xs text-violet-900"><i class="fa-solid fa-info-circle"></i> প্রতিটি জামাতের জন্য ফি সেট করুন। এই ফি থেকে প্রদানকৃত ফি ও বকেয়া হিসাব হবে।</p>
-            </div>
-            
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                <div class="bg-violet-100 border border-violet-300 rounded-lg p-3 text-center">
-                    <p class="text-[10px] text-violet-800 font-bold">মোট ছাত্র</p>
-                    <p class="text-2xl font-bold text-violet-900">${studentCount}</p>
-                </div>
-                <div class="bg-emerald-100 border border-emerald-300 rounded-lg p-3 text-center">
-                    <p class="text-[10px] text-emerald-800 font-bold">মাসিক মোট</p>
-                    <p class="text-2xl font-bold text-emerald-900">${monthlyExpected.toLocaleString('bn-BD')}</p>
-                </div>
-                <div class="bg-amber-100 border border-amber-300 rounded-lg p-3 text-center">
-                    <p class="text-[10px] text-amber-800 font-bold">বার্ষিক মোট</p>
-                    <p class="text-2xl font-bold text-amber-900">${(monthlyExpected * 12).toLocaleString('bn-BD')}</p>
-                </div>
-                <div class="bg-blue-100 border border-blue-300 rounded-lg p-3 text-center">
-                    <p class="text-[10px] text-blue-800 font-bold">মোট জামাত</p>
-                    <p class="text-2xl font-bold text-blue-900">${allClasses.length}</p>
-                </div>
-            </div>
-            
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-xs" style="min-width:900px;">
-                    <thead class="bg-violet-700 text-white">
-                        <tr>
-                            <th class="p-2 font-bold text-[10px]">বিভাগ</th>
-                            <th class="p-2 font-bold text-[10px]">জামাত</th>
-                            <th class="p-2 font-bold text-[10px] text-center">ছাত্র</th>
-                            <th class="p-2 font-bold text-[10px] text-center">এডমিশন</th>
-                            <th class="p-2 font-bold text-[10px] text-center">সেশন</th>
-                            <th class="p-2 font-bold text-[10px] text-center">মাসিক বেতন</th>
-                            <th class="p-2 font-bold text-[10px] text-center">খোরাকি</th>
-                            <th class="p-2 font-bold text-[10px] text-center">আবাসন</th>
-                            <th class="p-2 font-bold text-[10px] text-center bg-violet-800">মাসিক/জন</th>
-                            <th class="p-2 font-bold text-[10px] text-center bg-emerald-800">মোট</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rowsHTML || '<tr><td colspan="10" class="p-4 text-center text-slate-400">কোন জামাত নেই</td></tr>'}</tbody>
-                </table>
-            </div>
-        </div>
-    `;
-}
+    const body = document.getElementById('guardian-login-info-body');
 
-window.updateClassFee = function(dept, className, field, value) {
-    const key = dept + '::' + className;
-    if (!_feeStructureCache[key]) {
-        _feeStructureCache[key] = { admissionFee: 0, sessionFee: 0, monthlyFee: 0, monthlyFood: 0, firstMonthFood: 0, hostelFee: 0 };
-    }
-    _feeStructureCache[key][field] = Number(value) || 0;
-};
-
-// ═══ প্রদানকৃত ফি ═══
-let _feePayFilterDept = '';
-let _feePayFilterSearch = '';
-
-function buildFeePaymentsHTML() {
-    let students = (studentsCache || []).filter(s => {
-        if (['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'].includes((s.remark?.type || '').trim())) return false;
-        if (_feePayFilterDept && s.dept !== _feePayFilterDept) return false;
-        if (_feePayFilterSearch) {
-            const q = _feePayFilterSearch.toLowerCase();
-            if (!(s.name || '').toLowerCase().includes(q) && 
-                !(s.guardian || '').toLowerCase().includes(q) &&
-                !(s.studentId || '').toLowerCase().includes(q)) return false;
-        }
-        return true;
-    });
-    
-    let rowsHTML = '';
-    let totalPaid = 0;
-    
-    students.forEach(s => {
-        const paid = getStudentTotalPaid(s.id);
-        const count = _feePaymentsCache.filter(p => p.studentDbId === s.id).length;
-        totalPaid += paid;
-        const fee = getClassFeeStructure(s.dept, s.className);
-        const monthlyDue = (Number(fee.monthlyFee) || 0) + (Number(fee.monthlyFood) || 0) + (Number(fee.hostelFee) || 0);
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, 'guardianLogins'));
         
-        rowsHTML += `
-            <tr class="border-b hover:bg-emerald-50">
-                <td class="p-2 text-xs font-bold">${s.name}</td>
-                <td class="p-2 text-[10px] font-mono">${s.studentId || '-'}</td>
-                <td class="p-2 text-xs font-arabic">${s.className}</td>
-                <td class="p-2 text-center text-xs font-bold text-emerald-700">${paid.toLocaleString('bn-BD')}</td>
-                <td class="p-2 text-center text-xs">${count} বার</td>
-                <td class="p-2 text-center text-xs text-violet-700 font-bold">${monthlyDue}</td>
-                <td class="p-2 text-center">
-                    <button onclick="openFeePaymentModal('${s.id}')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded">
-                        <i class="fa-solid fa-plus"></i> ফি যোগ
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
-    
-    return `
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
-            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-                <h4 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i> প্রদানকৃত ফি</h4>
-                <div class="flex gap-2 flex-wrap">
-                    <select onchange="_feePayFilterDept=this.value; renderGuardianPageContent();" class="rounded-lg border border-slate-300 p-2 text-xs">
-                        <option value="">সব বিভাগ</option>
-                        ${(configData?.departments || []).map(d => `<option value="${d.key}" ${_feePayFilterDept === d.key ? 'selected' : ''}>${d.name}</option>`).join('')}
-                    </select>
-                    <input type="text" value="${_feePayFilterSearch}" placeholder="🔍 নাম/আইডি" oninput="_feePayFilterSearch=this.value; renderGuardianPageContent();" class="rounded-lg border border-slate-300 p-2 text-xs w-40">
-                </div>
-            </div>
+        const logins = [];
+        snap.forEach(d => logins.push({ id: d.id, ...d.data() }));
+        
+        // lastLoginAt দিয়ে sort (নতুন আগে)
+        logins.sort((a, b) => {
+            const ta = a.lastLoginAt?.seconds || 0;
+            const tb = b.lastLoginAt?.seconds || 0;
+            return tb - ta;
+        });
+
+        // পরিসংখ্যান
+        const totalLogins = logins.length;
+        const now = Date.now();
+        const onlineUsers = logins.filter(l => {
+            if (!l.lastLoginAt?.seconds) return false;
+            // শেষ ১০ মিনিটে লগইন করেছে = অনলাইন (আনুমানিক)
+            const lastLogin = l.lastLoginAt.seconds * 1000;
+            return (now - lastLogin) < 10 * 60 * 1000 && l.online !== false;
+        }).length;
+        
+        const todayLogins = logins.filter(l => {
+            if (!l.lastLoginAt?.seconds) return false;
+            const lastLogin = new Date(l.lastLoginAt.seconds * 1000);
+            const today = new Date();
+            return lastLogin.toDateString() === today.toDateString();
+        }).length;
+
+        // ক্লাস অনুযায়ী গ্রুপিং
+        const byClass = {};
+        logins.forEach(l => {
+            const cls = l.className || 'অজানা';
+            if (!byClass[cls]) byClass[cls] = [];
+            byClass[cls].push(l);
+        });
+
+        // টেবিল রো
+        let rowsHTML = logins.map((l, i) => {
+            const lastLogin = l.lastLoginAt?.seconds 
+                ? new Date(l.lastLoginAt.seconds * 1000).toLocaleString('bn-BD')
+                : '—';
+            const lastLogout = l.lastLogoutAt?.seconds
+                ? new Date(l.lastLogoutAt.seconds * 1000).toLocaleString('bn-BD')
+                : '—';
             
-            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-3">
-                <p class="text-xs text-emerald-900"><i class="fa-solid fa-info-circle"></i> মোট <strong>${students.length}</strong> জনের প্রদানকৃত ফি: <strong>${totalPaid.toLocaleString('bn-BD')}</strong> টাকা</p>
-            </div>
+            const isOnline = l.lastLoginAt?.seconds 
+                && (now - l.lastLoginAt.seconds * 1000) < 10 * 60 * 1000
+                && l.online !== false;
             
-            <div class="overflow-x-auto max-h-[600px]">
-                <table class="w-full text-left border-collapse text-xs" style="min-width:800px;">
-                    <thead class="bg-emerald-700 text-white sticky top-0">
-                        <tr>
-                            <th class="p-2 font-bold text-[10px]">ছাত্রের নাম</th>
-                            <th class="p-2 font-bold text-[10px]">আইডি</th>
-                            <th class="p-2 font-bold text-[10px]">জামাত</th>
-                            <th class="p-2 font-bold text-[10px] text-center">মোট প্রদান</th>
-                            <th class="p-2 font-bold text-[10px] text-center">পেমেন্ট সংখ্যা</th>
-                            <th class="p-2 font-bold text-[10px] text-center">মাসিক ধার্য</th>
-                            <th class="p-2 font-bold text-[10px] text-center">অ্যাকশন</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rowsHTML || '<tr><td colspan="7" class="p-4 text-center text-slate-400">কোন ছাত্র নেই</td></tr>'}</tbody>
-                </table>
-            </div>
-        </div>
-    `;
-}
+            const statusBadge = isOnline
+                ? '<span class="badge bg-emerald-100 text-emerald-800 text-[10px] font-bold"><i class="fa-solid fa-circle text-[6px] mr-1"></i> অনলাইন</span>'
+                : l.online === false
+                    ? '<span class="badge bg-slate-100 text-slate-600 text-[10px]">অফলাইন</span>'
+                    : '<span class="badge bg-amber-100 text-amber-800 text-[10px]">সক্রিয় নয়</span>';
+            
+            return `
+                <tr class="border-b hover:bg-emerald-50 transition">
+                    <td class="p-2 text-center text-xs text-slate-500">${i + 1}</td>
+                    <td class="p-2 text-sm font-bold">${l.studentName || '—'}</td>
+                    <td class="p-2 text-xs font-mono text-center">${l.studentId || '—'}</td>
+                    <td class="p-2 text-xs font-arabic text-center">${l.className || '—'}</td>
+                    <td class="p-2 text-xs">${l.guardianName || '—'}</td>
+                    <td class="p-2 text-xs font-mono">${l.mobile || '—'}</td>
+                    <td class="p-2 text-center text-xs">
+                        <span class="badge bg-blue-100 text-blue-800 font-bold text-[10px]">${l.loginCount || 1}</span>
+                    </td>
+                    <td class="p-2 text-center text-[10px] text-slate-600">${lastLogin}</td>
+                    <td class="p-2 text-center">${statusBadge}</td>
+                </tr>
+            `;
+        }).join('');
 
-// ═══ বকেয়া তালিকা ═══
-function buildFeeDueHTML() {
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
-    const monthNames = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
-    
-    let rowsHTML = '';
-    let totalDue = 0;
-    let totalStudents = 0;
-    
-    (studentsCache || []).forEach(s => {
-        if (['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'].includes((s.remark?.type || '').trim())) return;
-        
-        const fee = getClassFeeStructure(s.dept, s.className);
-        const monthlyDue = (Number(fee.monthlyFee) || 0) + (Number(fee.monthlyFood) || 0) + (Number(fee.hostelFee) || 0);
-        if (monthlyDue <= 0) return;
-        
-        const paidThisMonth = _feePaymentsCache.filter(p => 
-            p.studentDbId === s.id && p.month === currentMonth && p.year === currentYear
-        ).reduce((a, p) => a + (Number(p.amount) || 0), 0);
-        
-        const due = monthlyDue - paidThisMonth;
-        if (due > 0) {
-            totalDue += due;
-            totalStudents++;
-            rowsHTML += `
-                <tr class="border-b hover:bg-red-50">
-                    <td class="p-2 text-xs font-bold">${s.name}</td>
-                    <td class="p-2 text-xs font-mono">${s.studentId || '-'}</td>
-                    <td class="p-2 text-xs font-arabic">${s.className}</td>
-                    <td class="p-2 text-xs font-mono">${s.mobile1 || '-'}</td>
-                    <td class="p-2 text-center text-xs text-violet-700">${monthlyDue}</td>
-                    <td class="p-2 text-center text-xs text-emerald-700">${paidThisMonth}</td>
-                    <td class="p-2 text-center text-xs font-bold text-red-700">${due}</td>
-                    <td class="p-2 text-center">
-                        <button onclick="sendDueSMS('${s.id}')" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded">
-                            <i class="fa-solid fa-sms"></i> SMS
-                        </button>
+        if (!rowsHTML) {
+            rowsHTML = `
+                <tr>
+                    <td colspan="9" class="p-12 text-center text-slate-400">
+                        <i class="fa-solid fa-users-slash text-5xl mb-3"></i>
+                        <p class="text-sm font-bold text-slate-600">এখনো কোন গার্ডিয়ান লগইন করেনি</p>
+                        <p class="text-xs mt-1">গার্ডিয়ানরা লগইন করলে এখানে দেখাবে।</p>
                     </td>
                 </tr>
             `;
         }
-    });
-    
-    return `
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
-            <h4 class="text-sm font-bold text-slate-800 mb-3"><i class="fa-solid fa-triangle-exclamation text-red-600"></i> বকেয়া তালিকা — ${monthNames[currentMonth-1]} ${currentYear}</h4>
-            
-            <div class="grid grid-cols-3 gap-3 mb-3">
-                <div class="bg-red-100 border border-red-300 rounded-lg p-3 text-center">
-                    <p class="text-[10px] text-red-800 font-bold">বকেয়া ছাত্র</p>
-                    <p class="text-2xl font-bold text-red-900">${totalStudents}</p>
-                </div>
-                <div class="bg-amber-100 border border-amber-300 rounded-lg p-3 text-center">
-                    <p class="text-[10px] text-amber-800 font-bold">মোট বকেয়া</p>
-                    <p class="text-2xl font-bold text-amber-900">${totalDue.toLocaleString('bn-BD')}</p>
-                </div>
-                <div class="bg-blue-100 border border-blue-300 rounded-lg p-3 text-center">
-                    <p class="text-[10px] text-blue-800 font-bold">এই মাস</p>
-                    <p class="text-2xl font-bold text-blue-900">${monthNames[currentMonth-1]}</p>
-                </div>
-            </div>
-            
-            <div class="overflow-x-auto max-h-[600px]">
-                <table class="w-full text-left border-collapse text-xs" style="min-width:800px;">
-                    <thead class="bg-red-700 text-white sticky top-0">
-                        <tr>
-                            <th class="p-2 font-bold text-[10px]">ছাত্র</th>
-                            <th class="p-2 font-bold text-[10px]">আইডি</th>
-                            <th class="p-2 font-bold text-[10px]">জামাত</th>
-                            <th class="p-2 font-bold text-[10px]">মোবাইল</th>
-                            <th class="p-2 font-bold text-[10px] text-center">ধার্য</th>
-                            <th class="p-2 font-bold text-[10px] text-center">প্রদান</th>
-                            <th class="p-2 font-bold text-[10px] text-center">বাকি</th>
-                            <th class="p-2 font-bold text-[10px] text-center">অ্যাকশন</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rowsHTML || '<tr><td colspan="8" class="p-4 text-center text-slate-400">কোন বকেয়া নেই!</td></tr>'}</tbody>
-                </table>
-            </div>
-        </div>
-    `;
-}
 
-// ═══════════════════════════════════════════════════════════════
-// ফি পেমেন্ট মডাল
-// ═══════════════════════════════════════════════════════════════
-window.openFeePaymentModal = function(studentDbId) {
-    const student = (studentsCache || []).find(s => s.id === studentDbId);
-    if (!student) { showToast('❌ ছাত্র পাওয়া যায়নি', 'error'); return; }
-    
-    const modal = document.createElement('div');
-    modal.id = 'fee-payment-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.8);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
-    modal.innerHTML = `
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white p-4 flex items-center justify-between">
-                <h3 class="text-base font-bold"><i class="fa-solid fa-money-bill-wave"></i> ফি যোগ করুন</h3>
-                <button onclick="document.getElementById('fee-payment-modal').remove()" class="text-white/80 hover:text-white text-2xl">×</button>
-            </div>
-            <div class="p-5 space-y-3">
-                <div class="bg-emerald-50 border border-emerald-200 rounded p-2 text-xs">
-                    <strong>${student.name}</strong> — ${student.className} (${student.studentId || '-'})
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-700 block mb-1">কীসের ফি?</label>
-                    <select id="fpm-type" class="w-full rounded-lg border border-slate-300 p-2 text-sm">
-                        <option value="monthly">মাসিক ফি</option>
-                        <option value="admission">ভর্তি ফি</option>
-                        <option value="session">সেশন ফি</option>
-                        <option value="exam">পরীক্ষার ফি</option>
-                        <option value="other">অন্যান্য</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="text-xs font-bold text-slate-700 block mb-1">মাস</label>
-                        <select id="fpm-month" class="w-full rounded-lg border border-slate-300 p-2 text-sm">
-                            ${['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'].map((m,i) => 
-                                `<option value="${i+1}" ${i+1===new Date().getMonth()+1?'selected':''}>${m}</option>`
-                            ).join('')}
-                        </select>
+        body.innerHTML = `
+            <!-- ★ স্ট্যাটাস কার্ড -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl p-4 text-white shadow-md">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold opacity-90">মোট লগইন</span>
+                        <i class="fa-solid fa-users text-lg opacity-70"></i>
                     </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-700 block mb-1">বছর</label>
-                        <input type="number" id="fpm-year" value="${new Date().getFullYear()}" class="w-full rounded-lg border border-slate-300 p-2 text-sm">
+                    <p class="text-3xl font-bold">${toBanglaNumber(totalLogins)}</p>
+                </div>
+                <div class="bg-gradient-to-br from-teal-500 to-teal-700 rounded-xl p-4 text-white shadow-md">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold opacity-90">অনলাইনে</span>
+                        <i class="fa-solid fa-circle text-lg opacity-70"></i>
                     </div>
+                    <p class="text-3xl font-bold">${toBanglaNumber(onlineUsers)}</p>
                 </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-700 block mb-1">পরিমাণ (টাকা)</label>
-                    <input type="number" id="fpm-amount" class="w-full rounded-lg border border-slate-300 p-2 text-sm font-bold" placeholder="0">
+                <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl p-4 text-white shadow-md">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold opacity-90">আজ লগইন</span>
+                        <i class="fa-solid fa-calendar-day text-lg opacity-70"></i>
+                    </div>
+                    <p class="text-3xl font-bold">${toBanglaNumber(todayLogins)}</p>
                 </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-700 block mb-1">নোট (ঐচ্ছিক)</label>
-                    <input type="text" id="fpm-note" class="w-full rounded-lg border border-slate-300 p-2 text-sm" placeholder="যেমন: bkash payment">
+                <div class="bg-gradient-to-br from-violet-500 to-violet-700 rounded-xl p-4 text-white shadow-md">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold opacity-90">জামাত</span>
+                        <i class="fa-solid fa-layer-group text-lg opacity-70"></i>
+                    </div>
+                    <p class="text-3xl font-bold">${toBanglaNumber(Object.keys(byClass).length)}</p>
                 </div>
             </div>
-            <div class="p-4 border-t bg-slate-50 flex justify-end gap-2">
-                <button onclick="document.getElementById('fee-payment-modal').remove()" class="px-5 py-2 bg-slate-200 text-slate-700 text-sm font-bold rounded-lg">বাতিল</button>
-                <button onclick="saveFeePayment('${studentDbId}')" class="px-5 py-2 bg-emerald-700 text-white text-sm font-bold rounded-lg"><i class="fa-solid fa-save"></i> সংরক্ষণ</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-};
 
-window.saveFeePayment = async function(studentDbId) {
-    const type = document.getElementById('fpm-type').value;
-    const month = parseInt(document.getElementById('fpm-month').value);
-    const year = parseInt(document.getElementById('fpm-year').value);
-    const amount = parseFloat(document.getElementById('fpm-amount').value) || 0;
-    const note = document.getElementById('fpm-note').value.trim();
-    
-    if (amount <= 0) { showToast('⚠️ পরিমাণ দিন', 'warn'); return; }
-    
-    try {
-        const { addDoc, collection, serverTimestamp } = window.fbFuncs;
-        await addDoc(collection(window.fbDB, 'feePayments'), {
-            studentDbId, studentName: (studentsCache.find(s=>s.id===studentDbId)||{}).name || '',
-            type, month, year, amount, note,
-            createdAt: serverTimestamp(),
-            createdBy: currentUser?.uid || 'unknown'
-        });
-        document.getElementById('fee-payment-modal').remove();
-        showToast('✅ ফি যোগ হয়েছে', 'success');
-        await loadFeePayments();
-        renderGuardianPageContent();
+            <!-- ★ তথ্য বার -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 text-xs text-blue-900">
+                <i class="fa-solid fa-info-circle"></i>
+                <strong>নোট:</strong> "অনলাইনে" মানে শেষ ১০ মিনিটে লগইন করেছেন। লগআউট করলে "অফলাইন" হয়ে যাবে।
+            </div>
+
+            <!-- ★ টেবিল -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse" style="min-width:1000px;">
+                        <thead class="bg-emerald-700 text-white">
+                            <tr>
+                                <th class="p-2 text-[10px] text-center w-8">#</th>
+                                <th class="p-2 text-[10px]">ছাত্রের নাম</th>
+                                <th class="p-2 text-[10px] text-center">আইডি</th>
+                                <th class="p-2 text-[10px] text-center">জামাত</th>
+                                <th class="p-2 text-[10px]">অভিভাবক</th>
+                                <th class="p-2 text-[10px]">মোবাইল</th>
+                                <th class="p-2 text-[10px] text-center">লগইন সংখ্যা</th>
+                                <th class="p-2 text-[10px] text-center">সর্বশেষ লগইন</th>
+                                <th class="p-2 text-[10px] text-center">স্ট্যাটাস</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHTML}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
     } catch (err) {
-        console.error('❌ saveFeePayment:', err);
-        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
+        console.error('❌ renderGuardianLoginInfoPage:', err);
+        body.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                <i class="fa-solid fa-triangle-exclamation text-4xl text-red-400 mb-3"></i>
+                <p class="font-bold text-red-800">লোড ব্যর্থ</p>
+                <p class="text-xs text-red-600 mt-1">${err.message}</p>
+            </div>
+        `;
     }
-};
+}
 
 // ═══════════════════════════════════════════════════════════════
 // ২. যোগাযোগ পেইজ (SMS/WhatsApp/কলিং লিস্ট/নোটিশ)
@@ -47672,6 +47504,36 @@ window.admFormSaveStep9 = async function() {
     showToast('✅ ধাপ ৯ সেভ হয়েছে', 'success');
 };
 
+function computeNeedsGhorabaConsent() {
+    const feeStruct = typeof getClassFeeStructure === 'function'
+        ? getClassFeeStructure(_admFormState.dept, _admFormState.data.personal?.nextClass)
+        : {};
+
+    const defaults = {
+        monthlyFood:   Number(feeStruct.monthlyFood) || 0,
+        monthlySalary: Number(feeStruct.monthlyFee)  || 0,
+        hostelFee:     Number(feeStruct.hostelFee)   || 0
+    };
+
+    const inputs = {
+        monthlyFood:   Number(document.getElementById('admF-monthly-food')?.value)   || 0,
+        monthlySalary: Number(document.getElementById('admF-monthly-salary')?.value) || 0,
+        hostelFee:     Number(document.getElementById('admF-monthly-hostel')?.value) || 0
+    };
+
+    const needsGhoraba =
+        (inputs.monthlyFood   < defaults.monthlyFood)   ||
+        (inputs.monthlySalary < defaults.monthlySalary) ||
+        (inputs.hostelFee     < defaults.hostelFee);
+
+    const totalDiscount =
+        Math.max(0, defaults.monthlyFood   - inputs.monthlyFood)   +
+        Math.max(0, defaults.monthlySalary - inputs.monthlySalary) +
+        Math.max(0, defaults.hostelFee     - inputs.hostelFee);
+
+    return { needsGhoraba, totalDiscount };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ★★★ ধাপ ১০: মাসিক প্রদেয় নির্ধারণ ★★★
 // ═══════════════════════════════════════════════════════════════
@@ -47762,10 +47624,6 @@ window.admFormSaveStep10 = async function() {
     
     const ghorabaConsentEl = document.getElementById('admF-ghoraba-consent');
     const ghorabaConsent = ghorabaConsentEl ? ghorabaConsentEl.checked : false;
-
-    if (ghorabaConsentEl && !ghorabaConsent) {
-        return showToast('⚠️ গোরাবা ফান্ডে সম্মতি দিন', 'warn');
-    }
 
     _admFormState.data.monthlyFees = { monthlyFood, monthlySalary, hostelFee, setter };
     _admFormState.monthlyFees = { monthlyFood, monthlySalary, hostelFee };
@@ -50426,8 +50284,17 @@ function renderAdmFormHTML(container) {
         </div>
     `;
 
-    // ধাপ ২ (প্রাথমিক তথ্য) দিয়ে শুরু
-    admFormRenderStep2();
+    // ★★★ আগের ধাপ থেকে শুরু (খসড়া ফরম এডিটের জন্য) ★★★
+    const startStep = _admFormState.currentStep || 2;
+
+    // যদি currentStep 'COMPLETED' বা 12 হয় (এডিট করা যাবে না), তবে ২ থেকে শুরু
+    if (startStep === 'COMPLETED' || startStep > 11 || startStep < 2) {
+        _admFormState.currentStep = 2;
+        admFormRenderStep2();
+    } else {
+        admFormRenderCurrentStep();
+    }
+
     admFormUpdateProgress();
 }
 
@@ -52816,8 +52683,30 @@ window.verifyGuardianLogin = async function() {
             marksCount: Object.keys(_guardianSession.resultMarksObj || {}).length
         });
         // ★★★ নতুন যোগ করুন: ডিভাইসে সেশন সেভ করা ★★★
+        // ★★★ নতুন যোগ করুন: ডিভাইসে সেশন সেভ করা ★★★
         localStorage.setItem('gp_student_id', foundStudent.studentId || foundStudent.id);
         localStorage.setItem('gp_mobile', mobileInput);
+
+        // ★★★ NEW: গার্ডিয়ান লগইন ট্র্যাকিং — Firestore-এ সেভ ★★★
+        try {
+            const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+            const trackKey = String(foundStudent.studentId || foundStudent.id);
+            await setDoc(doc(window.fbDB, 'guardianLogins', trackKey), {
+                studentDbId: foundStudent.id,
+                studentId: foundStudent.studentId || '',
+                studentName: foundStudent.name || '',
+                className: foundStudent.className || '',
+                dept: foundStudent.dept || '',
+                guardianName: foundStudent.guardian || foundStudent.fatherName || '',
+                mobile: mobileInput || '',
+                lastLoginAt: serverTimestamp(),
+                loginCount: (window._guardianLoginCountCache?.[trackKey] || 0) + 1,
+                deviceInfo: navigator.userAgent || '',
+                online: true
+            }, { merge: true });
+        } catch (e) {
+            console.warn('⚠️ guardian login track failed:', e);
+        }
         await loadPublishStatusForGuardian();
         closeGuardianLogin();
         showGuardianPortal();
@@ -52964,6 +52853,7 @@ window.showTeacherPortal = function() {
                     </div>
                 </div>
             </div>
+            
 
             <!-- ★★★ ড্যাশবোর্ড এরিয়া (এখানে আইডি যোগ করা হলো) ★★★ -->
             <div id="tp-dashboard-area" class="max-w-4xl mx-auto px-4 mt-6">
@@ -56759,10 +56649,20 @@ window.showGuardianPortal = function() {
 window.logoutGuardian = function() {
     if (!confirm('লগআউট করতে চান?')) return;
     
-    // ★★★ ১. ব্রাউজারের লোকাল স্টোরেজ থেকে গার্ডিয়ানের ডাটা মুছে ফেলা ★★★
+    // ★ NEW: online: false সেট করি
+    try {
+        const sid = localStorage.getItem('gp_student_id');
+        if (sid && window.fbDB && window.fbFuncs) {
+            const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+            setDoc(doc(window.fbDB, 'guardianLogins', sid), {
+                online: false,
+                lastLogoutAt: serverTimestamp()
+            }, { merge: true });
+        }
+    } catch (e) {}
+    
     localStorage.removeItem('gp_student_id');
     localStorage.removeItem('gp_mobile');
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
     _guardianSession = null;
     
@@ -67841,11 +67741,6 @@ async function openMainLiveEventsPage() {
             <button onclick="switchTab('home')" class="flex items-center gap-2 px-4 py-2 bg-white hover:bg-emerald-50 border-2 border-emerald-600 text-emerald-800 rounded-lg shadow-md font-bold text-sm transition-all">
                 <i class="fa-solid fa-house"></i> <span>হোম</span>
             </button>
-        </div>
-        
-        <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white rounded-xl p-4 shadow-md mb-4">
-            <h2 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-calendar-star"></i> আসন্ন ইভেন্টসমূহ (আগামী ৩ মাস)</h2>
-            <p class="text-xs opacity-90 mt-1">আপনার মাদরাসার সব চলমান ও ভবিষ্যৎ কার্যক্রম</p>
         </div>
         
         <div id="main-live-events-wrap" class="bg-slate-100 p-3 rounded-xl min-h-[300px]">
