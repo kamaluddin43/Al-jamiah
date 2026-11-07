@@ -970,24 +970,49 @@ button,
     border-radius: 0.375rem !important; 
 }
 
-/* হোম পেজের বড় কার্ড বাটনগুলোর উচ্চতা (Height) কমানো হলো */
+/* ═══════════════════════════════════════════════════════════════ */
+/* ★★★ হোম পেজের বাটনগুলো মোবাইলে আরও ছোট বক্স আকারে ★★★ */
+/* ═══════════════════════════════════════════════════════════════ */
 .tab-btn {
-    min-height: 90px !important; /* মোবাইলে আগের ১৩০px এর জায়গায় ৯০px */
+    min-height: 95px !important; /* ডেক্সটপে আগের মতোই থাকবে */
+    padding: 1rem !important; /* ডেক্সটপ প্যাডিং */
 }
 
 @media (min-width: 768px) {
     .tab-btn {
-        min-height: 160px !important; 
+        min-height: 150px !important; 
     }
 }
 
-/* মোবাইল স্ক্রিনে আরও একটু কমপ্যাক্ট করা হলো */
-@media (max-width: 640px) {
-    button, .tab-btn, .btn, .adm-sub-btn {
-        padding: 0.25rem 0.4rem !important;
+/* মোবাইল স্ক্রিনে বাটনগুলো ছোট বক্স আকারে */
+@media (max-width: 767px) {
+    /* বাটনগুলোর সাধারণ প্যাডিং কমানো */
+    button, .tab-btn, .btn, .adm-sub-btn, .exam-sub-btn {
+        padding: 0.25rem 0.3rem !important; 
     }
+    
+    /* হোম পেজের মেইন বাটনগুলোর হাইট ও গ্যাপ ছোট করা */
     .tab-btn {
-        min-height: 85px !important;
+        min-height: 75px !important; /* মোবাইলে বাটন আরও ছোট হবে */
+        padding: 0.5rem 0.25rem !important; 
+        gap: 0.35rem !important; /* আইকন ও লেখার মাঝের গ্যাপ কমানো */
+        border-radius: 0.75rem !important; /* কর্নার একটু কম গোল */
+    }
+    
+    /* বাটনগুলোর ভেতরের আইকন ছোট করা */
+    .tab-btn i {
+        font-size: 1.5rem !important; 
+    }
+    
+    /* বাটনগুলোর ভেতরের লেখা ছোট ও সুন্দর করা */
+    .tab-btn span {
+        font-size: 0.75rem !important; /* text-xs এর সমান */
+        line-height: 1.2 !important;
+    }
+    
+    /* গ্রিডের গ্যাপ কমানো (বাটনগুলো কাছাকাছি আসবে) */
+    #tab-home .grid {
+        gap: 0.5rem !important; 
     }
 }
 
@@ -1026,6 +1051,7 @@ header button {
         min-height: 110px !important;
     }
 }
+
 /* ═══════════════════════════════════════════════════════════════ */
 /* ★★★ ডেক্সটপে সাব-পেজের বাটনগুলোর হাইট ফিক্স (কনসোল টেস্টেড) ★★★ */
 /* ═══════════════════════════════════════════════════════════════ */
@@ -2061,6 +2087,74 @@ header button {
 
 <!-- ═══════════════════ TAB 0: HOME ═══════════════════ -->
 <section id="tab-home" class="tab-content space-y-6">
+    <!-- ★★★ নতুন রেসপন্সিভ স্ট্যাটাস বার (মোবাইলে ৪টি এক লাইনে) ★★★ -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 md:p-4 relative overflow-hidden mb-4">
+        <!-- ব্যাকগ্রাউন্ড ডিজাইন -->
+        <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full z-0"></div>
+        
+        <div class="relative z-10">
+            <!-- ★ মোবাইলে ৪ কলাম (এক লাইনে), ডেক্সটপেও ৪ কলাম -->
+            <div class="grid grid-cols-4 gap-1 md:gap-4">
+                
+                <!-- শিক্ষক -->
+                <button onclick="switchTab('teachers')" class="flex flex-col items-center justify-center text-center border-r border-slate-200 px-0.5 md:px-1 group transition-colors">
+                    <span class="text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1 leading-tight group-hover:text-teal-600">
+                        <i class="fa-solid fa-chalkboard-user text-teal-500 block md:inline mb-0.5 md:mb-0"></i> শিক্ষক
+                    </span>
+                    <span id="stat-teachers" class="text-[11px] md:text-lg font-bold text-slate-800 group-hover:text-teal-700">০ জন</span>
+                </button>
+                
+                <!-- ছাত্র -->
+                <button onclick="switchTab('students')" class="flex flex-col items-center justify-center text-center border-r border-slate-200 px-0.5 md:px-1 group transition-colors">
+                    <span class="text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1 leading-tight group-hover:text-blue-600">
+                        <i class="fa-solid fa-users text-blue-500 block md:inline mb-0.5 md:mb-0"></i> ছাত্র
+                    </span>
+                    <span id="stat-students" class="text-[11px] md:text-lg font-bold text-slate-800 group-hover:text-blue-700">০ জন</span>
+                </button>
+                
+                <!-- উপস্থিতি -->
+                <div class="flex flex-col items-center justify-center text-center border-r border-slate-200 px-0.5 md:px-1">
+                    <span class="text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1 leading-tight">
+                        <i class="fa-solid fa-user-check text-emerald-500 block md:inline mb-0.5 md:mb-0"></i> উপস্থিতি
+                    </span>
+                    <span id="stat-present" class="text-[11px] md:text-lg font-bold text-slate-800">—</span>
+                </div>
+                
+                <!-- বাকি -->
+                <button onclick="switchTab('accounting'); setTimeout(() => openStudentDuesPage('pending'), 300);" class="flex flex-col items-center justify-center text-center px-0.5 md:px-1 group transition-colors">
+                    <span class="text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1 leading-tight group-hover:text-rose-600">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-500 block md:inline mb-0.5 md:mb-0"></i> বাকি
+                    </span>
+                    <span id="stat-dues" class="text-[11px] md:text-lg font-bold text-slate-800 group-hover:text-rose-700">০ জন</span>
+                </button>
+            </div>
+
+            <!-- ২য় লাইন: ব্রেকিং নোটিশ -->
+            <div class="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-slate-200 flex items-center justify-between gap-1 cursor-pointer hover:bg-slate-50 p-1.5 md:p-2 rounded-lg transition-colors" onclick="openMainLiveEventsPage()">
+                
+                <div class="flex items-center gap-1.5 overflow-hidden w-full">
+                    <!-- জরুরি নোটিশ ব্যাজ -->
+                    <span class="bg-red-100 text-red-600 text-[8px] md:text-[10px] font-bold px-1.5 md:px-2 py-0.5 rounded-md whitespace-nowrap flex-shrink-0">
+                        <i class="fa-solid fa-bullhorn"></i> জরুরি নোটিশ
+                    </span>
+                    
+                    <!-- ইভেন্টের নাম ও টাইমার -->
+                    <div class="flex items-center gap-1.5 overflow-hidden w-full">
+                        <span id="stat-live-notice" class="text-[10px] md:text-xs font-semibold text-slate-700 truncate whitespace-nowrap">
+                            কোনো চলমান নোটিশ নেই...
+                        </span>
+                        <!-- ★★★ টাইমার এখানে বসবে (ইভেন্টের ঠিক পরে) ★★★ -->
+                        <span id="stat-live-countdown" class="text-[9px] md:text-[10px] text-red-600 font-bold whitespace-nowrap flex-shrink-0"></span>
+                    </div>
+                </div>
+
+                <!-- বিস্তারিত বাটন -->
+                <span class="text-[8px] md:text-[10px] text-indigo-600 font-bold whitespace-nowrap flex-shrink-0 ml-1">
+                    বিস্তারিত <i class="fa-solid fa-chevron-right"></i>
+                </span>
+            </div>
+        </div>
+    </div>
     <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-10">
         <!-- ★ ১১টা বাটনের গ্রিড — ডেক্সটপে ৪+৪+৩, মোবাইলে ২×৬ -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 max-w-5xl mx-auto">
@@ -32939,6 +33033,13 @@ function showApp() {
     // ★★★ হোম পেইজ দেখাই (ডিফল্ট) ★★★
     setTimeout(() => switchTab('home'), 100);
 
+    // স্ট্যাটাস বার লোড করি
+    setTimeout(() => {
+        if (typeof updateHomeStatusBar === 'function') {
+            updateHomeStatusBar();
+        }
+    }, 1500); 
+
     // ★★★ নতুন যোগ করা লোডিং লজিক (এটি চেক করুন) ★★★
     setTimeout(async () => {
         if (!window.fbDB) return;
@@ -62276,9 +62377,6 @@ const ACCT_FS = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 【 মূল মেনু রেন্ডার — ৬টি সাব-মেনু বাটন 】
-// ═══════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════
 // 【 মূল মেনু রেন্ডার — ৭টি সাব-মেনু (ছাত্রপ্রদেয় যোগ) 】
 // ═══════════════════════════════════════════════════════════════
 window.renderAccountingMainMenu = function() {
@@ -62295,13 +62393,13 @@ window.renderAccountingMainMenu = function() {
 
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 max-w-5xl mx-auto">
             ${[
-                { page:'budget',       label:'১. বাজেট',              icon:'fa-clipboard-list',      color:'indigo' },
-                { page:'income',       label:'২. আয়',                  icon:'fa-arrow-down',          color:'emerald' },
-                { page:'expense',      label:'৩. ব্যয়',                 icon:'fa-arrow-up',            color:'rose' },
-                { page:'monthly',      label:'৪. মাসিক রিপোর্ট',       icon:'fa-calendar',            color:'teal' },
-                { page:'annual',       label:'৫. বার্ষিক রিপোর্ট',     icon:'fa-chart-line',          color:'amber' },
-                { page:'donor',        label:'৬. দাতা তালিকা',         icon:'fa-hand-holding-heart',  color:'pink' },
-                { page:'studentdues',  label:'৭. ছাত্রপ্রদেয়',          icon:'fa-user-graduate',       color:'violet' }
+                { page:'budget',       label:' বাজেট',              icon:'fa-clipboard-list',      color:'indigo' },
+                { page:'studentdues',  label:' ছাত্রপ্রদেয়',          icon:'fa-user-graduate',       color:'violet' },
+                { page:'income',       label:' আয়',                  icon:'fa-arrow-down',          color:'emerald' },
+                { page:'expense',      label:' ব্যয়',                 icon:'fa-arrow-up',            color:'rose' },
+                { page:'monthly',      label:' মাসিক রিপোর্ট',       icon:'fa-calendar',            color:'teal' },
+                { page:'annual',       label:' বার্ষিক রিপোর্ট',     icon:'fa-chart-line',          color:'amber' },
+                { page:'donor',        label:' দাতা তালিকা',         icon:'fa-hand-holding-heart',  color:'pink' }
             ].map(b => `
                 <button onclick="${b.page === 'studentdues' ? "openStudentDuesPage('')" : "openAcctPageNew('" + b.page + "')"}" class="group bg-gradient-to-br from-${b.color}-500 to-${b.color}-700 hover:from-${b.color}-600 hover:to-${b.color}-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[140px] md:min-h-[170px]">
                     <i class="fa-solid ${b.icon} text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
@@ -64609,15 +64707,26 @@ window.deleteAcctAccount = async function(id) {
 // 【 acctBackToMainMenu ওভাররাইড 】
 // ═══════════════════════════════════════════════════════════════
 window.acctBackToMainMenu = function() {
+    // ★★★ নতুন ফিক্স: চেক করা ইউজার ছাত্রপ্রদেয় পেজে আছে কি না ★★★
+    if (window._studentDuesState && window._studentDuesState.subPage) {
+        // যদি সাব-পেজে থাকে (info, payment, deposit, pending) তবে সরাসরি ছাত্রপ্রদেয় মেনুতে ফেরত যাবে
+        openStudentDuesPage('');
+        return; 
+    }
+
+    // অন্যথায়, আগের মতো হিসাব বিভাগের মূল মেনুতে ফিরে যাবে
     const mainMenu = document.getElementById('acct-main-menu');
     const content = document.getElementById('acct-content');
     const backBtn = document.getElementById('acct-back-btn');
+    
     if (mainMenu) mainMenu.classList.remove('hidden');
     if (content) content.classList.add('hidden');
-    if (backBtn) { backBtn.classList.add('hidden'); backBtn.classList.remove('flex'); }
+    if (backBtn) { 
+        backBtn.classList.add('hidden'); 
+        backBtn.classList.remove('flex'); 
+    }
     renderAccountingMainMenu();
 };
-
 console.log('✅ পূর্ণাঙ্গ হিসাব ব্যবস্থাপনা (৬-মডিউল) লোড হয়েছে');
 // ═══════════════════════════════════════════════════════════════
 // ★★★ হিসাব বিভাগ — পর্ব ২: বাকি সব ফিচার ★★★
@@ -65652,46 +65761,6 @@ window.openAcctTransfers = async function() {
         container.innerHTML = `<p class="text-center text-red-500 py-6">${err.message}</p>`;
     }
 };
-
-// ═══════════════════════════════════════════════════════════════
-// 【 ১১. মূল মেনুতে নতুন বাটন যোগ 】
-// ═══════════════════════════════════════════════════════════════
-(function extendAccountingMenu() {
-    const origRender = window.renderAccountingMainMenu;
-    window.renderAccountingMainMenu = function() {
-        if (typeof origRender === 'function') origRender();
-        
-        // বাড়তি বাটন যোগ
-        const container = document.getElementById('acct-main-menu');
-        if (!container) return;
-        
-        const extras = container.querySelector('.mt-6');
-        if (extras && !extras.querySelector('[data-new-btns]')) {
-            extras.insertAdjacentHTML('beforeend', `
-                <div data-new-btns class="contents">
-                    <button onclick="openAcctBalanceReport()" class="px-4 py-2 bg-cyan-100 hover:bg-cyan-200 text-cyan-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
-                        <i class="fa-solid fa-scale-balanced"></i> ব্যালেন্স
-                    </button>
-                    <button onclick="openAcctCashbook()" class="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
-                        <i class="fa-solid fa-book"></i> ক্যাশ বুক
-                    </button>
-                    <button onclick="openAcctTransfers()" class="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
-                        <i class="fa-solid fa-right-left"></i> ট্রান্সফার
-                    </button>
-                    <button onclick="openAcctFundReport()" class="px-4 py-2 bg-pink-100 hover:bg-pink-200 text-pink-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
-                        <i class="fa-solid fa-hand-holding-heart"></i> ফান্ড
-                    </button>
-                    <button onclick="openAcctDues()" class="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
-                        <i class="fa-solid fa-triangle-exclamation"></i> বকেয়া
-                    </button>
-                    <button onclick="openAcctAuditLog()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
-                        <i class="fa-solid fa-clipboard-list"></i> অডিট
-                    </button>
-                </div>
-            `);
-        }
-    };
-})();
 
 // ═══════════════════════════════════════════════════════════════
 // 【 ১২. আয়/ব্যয় লিস্টে প্রিন্ট বাটন যোগ (table-এ) 】
@@ -67160,6 +67229,10 @@ async function loadStudentDuesPendingTable() {
 
     const totalPendingAll = pendingList.reduce((a, p) => a + p.totalPending, 0);
 
+    // ★★★ নতুন যোগ: স্ট্যাটাস বার আপডেট করার জন্য এই লাইনটি যোগ করুন ★★★
+    const elDues = document.getElementById('stat-dues');
+    if (elDues) elDues.textContent = toBanglaNumber(pendingList.length) + ' জন';
+
     let rowsHTML = pendingList.map((p, i) => `
         <tr class="border-b hover:bg-amber-50">
             <td class="p-2 text-xs text-center">${i + 1}</td>
@@ -67368,6 +67441,344 @@ window.sendDuesReminderToGuardians = async function() {
         showToast('❌ ' + err.message, 'error');
     }
 };
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ কমন ফাংশন — একই হিসাব সব জায়গায় ব্যবহার হবে ★★★
+// ═══════════════════════════════════════════════════════════════
+async function calculateMonthlyDues() {
+    // ছাত্র ডাটা লোড
+    if (!studentsCache || studentsCache.length === 0) {
+        if (typeof loadStudentsFromFirestore === 'function') await loadStudentsFromFirestore();
+    }
+    if (typeof window._studentDuesConfig === 'undefined' || !window._studentDuesConfig.monthly) {
+        if (typeof loadStudentDuesConfig === 'function') await loadStudentDuesConfig();
+    }
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const { collection, getDocs, query, where } = window.fbFuncs;
+
+    // এই মাসের প্রদেয়
+    const duesSnap = await getDocs(query(
+        collection(window.fbDB, STUDENT_DUES_FS.MONTHLY),
+        where('yearMonth', '==', currentMonth)
+    ));
+    const duesMap = {};
+    duesSnap.forEach(d => {
+        const data = d.data();
+        duesMap[data.studentDbId] = data.items || {};
+    });
+
+    // এই মাসের পরিশোধ
+    const paymentSnap = await getDocs(query(
+        collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS),
+        where('type', '==', 'monthly'),
+        where('yearMonth', '==', currentMonth)
+    ));
+    const paidMap = {};
+    paymentSnap.forEach(d => {
+        const data = d.data();
+        if (!paidMap[data.studentDbId]) paidMap[data.studentDbId] = {};
+        paidMap[data.studentDbId][data.itemKey] = 
+            (paidMap[data.studentDbId][data.itemKey] || 0) + Number(data.amount || 0);
+    });
+
+    const items = window._studentDuesConfig.monthly.items;
+    const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+    const activeStudents = (studentsCache || []).filter(s => 
+        !excludedRemarks.includes((s.remark?.type || '').trim())
+    );
+
+    let totalDue = 0;
+    let dueStudents = [];
+    let totalOverpaid = 0;
+
+    activeStudents.forEach(s => {
+        let studentDues = duesMap[s.id];
+        if (!studentDues || Object.keys(studentDues).length === 0) {
+            // ★★★ ফিক্স: ডাটাবেসে না থাকলে ছাত্র ডাটা থেকে অটো ★★★
+            studentDues = {
+                food: Number(s.monthlyFood) || 0,
+                salary: Number(s.monthlySalary) || 0,
+                hostel: Number(s.hostelFee) || 0,
+                electricity: 0,
+                iron: 0
+            };
+        }
+
+        const studentPaid = paidMap[s.id] || {};
+        let monthlyDue = 0, paidThisMonth = 0;
+
+        items.forEach(item => {
+            monthlyDue += Number(studentDues[item.key] || 0);
+            paidThisMonth += Number(studentPaid[item.key] || 0);
+        });
+
+        if (monthlyDue === 0) return;
+
+        const pending = monthlyDue - paidThisMonth;
+        if (pending > 0) {
+            totalDue += pending;
+            dueStudents.push({ student: s, due: pending, paidThisMonth, monthlyDue });
+        } else if (pending < 0) {
+            totalOverpaid += Math.abs(pending);
+        }
+    });
+
+    dueStudents.sort((a, b) => b.due - a.due);
+    return { dueStudents, totalDue, totalOverpaid, currentMonth };
+}
+
+// ★★★ স্ট্যাটাস বার আপডেট করার ফাংশন ★★★
+async function updateHomeStatusBar() {
+    console.log('📊 updateHomeStatusBar শুরু...');
+
+    try {
+        // ═══════════════════════════════════════════════════════
+        // ১. ছাত্র ডাটা লোড নিশ্চিত করি
+        // ═══════════════════════════════════════════════════════
+        if (typeof studentsCache === 'undefined' || !studentsCache || studentsCache.length === 0) {
+            if (typeof loadStudentsFromFirestore === 'function') {
+                await loadStudentsFromFirestore();
+            }
+        }
+        
+        let retries = 0;
+        while ((!studentsCache || studentsCache.length === 0) && retries < 10) {
+            await new Promise(r => setTimeout(r, 300));
+            retries++;
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // ২. শিক্ষক সংখ্যা
+        // ═══════════════════════════════════════════════════════
+        const totalTeachers = (configData?.teachers || []).filter(t => !t.remark?.type).length;
+        const elTeachers = document.getElementById('stat-teachers');
+        if (elTeachers) elTeachers.textContent = toBanglaNumber(totalTeachers) + ' জন';
+
+        // ═══════════════════════════════════════════════════════
+        // ৩. ছাত্র সংখ্যা
+        // ═══════════════════════════════════════════════════════
+        const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+        const activeStudents = (studentsCache || []).filter(s => 
+            !excludedRemarks.includes((s.remark?.type || '').trim())
+        );
+        const elStudents = document.getElementById('stat-students');
+        if (elStudents) elStudents.textContent = toBanglaNumber(activeStudents.length) + ' জন';
+
+        // ═══════════════════════════════════════════════════════
+        // ৪. ★★★ মাসিক বাকি — বকেয়া তালিকার ফাংশন দিয়েই হিসাব ★★★
+        // ═══════════════════════════════════════════════════════
+        let dueCount = 0;
+        try {
+            if (typeof calculateMonthlyDues === 'function') {
+                const result = await calculateMonthlyDues();
+                dueCount = result.dueStudents.length;
+                console.log(`📊 স্ট্যাটাস বার বাকি: ${dueCount} জন`);
+            } else {
+                console.warn('⚠️ calculateMonthlyDues ফাংশন নেই');
+            }
+        } catch (e) {
+            console.error('❌ calculateMonthlyDues error:', e);
+        }
+
+        const elDues = document.getElementById('stat-dues');
+        if (elDues) elDues.textContent = toBanglaNumber(dueCount) + ' জন';
+
+        // ═══════════════════════════════════════════════════════
+        // ৫. চলমান নোটিশ (লাইভ কাউন্টডাউন সহ)
+        // ═══════════════════════════════════════════════════════
+        if (window.fbDB && window.fbFuncs) {
+            try {
+                const { doc, getDoc } = window.fbFuncs;
+                const snap = await getDoc(doc(window.fbDB, 'calendars', 'main'));
+                if (snap.exists()) {
+                    const events = snap.data().events || [];
+                    
+                    const convertToEng = (str) => {
+                        if (!str) return '';
+                        const map = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9','٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9' };
+                        return String(str).replace(/[০-৯٠-٩]/g, d => map[d] || d);
+                    };
+                    
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    const HIJRI_REF_DEFAULTS = {
+                        '2026-2027': { shawwal: '2026-03-21', zilqad: '2026-04-20', zilhajj: '2026-05-19', muharram: '2026-06-17', safar: '2026-07-16', rabiul_awwal: '2026-08-15', rabiul_akhir: '2026-09-14', jumadal_ula: '2026-10-13', jumadal_akhirah: '2026-11-12', rajab: '2026-12-11', shaban: '2027-01-10', ramadan: '2027-02-08' },
+                        '2027-2028': { shawwal: '2027-03-10', zilqad: '2027-04-09', zilhajj: '2027-05-08', muharram: '2027-06-06', safar: '2027-07-05', rabiul_awwal: '2027-08-04', rabiul_akhir: '2027-09-02', jumadal_ula: '2027-10-02', jumadal_akhirah: '2027-10-31', rajab: '2027-11-30', shaban: '2027-12-29', ramadan: '2028-01-28' }
+                    };
+                    const cleanSession = String(settings.year || '').replace(/\s*\(.*?\)\s*/g, '').trim();
+
+                    // ইভেন্টের শুরু ও শেষ তারিখ বের করার হেল্পার
+                    const parseEventDates = (e) => {
+                        let startDate = null;
+                        let endDate = null;
+                        
+                        // গ্রেগরিয়ান থেকে চেষ্টা
+                        if (e.gregorianDate) {
+                            const gStr = convertToEng(e.gregorianDate).replace(/,/g, '').trim();
+                            // ধরন ১: "৫-১০ জানুয়ারি ২০২৬" বা "৫ জানুয়ারি ২০২৬"
+                            const m = gStr.match(/(\d+)\s*[-–]?\s*(\d+)?\s*([a-zA-Z\u0980-\u09FF]+)\s*(\d{4})/);
+                            if (m) {
+                                const engMonths = { january:0, february:1, march:2, april:3, may:4, june:5, july:6, august:7, september:8, october:9, november:10, december:11 };
+                                const bnMonths = { 'জানুয়ারি':0, 'ফেব্রুয়ারি':1, 'মার্চ':2, 'এপ্রিল':3, 'মে':4, 'জুন':5, 'জুলাই':6, 'আগস্ট':7, 'সেপ্টেম্বর':8, 'অক্টোবর':9, 'নভেম্বর':10, 'ডিসেম্বর':11 };
+                                const day1 = parseInt(m[1]);
+                                const day2 = m[2] ? parseInt(m[2]) : day1;
+                                const mName = m[3].toLowerCase();
+                                const yr = parseInt(m[4]);
+                                const mIdx = engMonths[mName] !== undefined ? engMonths[mName] : bnMonths[mName];
+                                if (mIdx !== undefined) {
+                                    startDate = new Date(yr, mIdx, day1);
+                                    endDate = new Date(yr, mIdx, day2);
+                                }
+                            }
+                        }
+                        
+                        // হিজরি থেকে চেষ্টা (যদি গ্রেগ না পাওয়া যায়)
+                        if (!startDate && e.hijriMonth && e.hijriDate) {
+                            const yearDefaults = HIJRI_REF_DEFAULTS[cleanSession] || HIJRI_REF_DEFAULTS['2026-2027'];
+                            if (yearDefaults[e.hijriMonth]) {
+                                const matches = convertToEng(e.hijriDate).match(/(\d+)\s*[-–]?\s*(\d+)?/);
+                                if (matches) {
+                                    const day1 = parseInt(matches[1]);
+                                    const day2 = matches[2] ? parseInt(matches[2]) : day1;
+                                    const monthStart = new Date(yearDefaults[e.hijriMonth] + 'T00:00:00');
+                                    if (!isNaN(monthStart.getTime())) {
+                                        startDate = new Date(monthStart);
+                                        startDate.setDate(monthStart.getDate() + (day1 - 1));
+                                        endDate = new Date(monthStart);
+                                        endDate.setDate(monthStart.getDate() + (day2 - 1));
+                                    }
+                                }
+                            }
+                        }
+                        return { startDate, endDate };
+                    };
+
+                    // চলমান ইভেন্ট খুঁজি (যার শেষ তারিখ আজ বা আজকের পরে)
+                    let runningEvents = [];
+                    events.forEach(e => {
+                        const { startDate, endDate } = parseEventDates(e);
+                        if (startDate && endDate) {
+                            // চলমান = শেষ তারিখ আজকের সমান বা বড়
+                            if (endDate >= today) {
+                                runningEvents.push({ ...e, _startDate: startDate, _endDate: endDate });
+                            }
+                        }
+                    });
+
+                    // সবচেয়ে কাছের (বা চলমান) ইভেন্ট বের করি
+                    runningEvents.sort((a, b) => a._endDate - b._endDate);
+
+                    const elNotice = document.getElementById('stat-live-notice');
+                    const elCountdown = document.getElementById('stat-live-countdown'); // নতুন টাইমার স্প্যান
+
+                    // পুরনো টাইমার বন্ধ করি (যদি থাকে)
+                    if (window._liveNoticeTimer) clearInterval(window._liveNoticeTimer);
+
+                    if (runningEvents.length > 0) {
+                        const activeEv = runningEvents[0]; // সবচেয়ে কাছেরটি
+                        if (elNotice) elNotice.textContent = activeEv.title;
+                        
+                        const updateCountdown = () => {
+                            if (!elCountdown) return;
+                            
+                            const now = new Date();
+                            const target = new Date(activeEv._endDate);
+                            target.setHours(23, 59, 59, 999);
+                            
+                            const diff = target - now;
+                            
+                            if (diff <= 0) {
+                                elCountdown.innerHTML = `<span class="text-red-600 font-bold">শেষ</span>`;
+                                if (window._liveNoticeTimer) clearInterval(window._liveNoticeTimer);
+                                return;
+                            }
+                            
+                            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                            const secs = Math.floor((diff % (1000 * 60)) / 1000);
+                            
+                            // ★★★ ফরম্যাট: ৬দিন ১৭ঘ. ৩০মি. ২০সে. ★★★
+                            let timeStr = '';
+                            if (days > 0) timeStr += `${toBanglaNumber(days)}দিন `;
+                            if (hours > 0 || days > 0) timeStr += `${toBanglaNumber(hours)}ঘ. `;
+                            timeStr += `${toBanglaNumber(mins)}মি. `;
+                            timeStr += `${toBanglaNumber(secs)}সে.`;
+                            
+                            elCountdown.innerHTML = `(বাকি: ${timeStr})`; // ব্র্যাকেটে দেখালে আরও সুন্দর লাগবে
+                        };
+
+                        // টাইমার চালু করি
+                        updateCountdown();
+                        window._liveNoticeTimer = setInterval(updateCountdown, 1000);
+
+                    } else {
+                        if (elNotice) elNotice.textContent = 'বর্তমানে কোনো চলমান ইভেন্ট নেই';
+                        if (elCountdown) elCountdown.innerHTML = '';
+                    }
+                }
+            } catch (e) {
+                console.warn('notice load:', e);
+            }
+        }
+
+        console.log('✅ updateHomeStatusBar সম্পন্ন');
+
+    } catch (err) {
+        console.error('❌ Status bar load error:', err);
+        const elDues = document.getElementById('stat-dues');
+        if (elDues) elDues.textContent = 'ত্রুটি';
+    }
+}
+
+// ★★★ লাইভ নোটিশ পেজ (৩ মাসের ইভেন্ট) ★★★
+async function openMainLiveEventsPage() {
+    // মূল অ্যাপ লুকিয়ে পোর্টালের মতো একটা পেজ ওপেন করব
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    
+    // আমরা temporary ভাবে একটা ডিভ ব্যবহার করব
+    let livePage = document.getElementById('main-live-events-page');
+    if (!livePage) {
+        livePage = document.createElement('section');
+        livePage.id = 'main-live-events-page';
+        livePage.className = 'tab-content space-y-4';
+        document.querySelector('main').appendChild(livePage);
+    }
+    
+    livePage.classList.remove('hidden');
+    
+    livePage.innerHTML = `
+        <div class="sticky top-16 md:top-20 z-30 flex justify-start gap-2 flex-wrap mb-4">
+            <button onclick="switchTab('home')" class="flex items-center gap-2 px-4 py-2 bg-white hover:bg-emerald-50 border-2 border-emerald-600 text-emerald-800 rounded-lg shadow-md font-bold text-sm transition-all">
+                <i class="fa-solid fa-house"></i> <span>হোম</span>
+            </button>
+        </div>
+        
+        <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white rounded-xl p-4 shadow-md mb-4">
+            <h2 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-calendar-star"></i> আসন্ন ইভেন্টসমূহ (আগামী ৩ মাস)</h2>
+            <p class="text-xs opacity-90 mt-1">আপনার মাদরাসার সব চলমান ও ভবিষ্যৎ কার্যক্রম</p>
+        </div>
+        
+        <div id="main-live-events-wrap" class="bg-slate-100 p-3 rounded-xl min-h-[300px]">
+            <div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-indigo-600"></i></div>
+        </div>
+    `;
+    
+    // ডাটা লোড করে রেন্ডার করি (শিক্ষক পোর্টালের লজিক ব্যবহার করে)
+    const wrap = document.getElementById('main-live-events-wrap');
+    try {
+        // শিক্ষক পোর্টালের লাইভ ইভেন্ট রেন্ডার ফাংশনটি কল করে দিচ্ছি (এতে ডিজাইন একই থাকবে)
+        if (typeof renderTpLiveEvents === 'function') {
+            // অ্যাডমিনের জন্য একটু আলাদা সেশন পাস করতে হবে, তবে আপাতত ফাংশনটা কল করি
+            // (রেন্ডার ফাংশনটি wrap এর ভেতরে ডাটা লোড করবে)
+            await renderTpLiveEvents(wrap);
+        } else {
+            wrap.innerHTML = '<p class="text-center text-slate-500">লাইভ ইভেন্ট ফাংশন পাওয়া যায়নি</p>';
+        }
+    } catch (e) {
+        wrap.innerHTML = '<p class="text-center text-red-500">ইভেন্ট লোড করতে সমস্যা হয়েছে</p>';
+    }
+}
 </script>
 </body>
 </html>
