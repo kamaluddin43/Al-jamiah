@@ -1068,6 +1068,234 @@ header button {
         align-items: center !important;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* ★★★ ইসলামিক প্রিমিয়াম প্যাটার্ন বাটন (v6 — Subtle & Thematic) ★★★ */
+/* ═══════════════════════════════════════════════════════════════ */
+.pattern-btn {
+    position: relative !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    border: 1.5px solid rgba(0, 0, 0, 0.05) !important;
+    isolation: isolate !important;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* প্যাটার্নের লেয়ার — রঙ খুব হালকা, তাই লেখা স্পষ্ট দেখা যাবে */
+.pattern-btn::before {
+    content: "" !important;
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 0 !important;
+    opacity: 0.35; /* ★ খুব হালকা প্যাটার্ন */
+    transition: opacity 0.35s ease, transform 0.6s ease;
+    background-repeat: repeat;
+    background-size: 60px 60px;
+    pointer-events: none;
+}
+
+/* হোভার করলে প্যাটার্ন সামান্য উজ্জ্বল হবে */
+.pattern-btn:hover::before {
+    opacity: 0.55;
+    transform: scale(1.05);
+}
+
+.pattern-btn:hover {
+    transform: translateY(-4px) !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ১. ভর্তি — নতুন সূচনা (শিশুর মতো হালকা ডট) — সবুজ               */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-admission::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%2322c55e' stroke-width='1'%3E%3Ccircle cx='30' cy='30' r='20' stroke-dasharray='2 4'/%3E%3Ccircle cx='30' cy='30' r='10' stroke-dasharray='1 3'/%3E%3Ccircle cx='30' cy='30' r='2' fill='%2322c55e' fill-opacity='0.4' stroke='none'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ২. শিক্ষক — জ্ঞানের জাল (মসজিদের ল্যাটিস) — স্কাইলাইন           */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-teachers::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%230ea5e9' stroke-width='1'%3E%3Cpath d='M0 30 L30 0 L60 30 L30 60 Z'/%3E%3Cpath d='M15 15 L45 45 M45 15 L15 45' stroke-opacity='0.4'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ৩. শিক্ষার্থী — বর্ধনশীল লতা (আরবেস্ক) — ফুশিয়া                 */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-students::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23d946ef' stroke-width='1'%3E%3Cpath d='M30 0 Q45 15 30 30 Q15 15 30 0 Z'/%3E%3Cpath d='M30 60 Q45 45 30 30 Q15 45 30 60 Z'/%3E%3Cpath d='M0 30 Q15 45 30 30 Q15 15 0 30 Z'/%3E%3Cpath d='M60 30 Q45 45 30 30 Q45 15 60 30 Z'/%3E%3Ccircle cx='30' cy='30' r='2' fill='%23d946ef' fill-opacity='0.4' stroke='none'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ৪. মাকাদীরে আসবাক — পবিত্র কুরআন (৮-কোণা তারা) — এমারেল্ড        */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-asbaq::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%2310b981' stroke-width='1'%3E%3Crect x='15' y='15' width='30' height='30'/%3E%3Crect x='15' y='15' width='30' height='30' transform='rotate(45 30 30)'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ৫. ক্লাস রুটিন — ঘণ্টার হিসাব (মৌচাক) — টিল                    */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-routine::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%2314b8a6' stroke-width='1'%3E%3Cpath d='M30 5 L52 18 L52 42 L30 55 L8 42 L8 18 Z'/%3E%3Cpath d='M30 15 L42 22 L42 38 L30 45 L18 38 L18 22 Z' stroke-opacity='0.4'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ৬. পরীক্ষা — মূল্যায়নের সিল (ডায়মন্ড) — অরেঞ্জ               */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-exam::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23f97316' stroke-width='1'%3E%3Cpath d='M30 10 L50 30 L30 50 L10 30 Z'/%3E%3Cpath d='M30 20 L40 30 L30 40 L20 30 Z' stroke-opacity='0.4'/%3E%3Ccircle cx='30' cy='30' r='2' fill='%23f97316' fill-opacity='0.4' stroke='none'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ৭. একাডেমিক ক্যালেন্ডার — চাঁদ ও তারা — ইন্ডিগো                 */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-calendar::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%236366f1' stroke-width='1'%3E%3Cpath d='M20 15 Q12 30 20 45 Q28 45 28 30 Q28 15 20 15 Z'/%3E%3Cpath d='M40 20 L42 25 L47 25 L43 28 L44 33 L40 30 L36 33 L37 28 L33 25 L38 25 Z' stroke-opacity='0.6'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ৮. হিসাব বিভাগ — সূক্ষ্ম হিসাব (গিরিহ গ্রিড) — সায়ান            */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-accounting::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%2306b6d4' stroke-width='1'%3E%3Cpath d='M30 0 L60 15 L60 45 L30 60 L0 45 L0 15 Z'/%3E%3Cpath d='M30 15 L45 22.5 L45 37.5 L30 45 L15 37.5 L15 22.5 Z' stroke-opacity='0.4'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ৯. গার্ডিয়ান — পারিবারিক বন্ধন (হৃদয়ের মতো জ্যামিতি) — ভায়োলেট */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-guardian::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%238b5cf6' stroke-width='1'%3E%3Ccircle cx='30' cy='15' r='8'/%3E%3Ccircle cx='15' cy='45' r='8'/%3E%3Ccircle cx='45' cy='45' r='8'/%3E%3Cpath d='M30 23 L15 37 M30 23 L45 37' stroke-opacity='0.4'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ১০. নিয়মকানুন — শৃঙ্খলা (বর্ডার) — স্লেট                       */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-rules::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%2364748b' stroke-width='1'%3E%3Crect x='10' y='10' width='40' height='40'/%3E%3Crect x='15' y='15' width='30' height='30' stroke-opacity='0.4' stroke-dasharray='2 2'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ১১. সেটিংস — সূক্ষ্ম গিয়ার — রোজ                               */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-settings::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23f43f5e' stroke-width='1'%3E%3Ccircle cx='30' cy='30' r='15'/%3E%3Ccircle cx='30' cy='30' r='5' stroke-opacity='0.4'/%3E%3Cpath d='M30 10 L30 15 M30 45 L30 50 M10 30 L15 30 M45 30 L50 30 M16 16 L19.5 19.5 M40.5 40.5 L44 44 M44 16 L40.5 19.5 M19.5 40.5 L16 44' stroke-opacity='0.5'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* ১২. এডমিন — সুরক্ষা ঢাল — রেড                                  */
+/* ───────────────────────────────────────────────────────────── */
+#tab-btn-admin::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23dc2626' stroke-width='1'%3E%3Cpath d='M30 5 L50 12 L50 30 Q50 45 30 55 Q10 45 10 30 L10 12 Z'/%3E%3Cpath d='M30 15 L40 20 L40 30 Q40 38 30 45 Q20 38 20 30 L20 20 Z' stroke-opacity='0.4'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* ★★★ আইকন স্টাইল (প্রফেশনাল লুক) ★★★ */
+/* ═══════════════════════════════════════════════════════════════ */
+.pattern-btn i {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 16px !important; /* স্কয়ার-রাউন্ডেড ডিজাইন (আধুনিক) */
+    font-size: 1.4rem;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.15);
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+@media (min-width: 768px) {
+    .pattern-btn i {
+        width: 3.8rem;
+        height: 3.8rem;
+        font-size: 1.7rem;
+    }
+}
+
+.pattern-btn:hover i {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 8px 15px -5px rgba(0, 0, 0, 0.25);
+}
+
+/* আইকন কালার গ্রেডিয়েন্ট */
+#tab-btn-admission i  { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; }
+#tab-btn-teachers i   { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #fff; }
+#tab-btn-students i   { background: linear-gradient(135deg, #d946ef, #c026d3); color: #fff; }
+#tab-btn-asbaq i      { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+#tab-btn-routine i    { background: linear-gradient(135deg, #14b8a6, #0d9488); color: #fff; }
+#tab-btn-exam i       { background: linear-gradient(135deg, #f97316, #ea580c); color: #fff; }
+#tab-btn-calendar i   { background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; }
+#tab-btn-accounting i { background: linear-gradient(135deg, #06b6d4, #0891b2); color: #fff; }
+#tab-btn-guardian i   { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; }
+#tab-btn-rules i      { background: linear-gradient(135deg, #64748b, #475569); color: #fff; }
+#tab-btn-settings i   { background: linear-gradient(135deg, #f43f5e, #e11d48); color: #fff; }
+#tab-btn-admin i      { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; }
+
+/* টেক্সট স্টাইল */
+.pattern-btn .btn-label {
+    color: #1e293b !important;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    position: relative !important;
+    z-index: 2 !important;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
+}  
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* ★★★ হালকা আকাশী ইসলামিক হেডার (মসজিদ সিলুয়েট সহ) ★★★ */
+/* ═══════════════════════════════════════════════════════════════ */
+.sky-islamic-header {
+    background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
+    border-bottom: 3px solid #fbbf24; /* নিচে সোনালী বর্ডার */
+    box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden; /* মসজিদের ছবি যেন বাইরে না যায় */
+}
+
+/* ইসলামিক জ্যামিতিক ব্যাকগ্রাউন্ড নকশা */
+.sky-pattern-bg {
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.5' stroke-opacity='0.5'%3E%3Cpath d='M30 0 L60 30 L30 60 L0 30 Z'/%3E%3Cpath d='M30 15 L45 30 L30 45 L15 30 Z'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 50px 50px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ★★★ মসজিদের সিলুয়েট (ডান দিকে হালকা করে বসানো) ★★★ */
+.mosque-silhouette {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 250px;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 100' preserveAspectRatio='xMidYMax meet'%3E%3Cg fill='%23ffffff' fill-opacity='0.3'%3E%3Cpath d='M100 0 C100 0 95 20 85 30 C75 40 70 60 70 100 L130 100 C130 60 125 40 115 30 C105 20 100 0 100 0 Z'/%3E%3Cpath d='M70 20 L73 25 L77 20 L73 15 Z'/%3E%3Cpath d='M130 20 L133 25 L137 20 L133 15 Z'/%3E%3Crect x='65' y='30' width='10' height='70' rx='3'/%3E%3Crect x='125' y='30' width='10' height='70' rx='3'/%3E%3Cpath d='M55 50 C55 50 50 60 50 100 L70 100 L70 50 Z'/%3E%3Cpath d='M145 50 C145 50 150 60 150 100 L130 100 L130 50 Z'/%3E%3Cpath d='M30 70 L30 100 L50 100 L50 70 C50 60 40 60 30 70 Z'/%3E%3Cpath d='M170 70 L170 100 L150 100 L150 70 C150 60 160 60 170 70 Z'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: bottom right;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* মোবাইলে মসজিদের ছবি একটু ছোট হবে */
+@media (max-width: 768px) {
+    .mosque-silhouette {
+        width: 150px;
+    }
+}
+
+/* লোগো ইমেজ স্টাইল (যদি জাভাস্ক্রিপ্ট থেকে ইমেজ লোড হয়) */
+#header-logo-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background-color: white;
+}
+
 </style>
     <!-- ★★★ ঠিক এখানে বসান (</head> এর ঠিক আগে) ★★★ -->
     <script>
@@ -2019,47 +2247,85 @@ header button {
 <!-- ═══════════════════ TOAST ═══════════════════ -->
 <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-2 no-print"></div>
 
-<!-- ═══════════════════ HEADER ═══════════════════ -->
-<header class="bg-emerald-900 text-white shadow-md no-print sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-3 md:px-4 py-2.5 flex flex-row justify-between items-center gap-2">
+<!-- ═══════════════════ HEADER (SKY MOSQUE) ═══════════════════ -->
+<header class="sky-islamic-header no-print sticky top-0 z-40">
+    
+    <!-- ★ ব্যাকগ্রাউন্ড প্যাটার্ন ও মসজিদের সিলুয়েট -->
+    <div class="sky-pattern-bg"></div>
+    <div class="mosque-silhouette"></div>
+
+    <div class="max-w-7xl mx-auto px-3 md:px-4 py-2.5 flex flex-row justify-between items-center gap-2 relative z-10">
         
-        <!-- বাম পাশ: লোগো, নাম ও ঠিকানা (সবকিছু ক্লিকেবল) -->
+        <!-- বাম পাশ: লোগো, নাম ও ঠিকানা -->
         <div class="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0"
              onclick="switchTab('home')"
              title="হোম পেইজে ফিরে যান">
             
-            <!-- ★ ডাইনামিক লোগো (জাভাস্ক্রিপ্ট থেকে সেট হবে) -->
-            <div id="header-logo-container" class="w-10 h-10 md:w-12 md:h-12 bg-amber-500/20 rounded-xl border border-amber-400/40 flex items-center justify-center text-amber-400 text-xl md:text-2xl shadow-inner flex-shrink-0 overflow-hidden">
-                <!-- ব্যাকআপ আইকন -->
+            <!-- ডাইনামিক লোগো (সবুজ ও সোনালী বর্ডার) -->
+            <div id="header-logo-container" class="w-10 h-10 md:w-12 md:h-12 bg-emerald-600 rounded-xl border-2 border-amber-400 flex items-center justify-center text-white text-xl md:text-2xl shadow-sm flex-shrink-0 overflow-hidden">
                 <i class="fa-solid fa-book-open-reader" id="header-fallback-icon"></i>
             </div>
             
-            <!-- মাদরাসার নাম ও ঠিকানা -->
+            <!-- মাদরাসার নাম ও ঠিকানা (আগের সাইজ) -->
             <div class="min-w-0 flex flex-col justify-center">
-                <!-- মাদরাসার নাম (বড় করে) -->
-                <h1 id="header-madrasa-name" class="text-sm md:text-lg font-bold leading-tight truncate max-w-[170px] md:max-w-xs text-white font-arabic">
+                <h1 id="header-madrasa-name" class="text-sm md:text-lg font-bold leading-tight truncate max-w-[170px] md:max-w-xs text-emerald-950 font-arabic" style="text-shadow: 0 1px 2px rgba(255,255,255,0.8);">
                     লোড হচ্ছে...
                 </h1>
-                <!-- ঠিকানা (ছোট করে) -->
-                <p id="header-address" class="text-[9px] md:text-xs text-emerald-200 mt-0.5 truncate max-w-[170px] md:max-w-xs leading-tight">
+                <p id="header-address" class="text-[9px] md:text-xs font-bold text-blue-800 mt-0.5 truncate max-w-[170px] md:max-w-xs leading-tight">
                     <!-- জাভাস্ক্রিপ্ট থেকে ঠিকানা বসবে -->
                 </p>
             </div>
         </div>
 
-        <!-- ডান পাশ: ইউজার নাম ও লগআউট বাটন -->
-        <div class="flex items-center gap-2 md:gap-3 flex-shrink-0">
+        <!-- ডান পাশ: ইউজার নাম ও থ্রি-ডট মেনু -->
+        <div class="flex items-center gap-2 md:gap-3 flex-shrink-0 relative">
+
+            <!-- ইউজার তথ্য (আগের স্টাইল: উপরে নাম, নিচে রোল) -->
             <div class="text-right">
-                <p id="header-user-name" class="text-[11px] md:text-xs font-bold text-white leading-tight truncate max-w-[70px] md:max-w-none">---</p>
-                <p id="header-user-role" class="text-[9px] md:text-[10px] text-amber-400 leading-tight">---</p>
+                <p id="header-user-name" class="text-[11px] md:text-xs font-bold text-slate-900 leading-tight truncate max-w-[80px] md:max-w-none">
+                    ---
+                </p>
+                <p id="header-user-role" class="text-[9px] md:text-[10px] font-bold text-amber-600 leading-tight mt-0.5">
+                    ---
+                </p>
             </div>
-            
-            <!-- মোবাইলে বাটন কিছুটা ছোট -->
-            <button onclick="doLogout()" class="w-8 h-8 md:w-9 md:h-9 bg-red-600/80 hover:bg-red-700 text-white rounded-full flex items-center justify-center transition shadow-md hover:shadow-lg flex-shrink-0" title="লগআউট">
-                <i class="fa-solid fa-right-from-bracket text-xs md:text-sm"></i>
+
+            <!-- থ্রি-ডট মেনু বাটন (কোনো বক্স বা বৃত্ত নেই) -->
+            <button
+                onclick="document.getElementById('header-3dot-menu').classList.toggle('hidden')"
+                class="flex items-center justify-center text-slate-800 hover:text-emerald-700 transition-colors focus:outline-none px-1"
+                title="অপশন">
+                <i class="fa-solid fa-ellipsis-vertical text-lg md:text-xl"></i>
             </button>
+
+            <!-- ড্রপডাউন মেনু -->
+            <div id="header-3dot-menu"
+                class="hidden absolute right-0 top-full mt-1 rounded-md shadow-xl z-[100] border border-emerald-700"
+                style="background-color: var(--theme-900, #064e3b); width: max-content; min-width: 75px; padding: 3px 0;">
+
+                <button onclick="doLogout()"
+                    class="w-full text-left hover:bg-black/20 transition-colors whitespace-nowrap"
+                    style="padding: 4px 10px; font-size: 10px; color: #fca5a5; font-weight: bold; font-family: 'Hind Siliguri', sans-serif;">
+                    Logout
+                </button>
+
+                <div style="border-top: 1px solid rgba(6, 78, 59, 0.5); margin: 2px 0;"></div>
+
+                <button onclick="document.getElementById('header-3dot-menu').classList.add('hidden'); showTeacherLogin()"
+                    class="w-full text-left hover:bg-black/20 transition-colors whitespace-nowrap"
+                    style="padding: 4px 10px; font-size: 10px; color: #ecfdf5; font-weight: bold; font-family: 'Hind Siliguri', sans-serif;">
+                    Teacher
+                </button>
+
+                <button onclick="document.getElementById('header-3dot-menu').classList.add('hidden'); showGuardianLogin()"
+                    class="w-full text-left hover:bg-black/20 transition-colors whitespace-nowrap"
+                    style="padding: 4px 10px; font-size: 10px; color: #ecfdf5; font-weight: bold; font-family: 'Hind Siliguri', sans-serif;">
+                    Guardian
+                </button>
+
+            </div>
         </div>
-        
+ 
     </div>
 </header>
 
@@ -2156,91 +2422,91 @@ header button {
         </div>
     </div>
     <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-10">
-        <!-- ★ ১১টা বাটনের গ্রিড — ডেক্সটপে ৪+৪+৩, মোবাইলে ২×৬ -->
+        <!-- ★ ১১টা বাটনের গ্রিড — নতুন প্যাটার্ন ডিজাইন ★ -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 max-w-5xl mx-auto">
 
             <!-- ★★★ ১. ভর্তি (একদম প্রথমে) ★★★ -->
-            <button onclick="switchTab('admission')" id="tab-btn-admission"
-                    class="tab-btn group bg-gradient-to-br from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-user-plus text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">ভর্তি</span>
+            <button onclick="switchTab('admission')" id="tab-btn-admission" data-tab="admission"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px]">
+                <i class="fa-solid fa-user-plus"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">ভর্তি</span>
             </button>
 
             <!-- ★★ ২. শিক্ষক ★★ -->
-            <button onclick="switchTab('teachers')" id="tab-btn-teachers"
-                    class="tab-btn group bg-gradient-to-br from-sky-500 to-sky-700 hover:from-sky-600 hover:to-sky-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-chalkboard-user text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">শিক্ষক</span>
+            <button onclick="switchTab('teachers')" id="tab-btn-teachers" data-tab="teachers"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px]">
+                <i class="fa-solid fa-chalkboard-user"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">শিক্ষক</span>
             </button>
 
             <!-- ★★ ৩. শিক্ষার্থী ★★ -->
-            <button onclick="switchTab('students')" id="tab-btn-students"
-                    class="tab-btn group bg-gradient-to-br from-fuchsia-500 to-fuchsia-700 hover:from-fuchsia-600 hover:to-fuchsia-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-user-graduate text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">শিক্ষার্থী</span>
+            <button onclick="switchTab('students')" id="tab-btn-students" data-tab="students"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px]">
+                <i class="fa-solid fa-user-graduate"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">শিক্ষার্থী</span>
             </button>
 
             <!-- ৪. মাকাদীরে আসবাক -->
-            <button onclick="switchTab('asbaq')" id="tab-btn-asbaq"
-                    class="tab-btn group bg-gradient-to-br from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-book-open text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">মাকাদীরে আসবাক</span>
+            <button onclick="switchTab('asbaq')" id="tab-btn-asbaq" data-tab="asbaq"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px]">
+                <i class="fa-solid fa-book-quran"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">মাকাদীরে আসবাক</span>
             </button>
 
             <!-- ৫. ক্লাস রুটিন -->
-            <button onclick="switchTab('routine')" id="tab-btn-routine"
-                    class="tab-btn group bg-gradient-to-br from-teal-500 to-teal-700 hover:from-teal-600 hover:to-teal-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-calendar-week text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">ক্লাস রুটিন</span>
+            <button onclick="switchTab('routine')" id="tab-btn-routine" data-tab="routine"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px]">
+                <i class="fa-solid fa-calendar-week"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">ক্লাস রুটিন</span>
             </button>
 
             <!-- ৬. পরীক্ষা -->
-            <button onclick="switchTab('exam')" id="tab-btn-exam"
-                    class="tab-btn group bg-gradient-to-br from-orange-500 to-orange-700 hover:from-orange-600 hover:to-orange-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-clipboard-question text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">পরীক্ষা</span>
+            <button onclick="switchTab('exam')" id="tab-btn-exam" data-tab="exam"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px]">
+                <i class="fa-solid fa-clipboard-question"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">পরীক্ষা</span>
             </button>
 
             <!-- ৭. একাডেমিক ক্যালেন্ডার -->
-            <button onclick="switchTab('calendar')" id="tab-btn-calendar"
-                    class="tab-btn group bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-600 hover:to-indigo-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-calendar-days text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">একাডেমিক ক্যালেন্ডার</span>
+            <button onclick="switchTab('calendar')" id="tab-btn-calendar" data-tab="calendar"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px]">
+                <i class="fa-solid fa-calendar-days"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">একাডেমিক ক্যালেন্ডার</span>
             </button>
 
             <!-- ★★★ ৮. হিসাব বিভাগ (সেটিংসের আগে) ★★★ -->
-            <button onclick="switchTab('accounting')" id="tab-btn-accounting"
-                    class="tab-btn group bg-gradient-to-br from-cyan-500 to-cyan-700 hover:from-cyan-600 hover:to-cyan-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-calculator text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">হিসাব বিভাগ</span>
+            <button onclick="switchTab('accounting')" id="tab-btn-accounting" data-tab="accounting"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px]">
+                <i class="fa-solid fa-calculator"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">হিসাব বিভাগ</span>
             </button>
 
             <!-- ★★★ ৯. গার্ডিয়ান (সেটিংসের আগে) ★★★ -->
-            <button onclick="switchTab('guardian')" id="tab-btn-guardian"
-                    class="tab-btn group bg-gradient-to-br from-violet-500 to-violet-700 hover:from-violet-600 hover:to-violet-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-user-friends text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">গার্ডিয়ান</span>
+            <button onclick="switchTab('guardian')" id="tab-btn-guardian" data-tab="guardian"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px]">
+                <i class="fa-solid fa-user-friends"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">গার্ডিয়ান</span>
             </button>
 
             <!-- ★★★ ১০. নিয়মকানুন ★★★ -->
-            <button onclick="switchTab('rules')" id="tab-btn-rules"
-                    class="tab-btn group bg-gradient-to-br from-slate-500 to-slate-700 hover:from-slate-600 hover:to-slate-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
-                <i class="fa-solid fa-scroll text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">নিয়মকানুন</span>
+            <button onclick="switchTab('rules')" id="tab-btn-rules" data-tab="rules"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px]">
+                <i class="fa-solid fa-scroll"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">নিয়মকানুন</span>
             </button>
 
             <!-- ১০. সেটিংস (এডমিন only) -->
-            <button onclick="switchTab('settings')" id="tab-btn-settings"
-                    class="tab-btn group bg-gradient-to-br from-rose-500 to-rose-700 hover:from-rose-600 hover:to-rose-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px] hidden">
-                <i class="fa-solid fa-gear text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">সেটিংস</span>
+            <button onclick="switchTab('settings')" id="tab-btn-settings" data-tab="settings"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px] hidden">
+                <i class="fa-solid fa-gear"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">সেটিংস</span>
             </button>
 
             <!-- ১১. এডমিন (এডমিন only) -->
-            <button onclick="switchTab('admin')" id="tab-btn-admin"
-                    class="tab-btn group bg-gradient-to-br from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px] hidden">
-                <i class="fa-solid fa-shield-halved text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">এডমিন</span>
+            <button onclick="switchTab('admin')" id="tab-btn-admin" data-tab="admin"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px] hidden">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">এডমিন</span>
             </button>
 
         </div>
@@ -2594,35 +2860,35 @@ header button {
             <button onclick="openGuardianPage('login-info')" id="guardian-btn-login-info"
                     class="guardian-main-btn group bg-gradient-to-br from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
                 <i class="fa-solid fa-right-to-bracket text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">১. লগইন তথ্য</span>
+                <span class="text-sm md:text-base font-bold leading-tight text-center"> লগইন তথ্য</span>
             </button>
 
             <!-- ২. যোগাযোগ -->
             <button onclick="openGuardianPage('communication')" id="guardian-btn-communication"
                     class="guardian-main-btn group bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
                 <i class="fa-solid fa-phone text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">২. যোগাযোগ</span>
+                <span class="text-sm md:text-base font-bold leading-tight text-center"> যোগাযোগ</span>
             </button>
 
             <!-- ৩. হোমওয়ার্ক -->
             <button onclick="openGuardianPage('homework')" id="guardian-btn-homework" 
                     class="guardian-main-btn group bg-gradient-to-br from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
                 <i class="fa-solid fa-book-open text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">৩. হোমওয়ার্ক</span>
+                <span class="text-sm md:text-base font-bold leading-tight text-center"> হোমওয়ার্ক</span>
             </button>
 
             <!-- ৪. অভিযোগ (শুধু এডমিন) -->
             <button onclick="openGuardianPage('complaint')" id="guardian-btn-complaint"
                     class="guardian-main-btn group bg-gradient-to-br from-orange-500 to-orange-700 hover:from-orange-600 hover:to-orange-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px] admin-only-btn">
                 <i class="fa-solid fa-bullhorn text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">৪. অভিযোগ</span>
+                <span class="text-sm md:text-base font-bold leading-tight text-center"> অভিযোগ বক্স</span>
             </button>
 
             <!-- ★ নতুন ৫ম বাটন: ছুটির আবেদন ম্যানেজমেন্ট ★ -->
             <button onclick="openGuardianPage('leave-management')" id="guardian-btn-leave-management"
                     class="guardian-main-btn group bg-gradient-to-br from-rose-500 to-rose-700 hover:from-rose-600 hover:to-rose-800 text-white rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
                 <i class="fa-solid fa-envelope-open-text text-3xl md:text-4xl opacity-95 group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm md:text-base font-bold leading-tight text-center">৫. ছুটির আবেদন</span>
+                <span class="text-sm md:text-base font-bold leading-tight text-center"> ছুটির আবেদন</span>
             </button>
         </div>
     </div>
@@ -29256,6 +29522,14 @@ function renderStudentSubContent() {
         </div>
     `;
 }
+
+document.addEventListener('click', function(event) {
+    const menu = document.getElementById('header-3dot-menu');
+    const btn = event.target.closest('button[onclick*="header-3dot-menu"]');
+    if (menu && !menu.classList.contains('hidden') && !btn && !menu.contains(event.target)) {
+        menu.classList.add('hidden');
+    }
+});
 
 // ═══════════════════ TAB SWITCH ═══════════════════
 function switchTab(tabId) {
