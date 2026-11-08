@@ -1245,56 +1245,109 @@ header button {
     text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
 }  
 
-/* ═══════════════════════════════════════════════════════════════ */
-/* ★★★ হালকা আকাশী ইসলামিক হেডার (মসজিদ সিলুয়েট সহ) ★★★ */
-/* ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════
+   PREMIUM SKY BLUE ISLAMIC HEADER
+   Clean Background + Decorative Mosque Vector
+═══════════════════════════════════════════════════════════ */
+
 .sky-islamic-header {
-    background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
-    border-bottom: 3px solid #fbbf24; /* নিচে সোনালী বর্ডার */
-    box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(
+        120deg,
+        #ffffff 0%,
+        #f0f9ff 45%,
+        #e0f2fe 100%
+    );
+
+    border-bottom: 2px solid #d6ad50;
+    box-shadow: 0 4px 14px rgba(56, 130, 170, 0.10);
+
     position: relative;
-    overflow: hidden; /* মসজিদের ছবি যেন বাইরে না যায় */
+    overflow: visible;
+    isolation: isolate;
 }
 
-/* ইসলামিক জ্যামিতিক ব্যাকগ্রাউন্ড নকশা */
-.sky-pattern-bg {
+/* ═══════════════════════════════════════════════════════════
+   BACKGROUND WRAPPER
+═══════════════════════════════════════════════════════════ */
+
+.header-bg-wrapper {
     position: absolute;
     inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.5' stroke-opacity='0.5'%3E%3Cpath d='M30 0 L60 30 L30 60 L0 30 Z'/%3E%3Cpath d='M30 15 L45 30 L30 45 L15 30 Z'/%3E%3C/g%3E%3C/svg%3E");
-    background-size: 50px 50px;
+    overflow: hidden;
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
 }
 
-/* ★★★ মসজিদের সিলুয়েট (ডান দিকে হালকা করে বসানো) ★★★ */
+/* পুরোনো জ্যামিতিক প্যাটার্ন সম্পূর্ণ বন্ধ */
+.sky-pattern-bg {
+    display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DECORATIVE MOSQUE VECTOR
+═══════════════════════════════════════════════════════════ */
+
 .mosque-silhouette {
     position: absolute;
-    right: 0;
+    right: 3%;
     bottom: 0;
-    width: 250px;
+
+    width: 340px;
     height: 100%;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 100' preserveAspectRatio='xMidYMax meet'%3E%3Cg fill='%23ffffff' fill-opacity='0.3'%3E%3Cpath d='M100 0 C100 0 95 20 85 30 C75 40 70 60 70 100 L130 100 C130 60 125 40 115 30 C105 20 100 0 100 0 Z'/%3E%3Cpath d='M70 20 L73 25 L77 20 L73 15 Z'/%3E%3Cpath d='M130 20 L133 25 L137 20 L133 15 Z'/%3E%3Crect x='65' y='30' width='10' height='70' rx='3'/%3E%3Crect x='125' y='30' width='10' height='70' rx='3'/%3E%3Cpath d='M55 50 C55 50 50 60 50 100 L70 100 L70 50 Z'/%3E%3Cpath d='M145 50 C145 50 150 60 150 100 L130 100 L130 50 Z'/%3E%3Cpath d='M30 70 L30 100 L50 100 L50 70 C50 60 40 60 30 70 Z'/%3E%3Cpath d='M170 70 L170 100 L150 100 L150 70 C150 60 160 60 170 70 Z'/%3E%3C/g%3E%3C/svg%3E");
-    background-size: contain;
+
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 160'%3E%3Cdefs%3E%3ClinearGradient id='dome' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2395cce9'/%3E%3Cstop offset='1' stop-color='%234e9bc8'/%3E%3C/linearGradient%3E%3ClinearGradient id='body' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%238bbfdf'/%3E%3Cstop offset='1' stop-color='%236daed2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg opacity='.25' stroke='%235b9fc6' stroke-width='1.5'%3E%3C!-- Main building --%3E%3Cpath fill='url(%23body)' d='M100 160V100Q100 80 120 80H300Q320 80 320 100V160Z'/%3E%3C!-- Main dome --%3E%3Cpath fill='url(%23dome)' d='M155 80C155 50 170 35 210 12C250 35 265 50 265 80Z'/%3E%3Cpath fill='none' stroke='%23ffffff' stroke-width='2' d='M175 78Q210 35 245 78' opacity='.6'/%3E%3C!-- Dome crescent --%3E%3Cpath fill='none' stroke='%23c69b46' stroke-width='2.5' d='M210 12V3M205 7Q210 -1 215 7'/%3E%3C!-- Main windows --%3E%3Cg fill='%23ffffff' opacity='.75'%3E%3Cpath d='M135 160V116Q135 103 147 103Q159 103 159 116V160Z'/%3E%3Cpath d='M185 160V112Q185 97 200 97Q215 97 215 112V160Z'/%3E%3Cpath d='M240 160V116Q240 103 252 103Q264 103 264 116V160Z'/%3E%3C/g%3E%3C!-- Left minaret --%3E%3Cpath fill='url(%23body)' d='M65 160V43H75V160Z M61 43L70 23L79 43Z M60 65H80V70H60Z M57 83H83V87H57Z'/%3E%3Cpath fill='none' stroke='%23ffffff' stroke-width='2' d='M70 43V160' opacity='.5'/%3E%3Cpath fill='none' stroke='%23c69b46' stroke-width='2' d='M70 23V13M66 17Q70 11 74 17'/%3E%3C!-- Right minaret --%3E%3Cpath fill='url(%23body)' d='M345 160V43H355V160Z M341 43L350 23L359 43Z M340 65H360V70H340Z M337 83H363V87H337Z'/%3E%3Cpath fill='none' stroke='%23ffffff' stroke-width='2' d='M350 43V160' opacity='.5'/%3E%3Cpath fill='none' stroke='%23c69b46' stroke-width='2' d='M350 23V13M346 17Q350 11 354 17'/%3E%3C!-- Side domes --%3E%3Cpath fill='url(%23dome)' d='M15 125C15 106 25 95 45 83C65 95 75 106 75 125Z M300 125C300 106 310 95 330 83C350 95 360 106 360 125Z'/%3E%3Cpath fill='url(%23body)' d='M15 125H75V160H15Z M300 125H360V160H300Z'/%3E%3C!-- Side minarets --%3E%3Cpath fill='url(%23body)' d='M8 160V82H14V160Z M5 82L11 68L17 82Z M365 160V82H371V160Z M362 82L368 68L374 82Z'/%3E%3C!-- Ground --%3E%3Cpath fill='none' stroke='%235b9fc6' stroke-width='2' d='M0 159H420'/%3E%3C/g%3E%3C/svg%3E");
+
     background-repeat: no-repeat;
+    background-size: contain;
     background-position: bottom right;
-    pointer-events: none;
-    z-index: 0;
+
+    opacity: 0.48;
 }
 
-/* মোবাইলে মসজিদের ছবি একটু ছোট হবে */
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE MOSQUE
+═══════════════════════════════════════════════════════════ */
+
 @media (max-width: 768px) {
     .mosque-silhouette {
-        width: 150px;
+        width: 210px;
+        right: 0;
+        opacity: 0.30;
     }
 }
 
-/* লোগো ইমেজ স্টাইল (যদি জাভাস্ক্রিপ্ট থেকে ইমেজ লোড হয়) */
+@media (max-width: 480px) {
+    .mosque-silhouette {
+        width: 145px;
+        opacity: 0.22;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOGO IMAGE
+═══════════════════════════════════════════════════════════ */
+
+#header-logo-container {
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #d6ad50;
+    border-radius: 10px;
+    background: #ffffff;
+
+    box-shadow:
+        0 2px 8px rgba(190, 150, 60, 0.13),
+        inset 0 0 0 2px #fffaf0;
+}
+
 #header-logo-container img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     background-color: white;
+    border-radius: 7px;
 }
+
 
 </style>
     <!-- ★★★ ঠিক এখানে বসান (</head> এর ঠিক আগে) ★★★ -->
@@ -2298,34 +2351,33 @@ header button {
                 <i class="fa-solid fa-ellipsis-vertical text-lg md:text-xl"></i>
             </button>
 
-            <!-- ড্রপডাউন মেনু -->
-            <div id="header-3dot-menu"
-                class="hidden absolute right-0 top-full mt-1 rounded-md shadow-xl z-[100] border border-emerald-700"
-                style="background-color: var(--theme-900, #064e3b); width: max-content; min-width: 75px; padding: 3px 0;">
-
-                <button onclick="doLogout()"
-                    class="w-full text-left hover:bg-black/20 transition-colors whitespace-nowrap"
-                    style="padding: 4px 10px; font-size: 10px; color: #fca5a5; font-weight: bold; font-family: 'Hind Siliguri', sans-serif;">
-                    Logout
-                </button>
-
-                <div style="border-top: 1px solid rgba(6, 78, 59, 0.5); margin: 2px 0;"></div>
-
-                <button onclick="document.getElementById('header-3dot-menu').classList.add('hidden'); showTeacherLogin()"
-                    class="w-full text-left hover:bg-black/20 transition-colors whitespace-nowrap"
-                    style="padding: 4px 10px; font-size: 10px; color: #ecfdf5; font-weight: bold; font-family: 'Hind Siliguri', sans-serif;">
-                    Teacher
-                </button>
-
-                <button onclick="document.getElementById('header-3dot-menu').classList.add('hidden'); showGuardianLogin()"
-                    class="w-full text-left hover:bg-black/20 transition-colors whitespace-nowrap"
-                    style="padding: 4px 10px; font-size: 10px; color: #ecfdf5; font-weight: bold; font-family: 'Hind Siliguri', sans-serif;">
-                    Guardian
-                </button>
-
-            </div>
         </div>
- 
+    </div>
+
+    <!-- ★★★ ড্রপডাউন মেনু (এখন হেডারের একদম শেষে, overflow থেকে মুক্ত) ★★★ -->
+    <div id="header-3dot-menu"
+        class="hidden absolute right-3 md:right-[max(1rem,calc((100vw-80rem)/2+1rem))] top-[100%] mt-1 rounded-md shadow-2xl z-[999] border border-emerald-700"
+        style="background-color: var(--theme-900, #064e3b); width: max-content; min-width: 85px; padding: 4px 0;">
+        
+        <button onclick="doLogout()"
+            class="w-full text-left hover:bg-black/20 transition-colors whitespace-nowrap"
+            style="padding: 5px 12px; font-size: 11px; color: #fca5a5; font-weight: bold; font-family: 'Hind Siliguri', sans-serif;">
+            Logout
+        </button>
+
+        <div style="border-top: 1px solid rgba(6, 78, 59, 0.5); margin: 2px 0;"></div>
+
+        <button onclick="document.getElementById('header-3dot-menu').classList.add('hidden'); showTeacherLogin()"
+            class="w-full text-left hover:bg-black/20 transition-colors whitespace-nowrap"
+            style="padding: 5px 12px; font-size: 11px; color: #ecfdf5; font-weight: bold; font-family: 'Hind Siliguri', sans-serif;">
+            Teacher
+        </button>
+
+        <button onclick="document.getElementById('header-3dot-menu').classList.add('hidden'); showGuardianLogin()"
+            class="w-full text-left hover:bg-black/20 transition-colors whitespace-nowrap"
+            style="padding: 5px 12px; font-size: 11px; color: #ecfdf5; font-weight: bold; font-family: 'Hind Siliguri', sans-serif;">
+            Guardian
+        </button>
     </div>
 </header>
 
