@@ -6065,34 +6065,51 @@ header button {
 
             <!-- ★★★ মূল ফলাফল মেনু (৫টি বাটন) ★★★ -->
             <div id="results-main-menu" class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
-                <div class="text-center mb-8">
-                    <div class="w-20 h-20 mx-auto bg-gradient-to-br from-green-500 to-green-700 rounded-2xl flex items-center justify-center text-white text-4xl mb-4 shadow-lg">
+                <!-- ★★★ নতুন হেডার: আইকন ছোট, লেখা পাশে, সাব-টাইটেল বাদ ★★★ -->
+                <div class="flex items-center justify-center gap-3 mb-6">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center text-white text-xl shadow-md">
                         <i class="fa-solid fa-chart-simple"></i>
                     </div>
-                    <h2 class="text-2xl md:text-3xl font-bold text-green-900 mb-2">পরীক্ষার ফলাফল</h2>
-                    <p class="text-sm text-slate-500">বিভাগ নির্বাচন করে ফলাফল ও পরিসংখ্যান দেখুন</p>
+                    <h2 class="text-xl md:text-2xl font-bold text-green-900 leading-none">পরীক্ষার ফলাফল</h2>
                 </div>
 
-                <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 max-w-5xl mx-auto">
-                    <button onclick="openResultDept('shariah')" class="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl p-4 shadow-md hover:shadow-xl transition flex flex-col items-center justify-center gap-2 min-h-[120px]">
-                        <i class="fa-solid fa-mosque text-3xl"></i><span class="text-sm font-bold text-center">শরীয়াহ</span>
+                <!-- ★★★ সাব-মেনু কার্ড গ্রিড (৬টি) — সাদা ব্যাকগ্রাউন্ড ও রঙিন আইকন ★★★ -->
+                <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5 max-w-5xl mx-auto">
+
+                    <!-- ১. শরীয়াহ -->
+                    <button onclick="openResultDept('shariah')" class="group bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                        <i class="fa-solid fa-mosque text-white bg-emerald-500 rounded-2xl w-12 h-12 md:w-14 md:h-14 flex items-center justify-center text-2xl md:text-3xl group-hover:scale-110 transition-transform shadow-md"></i>
+                        <span class="text-sm md:text-base font-bold leading-tight text-center text-slate-700">শরীয়াহ</span>
                     </button>
-                    <button onclick="openResultDept('hifz')" class="bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl p-4 shadow-md hover:shadow-xl transition flex flex-col items-center justify-center gap-2 min-h-[120px]">
-                        <i class="fa-solid fa-quran text-3xl"></i><span class="text-sm font-bold text-center">হিফযুল কুরআন</span>
+
+                    <!-- ২. হিফযুল কুরআন -->
+                    <button onclick="openResultDept('hifz')" class="group bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                        <i class="fa-solid fa-quran text-white bg-indigo-500 rounded-2xl w-12 h-12 md:w-14 md:h-14 flex items-center justify-center text-2xl md:text-3xl group-hover:scale-110 transition-transform shadow-md"></i>
+                        <span class="text-sm md:text-base font-bold leading-tight text-center text-slate-700">হিফযুল কুরআন</span>
                     </button>
-                    <button onclick="openResultDept('noorani')" class="bg-gradient-to-br from-amber-500 to-amber-700 rounded-xl p-4 shadow-md hover:shadow-xl transition flex flex-col items-center justify-center gap-2 min-h-[120px]">
-                        <i class="fa-solid fa-book-quran text-3xl"></i><span class="text-sm font-bold text-center">নূরানী-নাযেরা</span>
+
+                    <!-- ৩. নূরানী-নাযেরা -->
+                    <button onclick="openResultDept('noorani')" class="group bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                        <i class="fa-solid fa-book-quran text-white bg-amber-500 rounded-2xl w-12 h-12 md:w-14 md:h-14 flex items-center justify-center text-2xl md:text-3xl group-hover:scale-110 transition-transform shadow-md"></i>
+                        <span class="text-sm md:text-base font-bold leading-tight text-center text-slate-700">নূরানী-নাযেরা</span>
                     </button>
-                    <button onclick="openResultDept('non_res')" class="bg-gradient-to-br from-teal-500 to-teal-700 rounded-xl p-4 shadow-md hover:shadow-xl transition flex flex-col items-center justify-center gap-2 min-h-[120px]">
-                        <i class="fa-solid fa-school text-3xl"></i><span class="text-sm font-bold text-center">অনাবাসিক</span>
+
+                    <!-- ৪. অনাবাসিক -->
+                    <button onclick="openResultDept('non_res')" class="group bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                        <i class="fa-solid fa-school text-white bg-teal-500 rounded-2xl w-12 h-12 md:w-14 md:h-14 flex items-center justify-center text-2xl md:text-3xl group-hover:scale-110 transition-transform shadow-md"></i>
+                        <span class="text-sm md:text-base font-bold leading-tight text-center text-slate-700">অনাবাসিক</span>
                     </button>
-                    <!-- ★ নতুন: সকল বিভাগ -->
-                    <button onclick="openResultDept('all')" class="bg-gradient-to-br from-slate-600 to-slate-800 rounded-xl p-4 shadow-md hover:shadow-xl transition flex flex-col items-center justify-center gap-2 min-h-[120px]">
-                        <i class="fa-solid fa-layer-group text-3xl"></i><span class="text-sm font-bold text-center">সকল বিভাগ</span>
+
+                    <!-- ৫. সকল বিভাগ -->
+                    <button onclick="openResultDept('all')" class="group bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                        <i class="fa-solid fa-layer-group text-white bg-slate-700 rounded-2xl w-12 h-12 md:w-14 md:h-14 flex items-center justify-center text-2xl md:text-3xl group-hover:scale-110 transition-transform shadow-md"></i>
+                        <span class="text-sm md:text-base font-bold leading-tight text-center text-slate-700">সকল বিভাগ</span>
                     </button>
-                    <!-- ★ মার্কস এন্ট্রি বাটন -->
-                    <button onclick="openMarksEntryPage()" class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl p-4 shadow-md hover:shadow-xl transition flex flex-col items-center justify-center gap-2 min-h-[120px]">
-                        <i class="fa-solid fa-keyboard text-3xl"></i><span class="text-sm font-bold text-center">মার্কস এন্ট্রি</span>
+
+                    <!-- ৬. মার্কস এন্ট্রি -->
+                    <button onclick="openMarksEntryPage()" class="group bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                        <i class="fa-solid fa-keyboard text-white bg-blue-600 rounded-2xl w-12 h-12 md:w-14 md:h-14 flex items-center justify-center text-2xl md:text-3xl group-hover:scale-110 transition-transform shadow-md"></i>
+                        <span class="text-sm md:text-base font-bold leading-tight text-center text-slate-700">মার্কস এন্ট্রি</span>
                     </button>
                 </div>
             </div>
@@ -6306,6 +6323,18 @@ header button {
                                 </label>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- ★★★ নতুন: শরীয়াহ মেধাতালিকা গ্রুপিং টগল ★★★ -->
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mt-3">
+                        <h4 class="text-sm font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group"></i> শরীয়াহ বিভাগের মেধাতালিকা পদ্ধতি
+                        </h4>
+                        <label class="flex items-center gap-2 cursor-pointer mt-2">
+                            <input type="checkbox" id="setting-split-merit" class="w-4 h-4 rounded text-indigo-600">
+                            <span class="text-sm font-semibold text-slate-700">শরীয়াহ মেধাতালিকা ২ ভাগে দেখাও (ইবতেদাইয়্যাহ এবং হেদায়েতুন্নাহু)</span>
+                        </label>
+                        <p class="text-[10px] text-slate-500 mt-1 ml-6">টিক না দিলে পুরো শরীয়াহ বিভাগের সব শ্রেণি একসাথে হিসাব হবে।</p>
                     </div>
 
                     <!-- ৫. সাময়িক ওজন (Term Weight) -->
@@ -40666,11 +40695,14 @@ window.renderMarksEntryTable = async function() {
 
                 cellsHTML += `<td class="p-0 border text-center">
                     <input type="text" inputmode="numeric" 
-                           data-row="${rIdx}" data-student-id="${student.id}" data-col-key="${col.key}" data-col-type="routine_multi" 
-                           data-books="${encodeURIComponent(JSON.stringify(col.books))}"
-                           value="${val}" 
-                           class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm mark-input outline-none bg-transparent"
-                           onkeydown="handleSpreadsheetKeydown(event)">
+                            data-row="${rIdx}" data-student-id="${student.id}" data-col-key="${col.key}" data-col-type="routine_multi" 
+                            data-books="${encodeURIComponent(JSON.stringify(col.books))}"
+                            value="${val}" 
+                            class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm mark-input outline-none bg-transparent"
+                            onkeydown="handleSpreadsheetKeydown(event)"
+                            onmousedown="startCellSelection(event, this)"
+                            onmouseenter="dragCellSelection(this)"
+                            onfocus="this.select()">
                 </td>`;
             } else {
                 // ডিফল্ট বা সেভকৃত ভিউ
@@ -40684,10 +40716,13 @@ window.renderMarksEntryTable = async function() {
 
                 cellsHTML += `<td class="p-0 border text-center">
                     <input type="text" inputmode="numeric" 
-                           data-row="${rIdx}" data-student-id="${student.id}" data-col-key="${col.key}" data-col-type="${col.type}" 
-                           value="${val !== null ? val : ''}" 
-                           class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm mark-input outline-none bg-transparent"
-                           onkeydown="handleSpreadsheetKeydown(event)">                                          
+                        data-row="${rIdx}" data-student-id="${student.id}" data-col-key="${col.key}" data-col-type="${col.type}" 
+                        value="${val !== null ? val : ''}" 
+                        class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm mark-input outline-none bg-transparent"
+                        onkeydown="handleSpreadsheetKeydown(event)"
+                        onmousedown="startCellSelection(event, this)"
+                        onmouseenter="dragCellSelection(this)"
+                        onfocus="this.select()">                                          
                 </td>`;
             }
         });
@@ -41374,10 +41409,12 @@ document.addEventListener('input', function(e) {
 });
 
 // ★★★ মার্কস এন্ট্রির জন্য সম্পূর্ণ আলাদা লাইভ ক্যালকুলেটর (মূল সিস্টেমে কোনো প্রভাব ফেলবে না) ★★★
-window.updateRowLiveStats = function(rIdx) {
-    const dept = document.getElementById('marks-entry-dept').value;
-    const currentClass = document.getElementById('marks-entry-class').value;
+window.updateRowLiveStats = function(rIdx, deptParam, classParam) {
+    // ১. প্যারামিটার অথবা DOM থেকে ডাটা নেওয়া
+    const dept = deptParam || document.getElementById('marks-entry-dept')?.value || '';
+    const currentClass = classParam || document.getElementById('marks-entry-class')?.value || '';
     
+    // ২. ইনপুট থেকে নম্বরগুলো নেওয়া
     const inputs = document.querySelectorAll(`.mark-input[data-row="${rIdx}"]`);
     let marksArray = [];
     
@@ -41386,10 +41423,10 @@ window.updateRowLiveStats = function(rIdx) {
         marksArray.push(val === '' ? 0 : Number(val));
     });
 
+    // ৩. DOM এলিমেন্টগুলো খোঁজা
     const totalEl = document.getElementById(`total-${rIdx}`);
     const avgEl = document.getElementById(`avg-${rIdx}`);
     const gradeEl = document.getElementById(`grade-${rIdx}`);
-
     if (!totalEl || !avgEl || !gradeEl) return;
 
     const hasAnyMark = marksArray.some(m => m > 0);
@@ -41398,14 +41435,43 @@ window.updateRowLiveStats = function(rIdx) {
         return;
     }
 
-    // ★★★ শরীয়াহ (৪র্থ ছাড়া) এর জন্য নতুন নিয়ম ★★★
+    // ★★★ ৪. এখানেই আসল পরিবর্তন: ডাইনামিক কুরআন কারীম খোঁজার লজিক ★★★
+    let quranIndex = -1;
+
+    // শুধুমাত্র শরীয়াহ এবং ৪র্থ শ্রেণি ছাড়া বাকি সবার জন্য
     if (dept === 'shariah' && currentClass !== 'صف رابع (৪র্থ শ্রেণী)') {
-        const quranMark = marksArray[0];
-        const otherMarks = marksArray.slice(1);
+        const allBooks = (configData?.books || {})[currentClass] || [];
+        const savedOrder = (typeof _marksColumnOrder !== 'undefined' && _marksColumnOrder[currentClass]) ? _marksColumnOrder[currentClass] : [];
+        
+        const isQuranKareem = (bookName) => {
+            if (!bookName) return false;
+            if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
+            return bookName.includes('কুরআন কারীম') || bookName.includes('আল-কুরআন') || bookName.includes('القرآن') || bookName.toLowerCase().includes('quran');
+        };
+
+        if (savedOrder.length > 0) {
+            quranIndex = savedOrder.findIndex(key => {
+                if (key.startsWith('default_')) {
+                    const originalIndex = parseInt(key.split('_')[1]);
+                    return isQuranKareem(allBooks[originalIndex]);
+                }
+                return false;
+            });
+        } else {
+            quranIndex = allBooks.findIndex(book => isQuranKareem(book));
+        }
+    }
+
+    // ★★★ ৫. শরীয়াহর লাইভ ক্যালকুলেশন ★★★
+    if (dept === 'shariah' && currentClass !== 'صف رابع (৪র্থ শ্রেণী)' && quranIndex !== -1) {
+        const quranMark = marksArray[quranIndex] || 0;
+        const otherMarks = marksArray.filter((_, index) => index !== quranIndex);
+        
         const totalOther = otherMarks.reduce((a, b) => a + b, 0);
         const avgOther = otherMarks.length > 0 ? (totalOther / otherMarks.length) : 0;
 
-        totalEl.textContent = totalOther;
+        // মোট নম্বর সবসময় আসল যোগফলটাই দেখাবে
+        totalEl.textContent = marksArray.reduce((a, b) => a + b, 0);
         avgEl.textContent = avgOther.toFixed(2);
 
         if (quranMark < 50) {
@@ -41428,11 +41494,11 @@ window.updateRowLiveStats = function(rIdx) {
             gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-amber-800';
         }
     } else {
-        // ★★★ হিফয, ৪র্থ শ্রেণী ও অন্যান্য সবার জন্য মূল ফাংশন কল ★★★
-        // যেহেতু কনফ্লিক্ট এড়াতে আমরা মূল ফাংশনে className পাঠাচ্ছি না, তাই ৪র্থ শ্রেণীতে কুরআন সাধারণ বিষয় হিসেবে কাজ করবে (যা আপনি চেয়েছিলেন)
-        const calc = calculateGradeAndDivision(dept, marksArray);
+        // ★★★ ৬. অন্যান্য বিভাগ বা ৪র্থ শ্রেণির জন্য সাধারণ লাইভ ক্যালকুলেশন ★★★
+        const totalMarks = marksArray.reduce((a, b) => a + b, 0);
+        const calc = calculateGradeAndDivision(dept, marksArray, currentClass);
         
-        totalEl.textContent = marksArray.reduce((a, b) => a + b, 0);
+        totalEl.textContent = totalMarks;
         avgEl.textContent = calc.avg;
         gradeEl.textContent = calc.grade;
 
@@ -42163,10 +42229,6 @@ window.shareOverviewPDF = function(dept) {
         showToast('❌ PDF সমস্যা: ' + err.message, 'error');
     });
 };
-// ═══════════════════════════════════════════════════════════════
-// ★★★ শীর্ষ মেধাবী (Merit List) সেকশন ★★★
-// ═══════════════════════════════════════════════════════════════
-
 window.buildMeritListHTML = function(dept) {
     if (!dept) return '';
 
@@ -42175,17 +42237,18 @@ window.buildMeritListHTML = function(dept) {
         return `<div class="bg-white rounded-xl shadow-md p-10 text-center"><i class="fa-solid fa-school text-5xl text-slate-300 mb-3"></i><h3 class="text-lg font-bold text-slate-700">এই বিভাগে কোনো জামাত নেই</h3></div>`;
     }
 
-    // ★ ১. ডাটা কালেক্ট করা
+    // সেটিংস থেকে চেক করা (গ্রুপ করবো কিনা)
+    const splitMerit = localStorage.getItem('madrasa_split_merit') === 'true';
+
+    // ১. ডাটা কালেক্ট করা
     const allStudents = [];
     classes.forEach(className => {
         const stats = calcClassResultStats(dept, className);
         if (!stats.details) return;
 
         stats.details.forEach(d => {
-            // অসম্পূর্ণ বা অনুপস্থিত ফিল্টার আউট
             if (d.grade === 'অসম্পূর্ণ' || d.grade === 'অনুপস্থিত') return;
             
-            // মোট বিষয় বের করা (0 বাদে)
             const totalSubjects = d.marksArr.filter(m => m > 0).length;
             if (totalSubjects === 0) return;
 
@@ -42201,10 +42264,10 @@ window.buildMeritListHTML = function(dept) {
         });
     });
 
-    // ★ ২. শরীয়াহ স্পেশাল গ্রুপিং
+    // ২. গ্রুপিং লজিক
     let groups = [];
-    if (dept === 'shariah') {
-        // নামের সাথে মিলিয়ে গ্রুপিং
+    if (dept === 'shariah' && splitMerit) {
+        // শরীয়াহর জন্য ২ ভাগ
         const ibtedaiyahClasses = ['صف رابع (৪র্থ শ্রেণী)', 'تيسير (তাইসীর)', 'ميزان (মীযান)', 'نحو مير (নাহবেমীর)'];
         const mizaniaClasses = ['هداية النحو (হেদায়েতুন্নাহু)', 'كافيه وشرح جامي (কাফিয়া)', 'شرح الوقاية (শরহে বেকায়া)', 'جلالين (জালালাইন)', 'مشكاة (মেশকাত)', 'تكميل (তাকমীল)'];
 
@@ -42214,55 +42277,68 @@ window.buildMeritListHTML = function(dept) {
         if (group1.length > 0) groups.push({ title: 'ইবতেদাইয়্যাহ (৪র্থ থেকে নাহবেমীর)', students: group1 });
         if (group2.length > 0) groups.push({ title: 'মিযান (হেদায়েতুন্নাহু থেকে তাকমীল)', students: group2 });
         
-        // যদি কোনো গ্রুপেই না পড়ে (fallback)
+        // কোনো গ্রুপে না পড়লে
         const groupedIds = new Set([...group1, ...group2].map(x => x.student.id));
         const others = allStudents.filter(s => !groupedIds.has(s.student.id));
         if (others.length > 0) groups.push({ title: 'অন্যান্য', students: others });
-
     } else {
-        groups.push({ title: 'শীর্ষ মেধাবী তালিকা', students: allStudents });
+        // অন্যান্য বিভাগ বা শরীয়াহর জন্য এক ভাগ
+        const groupTitle = dept === 'shariah' ? 'শরীয়াহ বিভাগ (সকল শ্রেণি)' : 'শীর্ষ মেধাবী তালিকা';
+        groups.push({ title: groupTitle, students: allStudents });
     }
 
-    // ★ ৩. প্রতিটি গ্রুপের জন্য র্যাংকিং ও টেবিল তৈরি
+    // ৩. প্রতিটি গ্রুপের জন্য র‍্যাংকিং এবং টেবিল
     let tablesHTML = '';
+    const _meritLimit = parseInt(localStorage.getItem('madrasa_merit_limit')) || 10;
+    const _hideFailedInMerit = localStorage.getItem('madrasa_hide_fail') === 'true';
 
-    groups.forEach((group, gIdx) => {
+    groups.forEach((group) => {
         if (group.students.length === 0) return;
 
-        // গড় অনুযায়ী সর্টিং (Descending)
+        // ★★★ নতুন লজিক: গড় দিয়ে সর্ট করা এবং সমান হলে একই র‍্যাংক দেওয়া ★★★
         const sorted = [...group.students].sort((a, b) => b.avg - a.avg);
 
-        // র্যাংকিং লজিক (Tie Handling: ১, ২, ২, ৩)
         let currentRank = 1;
         let prevAvg = null;
+        let rankOffset = 0;
+
         sorted.forEach((s, i) => {
             if (prevAvg !== null && s.avg < prevAvg) {
-                currentRank = i + 1; // গড় কমে গেলে র্যাংক পরিবর্তন হবে
+                currentRank = i + 1; // গড় কমে গেলে র‍্যাংক পরিবর্তন হবে (যেমন ১, ১, ৩)
             }
             s.rank = currentRank;
             prevAvg = s.avg;
         });
 
-                // ★ নতুন ফিল্টারিং: মেধাসীমা ও ফেল লুকানো
-        let filteredSorted = sorted;
-        if (_hideFailedInMerit) {
-            filteredSorted = filteredSorted.filter(s => s.grade !== 'রাসিব' && s.grade !== 'F' && s.grade !== 'অনুপস্থিত');
+        // ★★★ নতুন ফিল্টারিং: শুধু ১ম থেকে ৩য় স্থান পর্যন্ত দেখাবে ★★★
+        let displayStudents = sorted;
+        
+        // ফেল লুকানোর অপশন (সেটিংস থেকে)
+        const hideFailed = (typeof _hideFailedInMerit !== 'undefined') ? _hideFailedInMerit : true;
+        if (hideFailed) {
+            displayStudents = displayStudents.filter(s => s.grade !== 'রাসিব' && s.grade !== 'F' && s.grade !== 'অনুপস্থিত');
         }
-        if (_meritLimit && _meritLimit < 999) {
-            filteredSorted = filteredSorted.slice(0, _meritLimit);
-        }
+        
+        // ★★★ মূল পরিবর্তন: র‍্যাংক ৩ এর বেশি হলে বাদ যাবে ★★★
+        displayStudents = displayStudents.filter(s => s.rank <= 3);
 
-        // টেবিলের সারি তৈরি
+        // টেবিলের সারি তৈরি (এখানে displayStudents ব্যবহার করুন, sorted নয়)
         let rowsHTML = '';
-        sorted.forEach((s, idx) => {
+        displayStudents.forEach((s, idx) => {
             let gradeColor = 'text-slate-700';
             if (s.grade === 'মুমতায' || s.grade === 'A+') gradeColor = 'text-emerald-700 font-bold';
             else if (s.grade === 'রাসিব' || s.grade === 'F') gradeColor = 'text-red-700 font-bold';
             else if (s.grade === 'জায়্যিদ জিদ্দান' || s.grade === 'A') gradeColor = 'text-blue-700 font-bold';
 
+            // ★★★ ব্যাজ লজিক পুনরায় যোগ করা হলো ★★★
+            let rankBadge = `<span class="font-bold text-slate-700">${s.rank}</span>`;
+            if (s.rank === 1) rankBadge = `<span class="bg-yellow-400 text-yellow-900 px-2 py-1 rounded font-bold shadow-sm">১ম</span>`;
+            else if (s.rank === 2) rankBadge = `<span class="bg-slate-300 text-slate-800 px-2 py-1 rounded font-bold shadow-sm">২য়</span>`;
+            else if (s.rank === 3) rankBadge = `<span class="bg-orange-300 text-orange-900 px-2 py-1 rounded font-bold shadow-sm">৩য়</span>`;
+
             rowsHTML += `
                 <tr class="border-b border-slate-200 hover:bg-slate-50 text-center">
-                    <td class="p-2 text-xs font-bold text-slate-500">${idx + 1}</td>
+                    <td class="p-2 text-xs font-bold text-slate-500">${rankBadge}</td> <!-- ★ ব্যাজ এখানে বসানো হলো -->
                     <td class="p-2 text-sm font-bold text-right">${s.student.name || '-'}</td>
                     <td class="p-2 text-xs font-mono">${s.student.studentId || '-'}</td>
                     <td class="p-2 text-xs font-arabic font-bold text-slate-600">${s.className}</td>
@@ -42277,12 +42353,14 @@ window.buildMeritListHTML = function(dept) {
 
         tablesHTML += `
             <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden mb-6" style="page-break-inside: avoid;">
-                ${groups.length > 1 ? `<div class="bg-emerald-100 text-emerald-900 px-4 py-2 font-bold text-sm border-b border-emerald-200"><i class="fa-solid fa-layer-group"></i> ${group.title}</div>` : ''}
+                <div class="bg-emerald-100 text-emerald-900 px-4 py-2 font-bold text-sm border-b border-emerald-200">
+                    <i class="fa-solid fa-layer-group"></i> ${group.title}
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" style="min-width: 800px;">
                         <thead class="bg-slate-800 text-white text-[11px]">
                             <tr>
-                                <th class="p-2 text-center w-12">ক্রম</th>
+                                <th class="p-2 text-center w-16">পজিশন</th>
                                 <th class="p-2">পরীক্ষার্থীর নাম</th>
                                 <th class="p-2 text-center w-24">আইডি</th>
                                 <th class="p-2 text-center">জামাত</th>
@@ -42290,7 +42368,7 @@ window.buildMeritListHTML = function(dept) {
                                 <th class="p-2 text-center w-24">প্রাপ্ত নম্বর</th>
                                 <th class="p-2 text-center w-20">গড়</th>
                                 <th class="p-2 text-center w-32">বিভাগ (গ্রেড)</th>
-                                <th class="p-2 text-center w-24 bg-fuchsia-800">শীর্ষ রেংক</th>
+                                <th class="p-2 text-center w-24 bg-fuchsia-800">মেধাক্রম</th>
                             </tr>
                         </thead>
                         <tbody>${rowsHTML}</tbody>
@@ -42300,7 +42378,7 @@ window.buildMeritListHTML = function(dept) {
         `;
     });
 
-    // ★ ৪. হেডার ও প্রিন্ট বাটন
+    // হেডার ও প্রিন্ট বাটন
     const madrasaBn = settings.madrasaName || 'জামিয়া ইসলামিয়া';
     const madrasaAr = settings.madrasaNameAr || '';
     const logo = settings.logo || '';
@@ -42335,7 +42413,7 @@ window.buildMeritListHTML = function(dept) {
 
             <!-- টেবিল কন্টেইনার -->
             <div class="p-3" style="background:#f8fafc;">
-                ${tablesHTML || '<div class="text-center p-10 text-slate-500 font-bold">কোন বৈধ মেধাতালিকা পাওয়া যায়নি (হয়তো নম্বর এন্ট্রি হয়নি)।</div>'}
+                ${tablesHTML || '<div class="text-center p-10 text-slate-500 font-bold">কোন বৈধ মেধাতালিকা পাওয়া যায়নি (হয়তো নম্বর এন্ট্রি হয়নি)।</div>'}
             </div>
             
             <!-- ফুটার -->
@@ -42345,6 +42423,7 @@ window.buildMeritListHTML = function(dept) {
         </div>
     `;
 };
+
 // ═══════════════════════════════════════════════════════════════
 // ★★★ পুরস্কার প্রাপ্ত (Award List) সেকশন ★★★
 // ═══════════════════════════════════════════════════════════════
@@ -42634,6 +42713,9 @@ window.populateExamSettingsUI = function() {
     }
     
     toggleMandatorySubjectsUI(); // কন্ডিশনাল শো
+
+    const splitMeritInput = document.getElementById('setting-split-merit');
+    if (splitMeritInput) { splitMeritInput.checked = localStorage.getItem('madrasa_split_merit') === 'true'; }
 };
 
 // সেটিংস সেভ করা
@@ -42699,6 +42781,8 @@ window.saveExamSettings = function() {
         .catch(err => console.error('❌ Firestore save failed:', err));
     }
     // ═══════════════════════════════════════════════════════
+
+    const splitMeritInput = document.getElementById('setting-split-merit'); if (splitMeritInput) { localStorage.setItem('madrasa_split_merit', splitMeritInput.checked); }
     
     showToast('✅ পরীক্ষা সেটিংস সফলভাবে সেভ হয়েছে', 'success');
 };
@@ -42737,15 +42821,6 @@ window.toggleMandatorySubjectsUI = function() {
     }
 };
 document.getElementById('setting-require-subject-pass')?.addEventListener('change', toggleMandatorySubjectsUI);
-
-window.populateExamSettingsUI = function() {
-    if(document.getElementById('setting-default-pass')) document.getElementById('setting-default-pass').value = _defaultPassMark;
-    if(document.getElementById('setting-publish-status')) document.getElementById('setting-publish-status').checked = _examPublishStatus;
-    if(document.getElementById('setting-marks-lock')) document.getElementById('setting-marks-lock').checked = _marksEntryLocked;
-    if(document.getElementById('setting-weight-t1')) document.getElementById('setting-weight-t1').value = _termWeights.term1;
-    if(document.getElementById('setting-weight-t2')) document.getElementById('setting-weight-t2').value = _termWeights.term2;
-    if(document.getElementById('setting-weight-anual')) document.getElementById('setting-weight-anual').value = _termWeights.annual;
-};
 
 // ★ যেখানে switchExamSub ফাংশন আছে সেখানে এটি কল করতে হবে
 // (আপনার আগের কোডে setTimeout এর ভেতরে এই লাইনটি যোগ করুন)
@@ -56580,10 +56655,13 @@ async function loadTpMarksEntryTable() {
 
             cellsHTML += `<td class="p-0 border text-center">
                 <input type="text" inputmode="numeric" 
-                       data-row="${rIdx}" data-student-id="${s.id}" data-col-key="${col.key}" data-col-type="${col.type}" 
-                       value="${val !== null ? val : ''}" 
-                       class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm tp-mark-input outline-none bg-transparent"
-                       onkeydown="handleTpSpreadsheetKeydown(event)">
+                    data-row="${rIdx}" data-student-id="${s.id}" data-col-key="${col.key}" data-col-type="${col.type}" 
+                    value="${val !== null ? val : ''}" 
+                    class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm tp-mark-input outline-none bg-transparent"
+                    onkeydown="handleTpSpreadsheetKeydown(event)"
+                    onmousedown="startCellSelection(event, this)"
+                    onmouseenter="dragCellSelection(this)"
+                    onfocus="this.select()">
             </td>`;
         });
 
@@ -68733,6 +68811,120 @@ async function openMainLiveEventsPage() {
         wrap.innerHTML = '<p class="text-center text-red-500">ইভেন্ট লোড করতে সমস্যা হয়েছে</p>';
     }
 }
+// ═══════════════════════════════════════════════════════════════
+// ★★★ নতুন ফিচার: ড্র্যাগ করে সিলেক্ট করা এবং একসাথে ডিলিট করা ★★★
+// ═══════════════════════════════════════════════════════════════
+let _isSelecting = false;
+let _selectedCells = new Set();
+
+window.startCellSelection = function(e, inputElement) {
+    // ★★★ ফিক্স ১: ডিফল্ট টেক্সট সিলেকশন বন্ধ করা ★★★
+    // এটা না দিলে ব্রাউজার পুরো পেজের টেক্সট (নাম, আইডি) সিলেক্ট করে ফেলে।
+    e.preventDefault(); 
+    
+    // কন্ট্রোল বা শিফট কী চেপে ধরে থাকলে মাল্টি-সিলেক্ট
+    if (e.ctrlKey || e.metaKey || e.shiftKey) {
+        return; // ডিফল্ট আচরণ করবে (কার্সর মুভ)
+    }
+    
+    _isSelecting = true;
+    _selectedCells.clear();
+    
+    // আগের সিলেক্ট করা সেলগুলো থেকে কালার সরাই
+    document.querySelectorAll('.mark-input.cell-selected, .tp-mark-input.cell-selected').forEach(el => el.classList.remove('cell-selected'));
+    
+    // বর্তমান সেলকে সিলেক্ট করি
+    selectSingleCell(inputElement);
+    
+    // মাউস ক্লিক করে ধরে রাখলে কার্সর ওখানেই থাকবে (টেক্সট সিলেক্ট হবে না)
+    inputElement.focus();
+};
+
+window.dragCellSelection = function(inputElement) {
+    if (!_isSelecting) return;
+    selectSingleCell(inputElement);
+};
+
+function selectSingleCell(inputElement) {
+    inputElement.classList.add('cell-selected');
+    _selectedCells.add(inputElement);
+}
+
+// মাউস ছাড়লে সিলেকশন বন্ধ হবে
+document.addEventListener('mouseup', function() {
+    if (_isSelecting) {
+        _isSelecting = false;
+        // সিলেক্ট হওয়া সেলের সংখ্যা জানাই
+        if (_selectedCells.size > 1) {
+            showToast(`✅ ${_selectedCells.size}টি ঘর সিলেক্ট হয়েছে। ডিলিট করতে Backspace বা Delete চাপুন।`, 'info');
+        }
+    }
+});
+
+// কীবোর্ড শর্টকাট (Backspace বা Delete চাপলে সিলেক্ট করা সেলগুলো খালি হবে)
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+        // যদি মার্কস এন্ট্রির ইনপুট ফিল্ডে ফোকাস থাকে এবং কিছু সিলেক্ট করা থাকে
+        if (_selectedCells.size > 0) {
+            e.preventDefault(); // ডিফল্ট ডিলিট আটকাই
+            
+            let deletedCount = 0;
+            _selectedCells.forEach(cell => {
+                cell.value = ''; // সেল খালি করি
+                
+                // লাইভ স্ট্যাটাস আপডেট করি (যাতে টোটাল ও গ্রেড রিফ্রেশ হয়)
+                const rowIdx = cell.dataset.row;
+                if (cell.classList.contains('tp-mark-input')) {
+                    if (typeof window.updateTpRowLiveStats === 'function') {
+                        const dept = window._tpExamState?.entryDept;
+                        const className = window._tpExamState?.entryClass;
+                        window.updateTpRowLiveStats(rowIdx, dept, className);
+                    }
+                } else {
+                    if (typeof updateRowLiveStats === 'function') {
+                        updateRowLiveStats(rowIdx);
+                    }
+                }
+                deletedCount++;
+            });
+            
+            _selectedCells.clear();
+            document.querySelectorAll('.mark-input.cell-selected, .tp-mark-input.cell-selected').forEach(el => el.classList.remove('cell-selected'));
+            showToast(`🗑️ ${deletedCount}টি ঘরের নম্বর মুছে ফেলা হয়েছে`, 'success');
+        }
+    }
+});
+
+// ★ সিলেক্ট করা সেলের সিএসএস (নীল বর্ডার)
+const style = document.createElement('style');
+style.innerHTML = `
+    .mark-input.cell-selected, 
+    .tp-mark-input.cell-selected {
+        background-color: #dbeafe !important; /* হালকা নীল */
+        border: 2px solid #3b82f6 !important;
+        border-radius: 4px;
+        /* ★★★ ফিক্স ২: শুধু নম্বর সিলেক্ট হবে, বাইরের কিছু নয় ★★★ */
+        user-select: none; 
+    }
+    
+    /* ড্র্যাগ করার সময় পুরো পেজে টেক্সট সিলেকশন বন্ধ রাখার জন্য */
+    body.selecting-mode {
+        user-select: none !important;
+        -webkit-user-select: none !important;
+    }
+`;
+document.head.appendChild(style);
+
+// ★★★ ফিক্স ৩: বডিতে একটি ক্লাস যোগ/বিয়োগ করা যাতে ড্র্যাগের সময় অন্য কিছু সিলেক্ট না হয় ★★★
+document.addEventListener('mousedown', function(e) {
+    if (e.target.classList.contains('mark-input') || e.target.classList.contains('tp-mark-input')) {
+        document.body.classList.add('selecting-mode');
+    }
+});
+
+document.addEventListener('mouseup', function() {
+    document.body.classList.remove('selecting-mode');
+});
 </script>
 </body>
 </html>
