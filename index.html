@@ -6123,6 +6123,27 @@ header button {
                         </button>
                     </div>
 
+                    <!-- ★★★ নতুন: শিক্ষাবর্ষ + পরীক্ষার সাময়িক সিলেক্টর ★★★ -->
+                    <div class="flex items-center gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-600">শিক্ষাবর্ষ:</label>
+                        <select id="marks-entry-year" onchange="onMarksYearChange()" 
+                                class="rounded border-slate-300 border p-1.5 text-xs font-medium min-w-[110px]">
+                            <option value="">-- বছর --</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-600">পরীক্ষা:</label>
+                        <select id="marks-entry-exam" onchange="onMarksExamChange()" 
+                                class="rounded border-slate-300 border p-1.5 text-xs font-medium min-w-[110px]">
+                            <option value="">-- পরীক্ষা --</option>
+                            <option value="term1">১ম সাময়িক</option>
+                            <option value="term2">২য় সাময়িক</option>
+                            <option value="model">মডেল টেস্ট</option>
+                            <option value="qurbani">কুরবানী</option>
+                            <option value="annual">বার্ষিক</option>
+                        </select>
+                    </div>
+
                     <!-- ডান দিক: বিভাগ, জামাত, রিফ্রেশ -->
                     <div class="flex flex-wrap items-center gap-2 flex-1 justify-end">
                         <div class="flex items-center gap-1.5">
@@ -6426,6 +6447,119 @@ header button {
 </footer>
 
 <script>
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ মাল্টি-টার্ম মার্কস সিস্টেম — হেল্পার ফাংশন ★★★
+// ═══════════════════════════════════════════════════════════════
+
+// ─── পরীক্ষার ধরনের বাংলা লেবেল ───
+const EXAM_TYPE_LABELS = {
+    term1:   '১ম সাময়িক',
+    term2:   '২য় সাময়িক',
+    model:   'মডেল টেস্ট',
+    qurbani: 'কুরবানী পরীক্ষা',
+    annual:  'বার্ষিক পরীক্ষা'
+};
+
+// ─── বর্তমান মার্কস কনটেক্সট (গ্লোবাল স্টেট) ───
+window._marksContext = {
+    academicYear: '',
+    examType: '',
+    loaded: false
+};
+
+// ─── Key তৈরি ───
+function buildMarksKey(academicYear, examType) {
+    if (!academicYear || !examType) return '';
+    
+    // ★★★ নতুন ফিক্স: শিক্ষাবর্ষ থেকে (আবাসিক), (অনাবাসিক) ইত্যাদি মুছে ফেলি ★★★
+    const cleanYear = String(academicYear).replace(/\s*\(.*?\)\s*/g, '').trim();
+    
+    return `${cleanYear}__${examType}`;
+}
+
+function getStudentTermMarks(student, academicYear, examType) {
+    const key = buildMarksKey(academicYear, examType);
+    if (!key) return { resultMarksObj: {}, customMarks: {} };
+
+    // ১. নতুন ফরম্যাটে ডাটা আছে কি না দেখি (marksByTerm)
+    if (student.marksByTerm?.[key]) {
+        return {
+            resultMarksObj: student.marksByTerm[key] || {},
+            customMarks: student.customMarksByTerm?.[key] || {}
+        };
+    }
+
+    // ২. পুরনো ব্র্যাকেটসহ key (যেমন: ২০২৬-২০২৭__term2) চেক করি
+    const oldKey = `${academicYear}__${examType}`;
+    if (student.marksByTerm?.[oldKey]) {
+        return {
+            resultMarksObj: student.marksByTerm[oldKey] || {},
+            customMarks: student.customMarksByTerm?.[oldKey] || {}
+        };
+    }
+
+    // ★★★ ৩. কোনো ডাটাই না থাকলে সম্পূর্ণ খালি অবজেক্ট রিটার্ন করবে ★★★
+    // (এখানে student.resultMarks বা অন্য কোনো টার্মের ডাটা ফ্যালব্যাক হিসেবে আসবে না)
+    return { resultMarksObj: {}, customMarks: {} };
+}
+
+// ★★★ রেজাল্ট পেজের কনটেক্সট (শিক্ষাবর্ষ ও পরীক্ষা) পরিবর্তন ★★★
+window.onResultViewContextChange = function() {
+    const yearSel = document.getElementById('result-view-year');
+    const examSel = document.getElementById('result-view-exam');
+    
+    if (!window._marksContext) window._marksContext = {};
+    window._marksContext.academicYear = yearSel?.value || '';
+    window._marksContext.examType = examSel?.value || '';
+    
+    // কনটেক্সট পরিবর্তন হলে রেজাল্ট পেজ রি-রেন্ডার হবে
+    renderResultDeptPage();
+};
+
+// ─── মার্কস কনটেক্সট রিলোড ───
+function reloadMarksContext() {
+    const yearSel = document.getElementById('marks-entry-year');
+    const examSel = document.getElementById('marks-entry-exam');
+    window._marksContext.academicYear = yearSel?.value || '';
+    window._marksContext.examType = examSel?.value || '';
+    window._marksContext.loaded = !!(window._marksContext.academicYear && window._marksContext.examType);
+}
+
+// ★★★ শিক্ষাবর্ষ dropdown পরিবর্তন হ্যান্ডলার ★★★
+window.onMarksYearChange = function() {
+    reloadMarksContext();
+    renderMarksEntryTable();
+};
+
+// ★★★ পরীক্ষা dropdown পরিবর্তন হ্যান্ডলার ★★★
+window.onMarksExamChange = function() {
+    reloadMarksContext();
+    renderMarksEntryTable();
+};
+
+// ★★★ মার্কস এন্ট্রি পেজে বছর dropdown ভরাট ★★★
+function populateMarksYearDropdown() {
+    const sel = document.getElementById('marks-entry-year');
+    if (!sel) return;
+
+    sel.innerHTML = '<option value="">-- বছর --</option>';
+    (academicYears || []).forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y.name;
+        opt.textContent = y.name + (y.isCurrent ? ' (বর্তমান)' : '');
+        sel.appendChild(opt);
+    });
+
+    const current = typeof getCurrentYear === 'function' ? getCurrentYear() : '';
+    if (current) sel.value = current;
+
+    const examSel = document.getElementById('marks-entry-exam');
+    if (examSel && !examSel.value) examSel.value = 'term2';
+
+    reloadMarksContext();
+}
+ 
 // ═══════════════════ ডিফল্ট ক্লাস রুটিন পিরিয়ড কনফিগ ═══════════════════
 const DEFAULT_ROUTINE_PERIODS = {
     // ── শরীয়াহ বিভাগ (আরবি রুটিন) ──
@@ -7452,20 +7586,27 @@ function getDefaultMarksheetLang(dept) {
 function getHighestMarkInClass(dept, className, colKey) {
     if (!studentsCache || studentsCache.length === 0) return null;
 
+    // ★★★ নতুন: কনটেক্সট থেকে শিক্ষাবর্ষ ও পরীক্ষা নাও ★★★
+    const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
+    const examType = window._marksContext?.examType || 'term2';
+
     let highest = null;
     studentsCache.forEach(s => {
         if (s.dept !== dept || s.className !== className) return;
 
+        // ★★★ এই ছাত্রের নির্দিষ্ট টার্মের মার্কস ★★★
+        const termMarks = getStudentTermMarks(s, academicYear, examType);
+
         let val = null;
-        // নতুন ফরম্যাট
-        if (s.resultMarksObj && s.resultMarksObj[colKey] !== undefined) {
-            val = s.resultMarksObj[colKey];
+        // নতুন nested ফরম্যাট
+        if (termMarks.resultMarksObj && termMarks.resultMarksObj[colKey] !== undefined) {
+            val = termMarks.resultMarksObj[colKey];
         }
         // কাস্টম কলাম
-        else if (colKey.startsWith('custom_') && s.customMarks && s.customMarks[colKey] !== undefined) {
-            val = s.customMarks[colKey];
+        else if (colKey.startsWith('custom_') && termMarks.customMarks && termMarks.customMarks[colKey] !== undefined) {
+            val = termMarks.customMarks[colKey];
         }
-        // পুরনো ফরম্যাট fallback (default_N এর জন্য)
+        // পুরনো অ্যারে ফরম্যাট fallback (default_N এর জন্য — মাইগ্রেশন)
         else if (colKey.startsWith('default_') && s.resultMarks) {
             const idx = parseInt(colKey.split('_')[1]);
             if (!isNaN(idx) && s.resultMarks[idx] !== undefined) {
@@ -7481,7 +7622,7 @@ function getHighestMarkInClass(dept, className, colKey) {
         }
     });
 
-    return highest; // null মানে কোনো নম্বর এন্ট্রি হয়নি
+    return highest;
 }
 
 // ★ একটি ছাত্রের প্রতিটি বিষয়ের পূর্ণ তথ্য (পূর্ণমান, পাশ, প্রাপ্ত, সর্বোচ্চ) বের করা
@@ -7489,10 +7630,15 @@ function getStudentMarksheetData(student) {
     const dept = student.dept;
     const className = student.className;
 
+    // ★★★ নতুন: নির্দিষ্ট টার্মের মার্কস বের করি ★★★
+    const _ctxYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
+    const _ctxExam = window._marksContext?.examType || 'term2';
+    const _termMarks = getStudentTermMarks(student, _ctxYear, _ctxExam);
+
     // ★★★ ফাইনাল ফিক্স: শুধুমাত্র সংখ্যা মিলিয়ে ক্লাস ও কিতাব লোড করা ★★★
     const getNumbers = (str) => String(str || '').replace(/[^\d০-৯]/g, ''); // শুধু সংখ্যা বের করবে
     const targetNum = getNumbers(className);
-    
+
     let books = [];
     let matchedClassKey = className;
     const allBooksMap = configData?.books || {};
@@ -7571,17 +7717,21 @@ function getStudentMarksheetData(student) {
 
         if (col.type === 'default') {
             // ডিফল্ট কিতাবের নম্বর
-            if (student.resultMarksObj && student.resultMarksObj[col.key] !== undefined) {
-                obtained = student.resultMarksObj[col.key];
-            } else if (student.resultMarks && student.resultMarks[col.index] !== undefined) {
+            // ★★★ পরিবর্তিত: resultMarksObj → _termMarks.resultMarksObj ★★★
+            if (_termMarks.resultMarksObj && _termMarks.resultMarksObj[col.key] !== undefined) {
+                obtained = _termMarks.resultMarksObj[col.key];
+            } 
+            // ★★★ পুরনো অ্যারে ফরম্যাট fallback (মাইগ্রেশন) ★★★
+            else if (student.resultMarks && student.resultMarks[col.index] !== undefined) {
                 obtained = student.resultMarks[col.index];
             }
             marksCfg = getExamMarksConfig(col.label);
             highest = getHighestMarkInClass(dept, className, col.key);
         } else {
             // কাস্টম কলামের নম্বর
-            if (student.customMarks && student.customMarks[col.key] !== undefined) {
-                obtained = student.customMarks[col.key];
+            // ★★★ পরিবর্তিত: customMarks → _termMarks.customMarks ★★★
+            if (_termMarks.customMarks && _termMarks.customMarks[col.key] !== undefined) {
+                obtained = _termMarks.customMarks[col.key];
             }
             marksCfg = getExamMarksConfig(col.label);
             highest = getHighestMarkInClass(dept, className, col.key);
@@ -7624,14 +7774,33 @@ function getStudentMarksheetData(student) {
         });
     });
 
-    // ★★★ নতুন ফিক্স: মোট ও গড় বের করার সময় কুরআন কারীম বাদ দেওয়া ★★★
+    // ★★★ নতুন ফিক্স: মোট ও গড় বের করার সময় কুরআন কারীম বাদ দেওয়া ★★★
     let totalFullMarks = 0;
     let totalObtained = 0;
     let enteredCount = 0;
 
+    // ─── কুরআন কারীমের সঠিক ইন্ডেক্স খুঁজি (rows-এর ভেতরে) ───
+    const isQuranKareem = (bookName) => {
+        if (!bookName) return false;
+        if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
+        return bookName.includes('কুরআন কারীম') || 
+            bookName.includes('আল-কুরআন') || 
+            bookName.includes('القرآن') || 
+            bookName.toLowerCase().includes('quran');
+    };
+
+    const quranRowIndex = rows.findIndex(r => 
+        isQuranKareem(r.label)  // ← r.label-এ কুরআনের নাম আছে
+    );
+
     rows.forEach((r, idx) => {
-        // শরীয়াহ (৪র্থ ছাড়া) এবং ১ম কলাম (কুরআন) হলে স্কিপ করি
-        const isSpecialQuran = (dept === 'shariah' && className !== 'صف رابع (৪র্থ শ্রেণী)' && idx === 0);
+        // ★ শুধু প্রকৃত কুরআন কলাম হলে বাদ; নাহলে সবই যোগ
+        const isSpecialQuran = (
+            dept === 'shariah' && 
+            className !== 'صف رابع (৪র্থ শ্রেণী)' && 
+            quranRowIndex !== -1 && 
+            idx === quranRowIndex
+        );
         
         if (!isSpecialQuran) {
             totalFullMarks += r.fullMarks;
@@ -7678,6 +7847,10 @@ function getStudentMarksheetData(student) {
 function getStudentRankInClass(student) {
     if (!studentsCache || studentsCache.length === 0) return null;
 
+    // ★★★ নতুন: কনটেক্সট ★★★
+    const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
+    const examType = window._marksContext?.examType || 'term2';
+
     const classmates = studentsCache.filter(s =>
         s.dept === student.dept && 
         s.className === student.className &&
@@ -7686,55 +7859,92 @@ function getStudentRankInClass(student) {
 
     if (classmates.length === 0) return null;
 
-    // প্রত্যেকের মোট প্রাপ্ত নম্বর হিসাব করি
-    const scored = classmates.map(s => {
-        const data = { total: 0, hasAnyMarks: false };
+    // ★★★ কুরআন কারীম শনাক্ত করার helper ★★★
+    const isQuranKareem = (bookName) => {
+        if (!bookName) return false;
+        if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
+        return bookName.includes('কুরআন কারীম') || 
+               bookName.includes('আল-কুরআন') || 
+               bookName.includes('القرآن') || 
+               bookName.toLowerCase().includes('quran');
+    };
 
-        // ডিফল্ট কিতাব
+    const scored = classmates.map(s => {
+        const data = { total: 0, hasAnyMarks: false, isFail: false };
+
+        // ★★★ এই ছাত্রের নির্দিষ্ট টার্মের মার্কস ★★★
+        const termMarks = getStudentTermMarks(s, academicYear, examType);
+
         const books = (configData?.books || {})[s.className] || [];
         const deletedCols = (_deletedMarksColumns[s.className] || []);
 
         books.forEach((book, idx) => {
             const colKey = `default_${idx}`;
             if (deletedCols.includes(colKey)) return;
+
+            // ★ কুরআন কারীম কিনা চেক (৪র্থ ছাড়া শরীয়াহ)
+            const isSpecialQuran = (
+                s.dept === 'shariah' && 
+                s.className !== 'صف رابع (৪র্থ শ্রেণী)' && 
+                isQuranKareem(book)
+            );
+
             let v = null;
-            if (s.resultMarksObj && s.resultMarksObj[colKey] !== undefined) v = s.resultMarksObj[colKey];
-            else if (s.resultMarks && s.resultMarks[idx] !== undefined) v = s.resultMarks[idx];
-            if (v !== null && v !== '' && !isNaN(v)) {
-                data.total += Number(v);
+            if (termMarks.resultMarksObj && termMarks.resultMarksObj[colKey] !== undefined) v = termMarks.resultMarksObj[colKey];
+            else if (s.resultMarks && s.resultMarks[idx] !== undefined) v = s.resultMarks[idx]; // fallback
+
+            if (v === null || v === '' || isNaN(v)) return;
+
+            const num = Number(v);
+
+            if (isSpecialQuran) {
+                // ★ কুরআন কারীম: পাশ = ৫০, টোটালে যোগ হবে না
+                if (num > 0) data.hasAnyMarks = true;   // কুরআনে নম্বর দিলেও "মার্কস আছে" হিসেবে ধরা
+                if (num < 50) data.isFail = true;        // কুরআনে ফেল → মেধাক্রম থেকে বাদ
+            } else {
+                // ★ সাধারণ বিষয়: টোটালে যোগ হবে
+                data.total += num;
                 data.hasAnyMarks = true;
+
+                // ★ অন্যান্য বিষয়ে ফেল চেক (৩৩-এর নিচে)
+                const cfg = getExamMarksConfig(book);
+                if (num < cfg.passMarks) data.isFail = true;
             }
         });
 
-        // কাস্টম
+        // ★ কাস্টম কলাম (সাধারণ বিষয়ের মতোই)
         (_customMarksColumns[s.className] || []).forEach(col => {
             if (deletedCols.includes(col.key)) return;
-            if (s.customMarks && s.customMarks[col.key] !== undefined) {
-                const v = s.customMarks[col.key];
+            if (termMarks.customMarks && termMarks.customMarks[col.key] !== undefined) {
+                const v = termMarks.customMarks[col.key];
                 if (v !== null && v !== '' && !isNaN(v)) {
-                    data.total += Number(v);
+                    const num = Number(v);
+                    data.total += num;
                     data.hasAnyMarks = true;
+
+                    const cfg = getExamMarksConfig(col.label);
+                    if (num < cfg.passMarks) data.isFail = true;
                 }
             }
         });
 
-        return { student: s, total: data.total, hasAnyMarks: data.hasAnyMarks };
+        return { student: s, total: data.total, hasAnyMarks: data.hasAnyMarks, isFail: data.isFail };
     });
 
-    // যাদের নম্বর আছে শুধু তাদের sort করি
-    const withMarks = scored.filter(x => x.hasAnyMarks);
-    if (withMarks.length === 0) return null;
+    // ★★★ ফিক্স: যাদের মার্কস আছে কিন্তু ফেল করেনি, শুধু তারাই মেধাক্রমে ★★★
+    const eligibleForRank = scored.filter(x => x.hasAnyMarks && !x.isFail);
+    if (eligibleForRank.length === 0) return null;
 
-    withMarks.sort((a, b) => b.total - a.total);
+    eligibleForRank.sort((a, b) => b.total - a.total);
 
-    // student এর index
-    const myIdx = withMarks.findIndex(x => x.student.id === student.id);
+    const myIdx = eligibleForRank.findIndex(x => x.student.id === student.id);
+    
+    // ★★★ ফিক্স: আমি নিজে ফেল করলে মেধাক্রমে থাকব না ★★★
     if (myIdx === -1) return null;
 
-    // একই নম্বর হলে একই rank
     let rank = 1;
     for (let i = 0; i <= myIdx; i++) {
-        if (i > 0 && withMarks[i].total < withMarks[i - 1].total) {
+        if (i > 0 && eligibleForRank[i].total < eligibleForRank[i - 1].total) {
             rank = i + 1;
         }
     }
@@ -7750,30 +7960,50 @@ function getClassPassFailStats(dept, className, section) {
     );
     let passed = 0, failed = 0, absent = 0, incomplete = 0;
 
+    // ★★★ নতুন: কনটেক্সট ★★★
+    const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
+    const examType = window._marksContext?.examType || 'term2';
+
     const books = (configData?.books || {})[className] || [];
     const deletedCols = (_deletedMarksColumns[className] || []);
     const customCols = (_customMarksColumns[className] || []);
     
-    // মোট কতটি কলাম এন্ট্রি করা দরকার
     const requiredCols = books.filter((_, i) => !deletedCols.includes(`default_${i}`)).length
                        + customCols.filter(c => !deletedCols.includes(c.key)).length;
+
+    // ★★★ কুরআন কারীম শনাক্ত করার helper ★★★
+    const isQuranKareem = (bookName) => {
+        if (!bookName) return false;
+        // তরজমাতুল কুরআন / তাফসীর হলে সেটা কুরআন কারীম নয়
+        if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
+        return bookName.includes('কুরআন কারীম') || 
+               bookName.includes('আল-কুরআন') || 
+               bookName.includes('القرآن') || 
+               bookName.toLowerCase().includes('quran');
+    };
 
     classmates.forEach(s => {
         let anyAbsent = false;
         let anyFail = false;
         let totalEntries = 0;
 
-        // ডিফল্ট কিতাব        
+        // ★★★ এই ছাত্রের নির্দিষ্ট টার্মের মার্কস ★★★
+        const termMarks = getStudentTermMarks(s, academicYear, examType);
+
         books.forEach((book, idx) => {
             const colKey = `default_${idx}`;
             if (deletedCols.includes(colKey)) return;
 
-            // ★★★ নতুন ফিক্স: কুরআন কারীমের ক্ষেত্রে পাশ নম্বর ৫০ ধরি ★★★
-            const isSpecialQuran = (dept === 'shariah' && className !== 'صف رابع (৪র্থ শ্রেণী)' && idx === 0);
+            // ★★★ ফিক্স: book-এর নাম দিয়ে কুরআন চেক (idx নয়) ★★★
+            const isSpecialQuran = (
+                dept === 'shariah' && 
+                className !== 'صف رابع (৪র্থ শ্রেণী)' && 
+                isQuranKareem(book)
+            );
 
             let v = null;
-            if (s.resultMarksObj && s.resultMarksObj[colKey] !== undefined) v = s.resultMarksObj[colKey];
-            else if (s.resultMarks && s.resultMarks[idx] !== undefined) v = s.resultMarks[idx];
+            if (termMarks.resultMarksObj && termMarks.resultMarksObj[colKey] !== undefined) v = termMarks.resultMarksObj[colKey];
+            else if (s.resultMarks && s.resultMarks[idx] !== undefined) v = s.resultMarks[idx]; // fallback
 
             if (v === null || v === '' || isNaN(v)) return;
 
@@ -7782,7 +8012,7 @@ function getClassPassFailStats(dept, className, section) {
             if (num === 0) anyAbsent = true;
             
             if (isSpecialQuran) {
-                // কুরআনে ৫০ এর কম হলে ফেল
+                // কুরআন কারীমে পাশ = ৫০
                 if (num < 50) anyFail = true;
             } else {
                 const cfg = getExamMarksConfig(book);
@@ -7790,11 +8020,10 @@ function getClassPassFailStats(dept, className, section) {
             }
         });
 
-        // কাস্টম কলাম
         customCols.forEach(col => {
             if (deletedCols.includes(col.key)) return;
-            if (!s.customMarks || s.customMarks[col.key] === undefined) return;
-            const v = s.customMarks[col.key];
+            if (!termMarks.customMarks || termMarks.customMarks[col.key] === undefined) return;
+            const v = termMarks.customMarks[col.key];
             if (v === null || v === '' || isNaN(v)) return;
             
             totalEntries++;
@@ -7804,7 +8033,6 @@ function getClassPassFailStats(dept, className, section) {
             if (num < cfg.passMarks) anyFail = true;
         });
 
-        // ★ অসম্পূর্ণ নম্বর বাদ (সব বিষয় এন্ট্রি হলে তবেই গণনা)
         if (totalEntries === 0 || totalEntries < requiredCols) {
             incomplete++;
             return;
@@ -28943,6 +29171,8 @@ async function loadStudentsFromFirestore() {
                     source: 'admission',
                     admissionFormId: form.id,
                     approvedAt: fd.approvedAt,
+                    marksByTerm: fd.marksByTerm || {},
+                    customMarksByTerm: fd.customMarksByTerm || {},
                     resultMarksObj: fd.examMarks || form.data?.examMarks || form.data?.resultMarksObj || {},
                     customMarks: fd.customMarks || form.data?.customMarks || {}
                 });
@@ -39338,74 +39568,82 @@ function calculateGradeAndDivision(dept, marksArray, className = '') {
     // ★★★ ডাইনামিক কুরআন কারীম খোঁজার লজিক ★★★
     let quranIndex = -1;
 
-    // শুধুমাত্র শরীয়াহ এবং ৪র্থ শ্রেণি ছাড়া বাকি সবার জন্য এই লজিক
+    // ★★★ শরীয়াহ (৪র্থ ছাড়া) — কুরআন কারীম আলাদা লজিক ★★★
     if (dept === 'shariah' && className !== 'صف رابع (৪র্থ শ্রেণী)') {
-        const allBooks = (configData?.books || {})[className] || [];
-        const savedOrder = (typeof _marksColumnOrder !== 'undefined' && _marksColumnOrder[className]) ? _marksColumnOrder[className] : [];
         
-        // ★ ফাংশন: কুরআন কারীম কি না তা নির্ভুলভাবে চেক করা
+        // ─── মার্কস অ্যারের সাথে মিলে যাওয়া orderedSubs পুনর্গঠন ───
+        const allBooks = (configData?.books || {})[className] || [];
+        const deletedCols = (_deletedMarksColumns?.[className]) || [];
+        const customCols  = (_customMarksColumns?.[className]) || [];
+        const savedOrder  = (_marksColumnOrder?.[className]) || [];
+
+        let tempSubs = [];
+        allBooks.forEach((book, idx) => {
+            const colKey = `default_${idx}`;
+            if (!deletedCols.includes(colKey)) {
+                tempSubs.push({ key: colKey, type: 'default', index: idx, label: book });
+            }
+        });
+        customCols.forEach(col => {
+            if (!deletedCols.includes(col.key)) {
+                tempSubs.push({ key: col.key, type: 'custom', label: col.label });
+            }
+        });
+
+        let orderedSubs = [];
+        savedOrder.forEach(key => {
+            const found = tempSubs.find(c => c.key === key);
+            if (found) orderedSubs.push(found);
+        });
+        tempSubs.forEach(col => {
+            if (!orderedSubs.find(c => c.key === col.key)) orderedSubs.push(col);
+        });
+
         const isQuranKareem = (bookName) => {
             if (!bookName) return false;
-            // "তরজমাতুল কুরআন" বা "তাফসীর" থাকলে সেটা কুরআন কারীম নয়
             if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
-            
-            // শুধু কুরআন কারীম, القرآن, Quran থাকলে true
             return bookName.includes('কুরআন কারীম') || 
-                   bookName.includes('আল-কুরআন') || 
-                   bookName.includes('القرآن') || 
-                   bookName.toLowerCase().includes('quran');
+                bookName.includes('আল-কুরআন') || 
+                bookName.includes('القرآن') || 
+                bookName.toLowerCase().includes('quran');
         };
 
-        // সেভ করা অর্ডার থাকলে সেই অর্ডার অনুযায়ী ইনডেক্স খুঁজি
-        if (savedOrder.length > 0) {
-            quranIndex = savedOrder.findIndex(key => {
-                if (key.startsWith('default_')) {
-                    const originalIndex = parseInt(key.split('_')[1]);
-                    const bookName = allBooks[originalIndex] || '';
-                    return isQuranKareem(bookName);
-                }
-                return false;
-            });
-        } 
-        // অর্ডার না থাকলে সরাসরি বুক লিস্টে খুঁজি
-        else {
-            quranIndex = allBooks.findIndex(book => isQuranKareem(book));
-        }
-    }
+        const quranIndex = orderedSubs.findIndex(col => 
+            col.type === 'default' && isQuranKareem(col.label)
+        );
 
-    // ★★★ শরীয়াহর কুরআন কারীম লজিক (শুধু কুরআন থাকলে) ★★★
-    if (dept === 'shariah' && className !== 'صف رابع (৪র্থ শ্রেণী)' && quranIndex !== -1) {
-        const quranMark = marks[quranIndex] || 0; 
-        
-        // ১. কুরআনে ৫০ এর কম পেলে রাসিব
-        if (quranMark < 50) {
+        // ─── কুরআন কলাম না থাকলে → সরাসরি সাধারণ শরীয়াহ লজিক ───
+        if (quranIndex === -1) {
+            if (marks.some(m => m === 0))  return { grade: 'অনুপস্থিত', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (marks.some(m => m < 33))   return { grade: 'রাসিব',    total: totalMarks, avg: avgMarks.toFixed(2) };
+            
+            const scale = JSON.parse(localStorage.getItem('madrasa_grade_scale') || '{"mumtaz":80,"jj":65,"jayed":50,"maqbul":33}');
+            if (avgMarks >= scale.mumtaz) return { grade: 'মুমতায',          total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= scale.jj)     return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= scale.jayed)  return { grade: 'জায়্যিদ',          total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= scale.maqbul) return { grade: 'মাকবুল',            total: totalMarks, avg: avgMarks.toFixed(2) };
             return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
         }
 
-        // ২. কুরআন বাদে বাকি বিষয়গুলো বের করি
-        const otherMarks = marks.filter((_, index) => index !== quranIndex);
-        
-        // বাকি বিষয়ে ৩৩ এর কম পেলে রাসিব
-        if (otherMarks.some(m => m < 33)) {
-            return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
-        }
-        
-        // বাকি বিষয়ে ০ (অনুপস্থিত) থাকলে
-        if (otherMarks.some(m => m === 0)) {
-            return { grade: 'অনুপস্থিত', total: totalMarks, avg: avgMarks.toFixed(2) };
-        }
-
-        // ৩. কুরআন বাদে বাকি বিষয়গুলোর গড় দিয়ে গ্রেড নির্ধারণ
+        // ─── কুরআন কলাম আছে → কুরআন বাদ দিয়ে টোটাল/অ্যাভারেজ ───
+        const quranMark = marks[quranIndex] || 0;
+        const otherMarks = marks.filter((_, i) => i !== quranIndex);
         const totalOther = otherMarks.reduce((a, b) => a + b, 0);
-        const avgOther = otherMarks.length > 0 ? (totalOther / otherMarks.length) : 0;
+        const avgOther   = otherMarks.length > 0 ? totalOther / otherMarks.length : 0;
 
+        // ★ শুধু ফেল-চেকের জন্য কুরআন ব্যবহৃত; টোটালে কুরআন নেই
+        if (quranMark < 50)              return { grade: 'রাসিব',       total: totalOther, avg: avgOther.toFixed(2) };
+        if (otherMarks.some(m => m === 0)) return { grade: 'অনুপস্থিত',  total: totalOther, avg: avgOther.toFixed(2) };
+        if (otherMarks.some(m => m < 33))  return { grade: 'রাসিব',       total: totalOther, avg: avgOther.toFixed(2) };
+
+        // ★ গ্রেড = বাকি বিষয়ের গড়
         let grade = 'রাসিব';
         if (avgOther >= 80) grade = 'মুমতায';
         else if (avgOther >= 65) grade = 'জায়্যিদ জিদ্দান';
         else if (avgOther >= 50) grade = 'জায়্যিদ';
         else if (avgOther >= 33) grade = 'মাকবুল';
 
-        return { grade, total: totalMarks, avg: avgMarks.toFixed(2) };
+        return { grade, total: totalOther, avg: avgOther.toFixed(2) };
     }
 
     // ★★★ বাকি সব বিভাগ এবং ৪র্থ শ্রেণীর জন্য সাধারণ নিয়ম ★★★
@@ -40119,6 +40357,15 @@ async function renderResultDeptPage() {
             </div>
         `;
 
+
+        // ★★★ নতুন: ড্রপডাউনের জন্য ডাটা তৈরি ★★★
+        const currentYear = window._marksContext?.academicYear || getCurrentYear();
+        const currentExam = window._marksContext?.examType || 'term2';
+        
+        const yearOptions = (academicYears || []).map(y => 
+            `<option value="${y.name}" ${y.name === currentYear ? 'selected' : ''}>${y.name}${y.isCurrent ? ' (বর্তমান)' : ''}</option>`
+        ).join('');
+
         headerEl.innerHTML = `
             <div class="space-y-3">
                 <!-- ★★★ নতুন টপ বার: ফিরে যাওয়ার বাটন ★★★ -->
@@ -40128,7 +40375,7 @@ async function renderResultDeptPage() {
                         <span>পেছনে ফিরুন</span>
                     </button>
                     
-                    <!-- ★★★ পাবলিশ কন্ট্রোল বাটন ★★★ -->
+                    <!-- পাবলিশ বাটন -->
                     <div class="flex items-center gap-2 bg-white border border-slate-300 rounded-lg shadow-sm p-1.5 pr-3">
                         <span class="text-xs font-bold ${_examPublishStatus ? 'text-emerald-700' : 'text-red-600'}">
                             <i class="fa-solid ${_examPublishStatus ? 'fa-check-circle' : 'fa-times-circle'}"></i> 
@@ -40138,6 +40385,26 @@ async function renderResultDeptPage() {
                             <i class="fa-solid ${_examPublishStatus ? 'fa-eye-slash' : 'fa-eye'}"></i> 
                             ${_examPublishStatus ? 'আনপাবলিশ করুন' : 'অফিসিয়ালি পাবলিশ করুন'}
                         </button>
+                    </div>
+                </div>
+
+                <!-- ★★★ নতুন: শিক্ষাবর্ষ ও পরীক্ষা সিলেক্টর ★★★ -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex flex-wrap gap-3 items-center">
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs font-bold text-slate-600"><i class="fa-solid fa-calendar-check text-indigo-500"></i> শিক্ষাবর্ষ:</label>
+                        <select id="result-view-year" onchange="onResultViewContextChange()" class="rounded-lg border-slate-300 border p-1.5 text-sm font-medium bg-slate-50 min-w-[140px]">
+                            ${yearOptions}
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs font-bold text-slate-600"><i class="fa-solid fa-file-pen text-orange-500"></i> পরীক্ষা:</label>
+                        <select id="result-view-exam" onchange="onResultViewContextChange()" class="rounded-lg border-slate-300 border p-1.5 text-sm font-medium bg-slate-50 min-w-[130px]">
+                            <option value="term1" ${currentExam === 'term1' ? 'selected' : ''}>১ম সাময়িক</option>
+                            <option value="term2" ${currentExam === 'term2' ? 'selected' : ''}>২য় সাময়িক</option>
+                            <option value="model" ${currentExam === 'model' ? 'selected' : ''}>মডেল টেস্ট</option>
+                            <option value="qurbani" ${currentExam === 'qurbani' ? 'selected' : ''}>কুরবানী</option>
+                            <option value="annual" ${currentExam === 'annual' ? 'selected' : ''}>বার্ষিক</option>
+                        </select>
                     </div>
                 </div>
 
@@ -40236,26 +40503,33 @@ async function renderResultDeptPage() {
             });
         }
         let currentDeptData = [];
+            // ★★★ নতুন: কনটেক্সট ★★★
+            const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
+            const examType = window._marksContext?.examType || 'term2';
 
         if (realStudents.length > 0) {
             realStudents.forEach(student => {
+                // ★★★ এই ছাত্রের নির্দিষ্ট টার্মের মার্কস ★★★
+                const termMarks = getStudentTermMarks(student, academicYear, examType);
+
                 let marks = [];
                 let calc = null;
 
-                // ★★★ orderedSubs লুপ চালিয়ে নম্বর বের করা (হেডারের সাথে মিল রাখতে) ★★★
                 orderedSubs.forEach(colItem => {
                     let val = null;
                     
                     if (colItem.type === 'default') {
-                        if (student.resultMarksObj && student.resultMarksObj[colItem.key] !== undefined) {
-                            val = student.resultMarksObj[colItem.key];
+                        // ★★★ পরিবর্তিত ★★★
+                        if (termMarks.resultMarksObj && termMarks.resultMarksObj[colItem.key] !== undefined) {
+                            val = termMarks.resultMarksObj[colItem.key];
                         } else if (student.resultMarks && student.resultMarks.length > 0) {
-                            val = student.resultMarks[colItem.index];
+                            val = student.resultMarks[colItem.index]; // fallback
                         }
                     } 
                     else if (colItem.type === 'custom') {
-                        if (student.customMarks && student.customMarks[colItem.key] !== undefined) {
-                            val = student.customMarks[colItem.key];
+                        // ★★★ পরিবর্তিত ★★★
+                        if (termMarks.customMarks && termMarks.customMarks[colItem.key] !== undefined) {
+                            val = termMarks.customMarks[colItem.key];
                         }
                     }
                     
@@ -40307,8 +40581,10 @@ async function renderResultDeptPage() {
                     const originalA = studentsCache.find(s => (s.studentId || 'N/A') === a.id);
                     const originalB = studentsCache.find(s => (s.studentId || 'N/A') === b.id);
                     
-                    const markA = originalA?.resultMarks?.[idx] || 0;
-                    const markB = originalB?.resultMarks?.[idx] || 0;
+                    const termMarksA = getStudentTermMarks(originalA, academicYear, examType);
+                    const termMarksB = getStudentTermMarks(originalB, academicYear, examType);
+                    const markA = termMarksA.resultMarksObj?.[sortCol] ?? 0;
+                    const markB = termMarksB.resultMarksObj?.[sortCol] ?? 0;
                     
                     return (markA - markB) * dir;
                 }
@@ -40390,7 +40666,7 @@ async function renderResultDeptPage() {
                         <h3 class="font-bold text-slate-800 text-xl md:text-3xl mb-1">${settings.madrasaName || 'জামিয়া ইসলামিয়া'}</h3>
                         
                         <!-- পরীক্ষার নাম বড় করা হলো এবং ২য় সাময়িক করা হলো -->
-                        <p class="text-sm md:text-lg font-bold text-slate-600 mt-1">২য় সাময়িক পরীক্ষা - ${settings.year || ''}</p>
+                        <p class="text-sm md:text-lg font-bold text-slate-600 mt-1">${({term1:'১ম সাময়িক',term2:'২য় সাময়িক',model:'মডেল টেস্ট',qurbani:'কুরবানী',annual:'বার্ষিক'}[examType]) || 'পরীক্ষা'} - ${academicYear || ''}</p>
                         
                         <!-- ক্লাসের নাম বড় করা হলো -->
                         <p class="text-base md:text-xl font-bold font-arabic mt-2 text-emerald-800">${currentClass}</p>
@@ -40457,6 +40733,7 @@ window.openMarksEntryPage = async function() {
     const classes = getClassesForDept(dept);
     
     classSel.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+    populateMarksYearDropdown();
     
     // ★★★ নতুন লজিক: ডাটাবেস থেকে কাস্টম কলাম সেটিংস লোড করা ★★★
     try {
@@ -40490,6 +40767,19 @@ window.renderMarksEntryTable = async function() {
     const dept = document.getElementById('marks-entry-dept').value;
     const currentClass = document.getElementById('marks-entry-class').value;
     const table = document.getElementById('spreadsheet-table');
+
+    // ★★★ নতুন #১: কনটেক্সট (শিক্ষাবর্ষ + পরীক্ষা) চেক ★★★
+    reloadMarksContext();
+    const { academicYear, examType } = window._marksContext;
+
+    if (!academicYear) {
+        table.innerHTML = '<tr><td class="p-4 text-center text-amber-600 font-bold">⚠️ প্রথমে শিক্ষাবর্ষ নির্বাচন করুন</td></tr>';
+        return;
+    }
+    if (!examType) {
+        table.innerHTML = '<tr><td class="p-4 text-center text-amber-600 font-bold">⚠️ প্রথমে পরীক্ষা নির্বাচন করুন</td></tr>';
+        return;
+    }
 
     if (!currentClass) { table.innerHTML = '<tr><td class="p-4 text-center text-slate-400">জামাত সিলেক্ট করুন</td></tr>'; return; }
 
@@ -40587,15 +40877,19 @@ window.renderMarksEntryTable = async function() {
                 return valA.localeCompare(valB, 'bn', { numeric: true }) * dir;
             }
             
-            // কলামের নম্বর দিয়ে সর্ট (colKey ব্যবহার করে)
+            // কলামের নম্বর দিয়ে সর্ট (colKey ব্যবহার করে)
             let colObj = currentColumns.find(c => c.key === col);
             if (colObj) {
+                // ★★★ নতুন #২: নির্দিষ্ট টার্মের মার্কস দিয়ে সর্ট ★★★
+                const marksA = getStudentTermMarks(a, academicYear, examType);
+                const marksB = getStudentTermMarks(b, academicYear, examType);
+                
                 if (colObj.type === 'default') {
-                    valA = a.resultMarksObj?.[colObj.key];
-                    valB = b.resultMarksObj?.[colObj.key];
+                    valA = marksA.resultMarksObj?.[colObj.key];
+                    valB = marksB.resultMarksObj?.[colObj.key];
                 } else {
-                    valA = a.customMarks?.[colObj.key];
-                    valB = b.customMarks?.[colObj.key];
+                    valA = marksA.customMarks?.[colObj.key];
+                    valB = marksB.customMarks?.[colObj.key];
                 }
                 const emptyA = (valA === null || valA === undefined || valA === '');
                 const emptyB = (valB === null || valB === undefined || valB === '');
@@ -40674,6 +40968,9 @@ window.renderMarksEntryTable = async function() {
     // ৪. রো তৈরি
     let rowsHTML = '';
     realStudents.forEach((student, rIdx) => {
+        // ★★★ নতুন #৩: এই ছাত্রের নির্দিষ্ট টার্মের মার্কস বের করি ★★★
+        const termMarks = getStudentTermMarks(student, academicYear, examType);
+        
         let cellsHTML = '';
         currentColumns.forEach((col) => {
             let val = '';
@@ -40684,7 +40981,7 @@ window.renderMarksEntryTable = async function() {
                 let hasAny = false;
                 (col.books || []).forEach(bookName => {
                     const bookKey = `rtbook_${bookName.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '')}`;
-                    const v = student.customMarks?.[bookKey];
+                    const v = termMarks.customMarks?.[bookKey];
                     if (v !== undefined && v !== null && v !== '') {
                         existingSum += Number(v);
                         hasAny = true;
@@ -40706,11 +41003,15 @@ window.renderMarksEntryTable = async function() {
             } else {
                 // ডিফল্ট বা সেভকৃত ভিউ
                 if (col.type === 'default') {
-                    val = student.resultMarksObj?.[col.key] !== undefined 
-                        ? student.resultMarksObj[col.key] 
-                        : (student.resultMarks && student.resultMarks[col.index] !== undefined ? student.resultMarks[col.index] : '');
+                    // ★★★ শুধুমাত্র নির্দিষ্ট টার্মের ডাটা দেখাবে ★★★
+                    val = termMarks.resultMarksObj?.[col.key] !== undefined 
+                        ? termMarks.resultMarksObj[col.key] 
+                        : '';
                 } else {
-                    val = student.customMarks?.[col.key] || '';
+                    // ★★★ কাস্টম কলামের ক্ষেত্রেও শুধুমাত্র নির্দিষ্ট টার্মের ডাটা ★★★
+                    val = termMarks.customMarks?.[col.key] !== undefined 
+                        ? termMarks.customMarks[col.key] 
+                        : '';
                 }
 
                 cellsHTML += `<td class="p-0 border text-center">
@@ -40803,6 +41104,13 @@ window.renderMarksEntryTable = async function() {
 // ★★★ সোর্স পরিবর্তনের ফাংশন ★★★
 // ═══════════════════════════════════════════════════════════════
 window.switchMarksEntrySource = function(source) {
+    // ★★★ নতুন #৪: কনটেক্সট না থাকলে সোর্স পরিবর্তন হবে না ★★★
+    reloadMarksContext();
+    if (!window._marksContext.academicYear || !window._marksContext.examType) {
+        showToast('⚠️ প্রথমে শিক্ষাবর্ষ ও পরীক্ষা নির্বাচন করুন', 'warn');
+        return;
+    }
+    
     if (source === 'routine' && window._routineMarksColumns.length === 0) {
         loadColumnsFromExamRoutine();
         return;
@@ -41254,8 +41562,29 @@ window.saveNewMarksColumn = async function(className) {
 
 // ★ মার্কস সেভ ফাংশন
 window.saveAllMarks = async function() {
-    if (_marksEntryLocked && currentUserData?.role !== 'admin') { showToast('🔒 মার্কস এন্ট্রি লক করা আছে।', 'warn'); return; }
+    if (_marksEntryLocked && currentUserData?.role !== 'admin') { 
+        showToast('🔒 মার্কস এন্ট্রি লক করা আছে।', 'warn'); 
+        return; 
+    }
     
+    // ═══════════════════════════════════════════════════════════════
+    // ★★★ ধাপ ১: কনটেক্সট চেক (শিক্ষাবর্ষ + পরীক্ষা) ★★★
+    // ═══════════════════════════════════════════════════════════════
+    reloadMarksContext();
+    const { academicYear, examType } = window._marksContext;
+    
+    if (!academicYear) {
+        showToast('⚠️ প্রথমে শিক্ষাবর্ষ সিলেক্ট করুন', 'warn');
+        return;
+    }
+    if (!examType) {
+        showToast('⚠️ প্রথমে পরীক্ষা সিলেক্ট করুন', 'warn');
+        return;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // ★★★ ধাপ ২: নম্বর ভ্যালিডেশন (১০০-এর বেশি চেক) ★★★
+    // ═══════════════════════════════════════════════════════════════
     let hasInvalidMarks = false;
     document.querySelectorAll('.mark-input').forEach(inp => {
         const val = inp.value.trim();
@@ -41275,7 +41604,11 @@ window.saveAllMarks = async function() {
         return;
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // ★★★ ধাপ ৩: ডাটা সংগ্রহ — নতুন স্ট্রাকচারে (marksByTerm) ★★★
+    // ═══════════════════════════════════════════════════════════════
     const studentDataToSave = {}; 
+    const marksKey = buildMarksKey(academicYear, examType);
 
     inputs.forEach(inp => {
         const sId = inp.dataset.studentId;
@@ -41291,33 +41624,51 @@ window.saveAllMarks = async function() {
             if (isNaN(safeVal)) safeVal = 0;
         }
 
+        // কন্টেইনার তৈরি
         if (!studentDataToSave[sId]) {
-            studentDataToSave[sId] = { resultMarksObj: {}, customMarks: {} };
+            studentDataToSave[sId] = { 
+                marksByTerm: {}, 
+                customMarksByTerm: {} 
+            };
+        }
+        
+        // এই টার্মের জন্য সাব-কন্টেইনার
+        if (!studentDataToSave[sId].marksByTerm[marksKey]) {
+            studentDataToSave[sId].marksByTerm[marksKey] = {};
+        }
+        if (!studentDataToSave[sId].customMarksByTerm[marksKey]) {
+            studentDataToSave[sId].customMarksByTerm[marksKey] = {};
         }
 
         if (type === 'default') {
-            studentDataToSave[sId].resultMarksObj[colKey] = safeVal;
-        } else if (type === 'custom') {
-            studentDataToSave[sId].customMarks[colKey] = safeVal;
+            // ডিফল্ট কলাম (কিতাব)
+            studentDataToSave[sId].marksByTerm[marksKey][colKey] = safeVal;
         } 
-        // ★★★ এই নতুন অংশটি যোগ করুন ★★★
+        else if (type === 'custom') {
+            // কাস্টম কলাম
+            studentDataToSave[sId].customMarksByTerm[marksKey][colKey] = safeVal;
+        } 
         else if (type === 'routine_multi') {
+            // পরীক্ষার রুটিন ভিত্তিক (একাধিক কিতাবের মোট)
             const booksArr = JSON.parse(decodeURIComponent(inp.dataset.books));
             const totalMark = safeVal || 0;
             
             booksArr.forEach((bookName, idx) => {
                 const bookKey = `rtbook_${bookName.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '')}`;
-                // প্রথম কিতাবে পুরো নম্বর সেভ, বাকিগুলোতে 0
-                studentDataToSave[sId].customMarks[bookKey] = (idx === 0) ? totalMark : 0; 
+                // প্রথম কিতাবে পুরো নম্বর, বাকিগুলোতে 0 (মোট হিসাবের জন্য)
+                studentDataToSave[sId].customMarksByTerm[marksKey][bookKey] = (idx === 0) ? totalMark : 0; 
             });
             
-            // ডামি কি-ও রাখি যাতে রুটিন লোড করার পর নম্বর ফিরে পায়
-            studentDataToSave[sId].customMarks[colKey] = totalMark; 
+            // ডামি কী-ও রাখি যাতে রুটিন রি-লোডে নম্বর ফিরে আসে
+            studentDataToSave[sId].customMarksByTerm[marksKey][colKey] = totalMark; 
         }
     });
 
-    showToast('💾 মার্কস সেভ হচ্ছে...', 'info');
+    showToast(`💾 মার্কস সেভ হচ্ছে... (${examType === 'term1' ? '১ম সাময়িক' : examType === 'term2' ? '২য় সাময়িক' : examType === 'annual' ? 'বার্ষিক' : examType})`, 'info');
 
+    // ═══════════════════════════════════════════════════════════════
+    // ★★★ ধাপ ৪: Firestore-এ সেভ (Dot-notation দিয়ে) ★★★
+    // ═══════════════════════════════════════════════════════════════
     try {
         const { doc, updateDoc } = window.fbFuncs;
         let count = 0;
@@ -41326,53 +41677,76 @@ window.saveAllMarks = async function() {
         for (const sId of Object.keys(studentDataToSave)) {
             const data = studentDataToSave[sId];
 
-            // ★★★ দুই জায়গায় সেভ করার স্মার্ট লজিক ★★★
-            // ফরম্যাট থেকে আইডি এক্সট্র্যাক্ট করা (যদি admission_ থাকে, সরিয়ে ফেলি)
+            // 'admission_' প্রিফিক্স থাকলে সরিয়ে ফেলি (admissionForms এ আইডি আলাদা)
             const rawDocId = String(sId).startsWith('admission_') 
                 ? String(sId).replace('admission_', '') 
                 : sId;
 
             try {
-                // ১. প্রথমে students কালেকশনে ডাটা প্রস্তুত করি (students এর ফরম্যাট)
+                // ─── students কালেকশনের জন্য dot-notation আপডেট ───
                 const updateDataForStudent = {};
-                if (Object.keys(data.resultMarksObj).length > 0) updateDataForStudent.resultMarksObj = data.resultMarksObj;
-                if (Object.keys(data.customMarks).length > 0) updateDataForStudent.customMarks = data.customMarks;
+                
+                // marksByTerm.{marksKey}.{colKey} = value
+                const marksForTerm = data.marksByTerm[marksKey] || {};
+                Object.keys(marksForTerm).forEach(colKey => {
+                    updateDataForStudent[`marksByTerm.${marksKey}.${colKey}`] = marksForTerm[colKey];
+                });
+                
+                // customMarksByTerm.{marksKey}.{colKey} = value
+                const customForTerm = data.customMarksByTerm[marksKey] || {};
+                Object.keys(customForTerm).forEach(colKey => {
+                    updateDataForStudent[`customMarksByTerm.${marksKey}.${colKey}`] = customForTerm[colKey];
+                });
 
                 let isSaved = false;
 
-                // চেষ্টা ১: students কালেকশনে সেভ করা
+                // ─── চেষ্টা ১: students কালেকশনে সেভ ───
                 if (Object.keys(updateDataForStudent).length > 0) {
                     try {
                         await updateDoc(doc(window.fbDB, 'students', sId), updateDataForStudent);
                         isSaved = true;
                     } catch (err) {
-                        // যদি students এ ডকুমেন্ট না থাকে (No document to update), তবে এরর ইগনোর করে admissionForms এ চেষ্টা করব
+                        // যদি students এ ডকুমেন্ট না থাকে, admissionForms এ চেষ্টা করব
                         if (err.code !== 'not-found' && !err.message.includes('No document to update')) {
-                            throw err; // অন্য কোনো এরর হলে থ্রো করব
+                            throw err;
                         }
                     }
                 }
 
-                // চেষ্টা ২: যদি students এ সেভ না হয়, তবে admissionForms এ সেভ করার চেষ্টা করি
+                // ─── চেষ্টা ২: admissionForms এ সেভ ───
                 if (!isSaved) {
                     const updateDataForAdmission = {};
-                    // admissionForms এ সাধারণত data.examMarks নামে সেভ হয়
-                    if (Object.keys(data.resultMarksObj).length > 0) updateDataForAdmission['data.examMarks'] = data.resultMarksObj;
-                    if (Object.keys(data.customMarks).length > 0) updateDataForAdmission['data.customMarks'] = data.customMarks;
+                    
+                    // data.examMarksByTerm.{marksKey}.{colKey} = value
+                    Object.keys(marksForTerm).forEach(colKey => {
+                        updateDataForAdmission[`data.examMarksByTerm.${marksKey}.${colKey}`] = marksForTerm[colKey];
+                    });
+                    
+                    // data.customMarksByTerm.{marksKey}.{colKey} = value
+                    Object.keys(customForTerm).forEach(colKey => {
+                        updateDataForAdmission[`data.customMarksByTerm.${marksKey}.${colKey}`] = customForTerm[colKey];
+                    });
 
                     if (Object.keys(updateDataForAdmission).length > 0) {
-                        // এখানে rawDocId ব্যবহার করছি, কারণ admissionForms এর ডকুমেন্ট আইডিতে 'admission_' প্রিফিক্স থাকে না
                         await updateDoc(doc(window.fbDB, 'admissionForms', rawDocId), updateDataForAdmission);
                         isSaved = true;
                     }
                 }
 
-                // ৩. লোকাল ক্যাশ (studentsCache) আপডেট করা
+                // ─── ধাপ ৫: লোকাল ক্যাশ (studentsCache) আপডেট ───
                 if (isSaved) {
                     const s = studentsCache.find(x => x.id === sId);
                     if (s) {
-                        if (data.resultMarksObj) s.resultMarksObj = { ...(s.resultMarksObj || {}), ...data.resultMarksObj };
-                        if (data.customMarks) s.customMarks = { ...(s.customMarks || {}), ...data.customMarks };
+                        // Nested স্ট্রাকচার তৈরি (যদি না থাকে)
+                        if (!s.marksByTerm) s.marksByTerm = {};
+                        if (!s.customMarksByTerm) s.customMarksByTerm = {};
+                        
+                        if (!s.marksByTerm[marksKey]) s.marksByTerm[marksKey] = {};
+                        if (!s.customMarksByTerm[marksKey]) s.customMarksByTerm[marksKey] = {};
+                        
+                        // এই টার্মের মার্কস merge করি
+                        Object.assign(s.marksByTerm[marksKey], marksForTerm);
+                        Object.assign(s.customMarksByTerm[marksKey], customForTerm);
                     }
                     count++;
                 } else {
@@ -41385,8 +41759,14 @@ window.saveAllMarks = async function() {
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════
+        // ★★★ ধাপ ৬: সফলতার মেসেজ ★★★
+        // ═══════════════════════════════════════════════════════════════
         if (count > 0) {
-            showToast(`✅ ${count} জন ছাত্রের মার্কস সফলভাবে সেভ হয়েছে!${failed > 0 ? ` (${failed}টি ব্যর্থ)` : ''}`, 'success');
+            showToast(
+                `✅ ${count} জন ছাত্রের মার্কস সেভ হয়েছে!${failed > 0 ? ` (${failed}টি ব্যর্থ)` : ''}`, 
+                'success'
+            );
         } else {
             showToast('❌ কোন ডাটা সেভ হয়নি।', 'error');
         }
@@ -41409,22 +41789,18 @@ document.addEventListener('input', function(e) {
 
 // ★★★ মার্কস এন্ট্রির জন্য সম্পূর্ণ আলাদা লাইভ ক্যালকুলেটর (মূল সিস্টেমে কোনো প্রভাব ফেলবে না) ★★★
 window.updateRowLiveStats = function(rIdx, deptParam, classParam) {
-    // ১. প্যারামিটার অথবা DOM থেকে ডাটা নেওয়া
     const dept = deptParam || document.getElementById('marks-entry-dept')?.value || '';
     const currentClass = classParam || document.getElementById('marks-entry-class')?.value || '';
     
-    // ২. ইনপুট থেকে নম্বরগুলো নেওয়া
     const inputs = document.querySelectorAll(`.mark-input[data-row="${rIdx}"]`);
     let marksArray = [];
-    
     inputs.forEach(inp => {
         const val = inp.value.trim();
         marksArray.push(val === '' ? 0 : Number(val));
     });
 
-    // ৩. DOM এলিমেন্টগুলো খোঁজা
     const totalEl = document.getElementById(`total-${rIdx}`);
-    const avgEl = document.getElementById(`avg-${rIdx}`);
+    const avgEl   = document.getElementById(`avg-${rIdx}`);
     const gradeEl = document.getElementById(`grade-${rIdx}`);
     if (!totalEl || !avgEl || !gradeEl) return;
 
@@ -41434,44 +41810,87 @@ window.updateRowLiveStats = function(rIdx, deptParam, classParam) {
         return;
     }
 
-    // ★★★ ৪. এখানেই আসল পরিবর্তন: ডাইনামিক কুরআন কারীম খোঁজার লজিক ★★★
-    let quranIndex = -1;
-
-    // শুধুমাত্র শরীয়াহ এবং ৪র্থ শ্রেণি ছাড়া বাকি সবার জন্য
+    // ═══════════════════════════════════════════════════════════
+    // ★★★ শরীয়াহ (৪র্থ ছাড়া) — কুরআন কারীম আলাদা ★★★
+    // ═══════════════════════════════════════════════════════════
     if (dept === 'shariah' && currentClass !== 'صف رابع (৪র্থ শ্রেণী)') {
-        const allBooks = (configData?.books || {})[currentClass] || [];
-        const savedOrder = (typeof _marksColumnOrder !== 'undefined' && _marksColumnOrder[currentClass]) ? _marksColumnOrder[currentClass] : [];
         
+        // ─── মার্কস অ্যারের সাথে মিলে যাওয়া orderedSubs পুনর্গঠন ───
+        const allBooks    = (configData?.books || {})[currentClass] || [];
+        const deletedCols = (_deletedMarksColumns?.[currentClass]) || [];
+        const customCols  = (_customMarksColumns?.[currentClass]) || [];
+        const savedOrder  = (_marksColumnOrder?.[currentClass]) || [];
+
+        let tempSubs = [];
+        allBooks.forEach((book, idx) => {
+            const colKey = `default_${idx}`;
+            if (!deletedCols.includes(colKey)) {
+                tempSubs.push({ key: colKey, type: 'default', index: idx, label: book });
+            }
+        });
+        customCols.forEach(col => {
+            if (!deletedCols.includes(col.key)) {
+                tempSubs.push({ key: col.key, type: 'custom', label: col.label });
+            }
+        });
+
+        let orderedSubs = [];
+        savedOrder.forEach(key => {
+            const f = tempSubs.find(c => c.key === key);
+            if (f) orderedSubs.push(f);
+        });
+        tempSubs.forEach(col => {
+            if (!orderedSubs.find(c => c.key === col.key)) orderedSubs.push(col);
+        });
+
         const isQuranKareem = (bookName) => {
             if (!bookName) return false;
             if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
-            return bookName.includes('কুরআন কারীম') || bookName.includes('আল-কুরআন') || bookName.includes('القرآن') || bookName.toLowerCase().includes('quran');
+            return bookName.includes('কুরআন কারীম') || 
+                   bookName.includes('আল-কুরআন') || 
+                   bookName.includes('القرآن') || 
+                   bookName.toLowerCase().includes('quran');
         };
 
-        if (savedOrder.length > 0) {
-            quranIndex = savedOrder.findIndex(key => {
-                if (key.startsWith('default_')) {
-                    const originalIndex = parseInt(key.split('_')[1]);
-                    return isQuranKareem(allBooks[originalIndex]);
-                }
-                return false;
-            });
-        } else {
-            quranIndex = allBooks.findIndex(book => isQuranKareem(book));
+        const quranIndex = orderedSubs.findIndex(col =>
+            col.type === 'default' && isQuranKareem(col.label)
+        );
+
+        // ═══ কুরআন কলাম নেই → সব বিষয়ের গড় ═══
+        if (quranIndex === -1) {
+            const totalAll = marksArray.reduce((a, b) => a + b, 0);
+            const avgAll   = marksArray.length > 0 ? totalAll / marksArray.length : 0;
+            
+            totalEl.textContent = totalAll;
+            avgEl.textContent   = avgAll.toFixed(2);
+
+            if (marksArray.some(m => m === 0)) {
+                gradeEl.textContent = 'অনুপস্থিত';
+                gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-red-600';
+            } else if (marksArray.some(m => m < 33)) {
+                gradeEl.textContent = 'রাসিব';
+                gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-red-600';
+            } else {
+                let g = 'রাসিব';
+                if (avgAll >= 80) g = 'মুমতায';
+                else if (avgAll >= 65) g = 'জায়্যিদ জিদ্দান';
+                else if (avgAll >= 50) g = 'জায়্যিদ';
+                else if (avgAll >= 33) g = 'মাকবুল';
+                gradeEl.textContent = g;
+                gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-amber-800';
+            }
+            return;
         }
-    }
 
-    // ★★★ ৫. শরীয়াহর লাইভ ক্যালকুলেশন ★★★
-    if (dept === 'shariah' && currentClass !== 'صف رابع (৪র্থ শ্রেণী)' && quranIndex !== -1) {
-        const quranMark = marksArray[quranIndex] || 0;
-        const otherMarks = marksArray.filter((_, index) => index !== quranIndex);
-        
+        // ═══ কুরআন কলাম আছে → কুরআন বাদ দিয়ে টোটাল/গড় ═══
+        const quranMark  = marksArray[quranIndex] || 0;
+        const otherMarks = marksArray.filter((_, i) => i !== quranIndex);
         const totalOther = otherMarks.reduce((a, b) => a + b, 0);
-        const avgOther = otherMarks.length > 0 ? (totalOther / otherMarks.length) : 0;
+        const avgOther   = otherMarks.length > 0 ? totalOther / otherMarks.length : 0;
 
-        // মোট নম্বর সবসময় আসল যোগফলটাই দেখাবে
-        totalEl.textContent = marksArray.reduce((a, b) => a + b, 0);
-        avgEl.textContent = avgOther.toFixed(2);
+        // ★ মোট = কুরআন বাদ (otherMarks-এর যোগফল)
+        totalEl.textContent = totalOther;
+        avgEl.textContent   = avgOther.toFixed(2);
 
         if (quranMark < 50) {
             gradeEl.textContent = 'রাসিব';
@@ -41492,20 +41911,23 @@ window.updateRowLiveStats = function(rIdx, deptParam, classParam) {
             gradeEl.textContent = g;
             gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-amber-800';
         }
-    } else {
-        // ★★★ ৬. অন্যান্য বিভাগ বা ৪র্থ শ্রেণির জন্য সাধারণ লাইভ ক্যালকুলেশন ★★★
-        const totalMarks = marksArray.reduce((a, b) => a + b, 0);
-        const calc = calculateGradeAndDivision(dept, marksArray, currentClass);
-        
-        totalEl.textContent = totalMarks;
-        avgEl.textContent = calc.avg;
-        gradeEl.textContent = calc.grade;
+        return;
+    }
 
-        if (calc.grade === 'রাসিব' || calc.grade === 'F' || calc.grade === 'অনুপস্থিত') {
-            gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-red-600';
-        } else {
-            gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-amber-800';
-        }
+    // ═══════════════════════════════════════════════════════════
+    // ★★★ অন্যান্য বিভাগ (non_res, hifz, noorani, ৪র্থ) — সাধারণ লজিক ★★★
+    // ═══════════════════════════════════════════════════════════
+    const totalMarks = marksArray.reduce((a, b) => a + b, 0);
+    const calc = calculateGradeAndDivision(dept, marksArray, currentClass);
+
+    totalEl.textContent = totalMarks;
+    avgEl.textContent   = calc.avg;
+    gradeEl.textContent = calc.grade;
+
+    if (calc.grade === 'রাসিব' || calc.grade === 'F' || calc.grade === 'অনুপস্থিত') {
+        gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-red-600';
+    } else {
+        gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-amber-800';
     }
 };
 
@@ -41634,7 +42056,10 @@ window.switchOverviewTab = function(tab) {
 
 // ★ একটি জামাতের সব ছাত্রের ফলাফল হিসাব করে পরিসংখ্যান বের করা
 function calcClassResultStats(dept, className) {
-    // ★ সক্রিয় ছাত্র (বিদায়/বহিষ্কৃত/ভর্তির অনুপযুক্ত বাদ)
+    // ★★★ নতুন: কনটেক্সট ★★★
+    const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
+    const examType = window._marksContext?.examType || 'term2';
+
     const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
     const students = (studentsCache || []).filter(s =>
         s.dept === dept &&
@@ -41648,7 +42073,6 @@ function calcClassResultStats(dept, className) {
                  mumtazRate: 0, students: [] };
     }
 
-    // ★ এই জামাতের কলাম (কিতাব + কাস্টম, ডিলিট বাদ)
     const books = (configData?.books || {})[className] || [];
     const deletedCols = (_deletedMarksColumns[className] || []);
     const customCols = (_customMarksColumns[className] || []);
@@ -41666,7 +42090,6 @@ function calcClassResultStats(dept, className) {
         }
     });
 
-    // ★ সেভ করা অর্ডার অনুযায়ী সাজাই
     const savedOrder = _marksColumnOrder[className] || [];
     let orderedCols = [];
     savedOrder.forEach(key => {
@@ -41679,21 +42102,23 @@ function calcClassResultStats(dept, className) {
 
     const requiredCols = orderedCols.length;
 
-    // ★ প্রতিটি ছাত্রের ফলাফল
     const details = [];
     let mumtaz = 0, jj = 0, j = 0, maqbul = 0, rasib = 0, absent = 0, incomplete = 0, passed = 0;
 
     students.forEach(s => {
+        // ★★★ এই ছাত্রের নির্দিষ্ট টার্মের মার্কস ★★★
+        const termMarks = getStudentTermMarks(s, academicYear, examType);
+
         let marksArr = [];
         let entries = 0;
 
         orderedCols.forEach(col => {
             let v = null;
             if (col.type === 'default') {
-                if (s.resultMarksObj && s.resultMarksObj[col.key] !== undefined) v = s.resultMarksObj[col.key];
-                else if (s.resultMarks && s.resultMarks[col.index] !== undefined) v = s.resultMarks[col.index];
+                if (termMarks.resultMarksObj && termMarks.resultMarksObj[col.key] !== undefined) v = termMarks.resultMarksObj[col.key];
+                else if (s.resultMarks && s.resultMarks[col.index] !== undefined) v = s.resultMarks[col.index]; // fallback
             } else {
-                if (s.customMarks && s.customMarks[col.key] !== undefined) v = s.customMarks[col.key];
+                if (termMarks.customMarks && termMarks.customMarks[col.key] !== undefined) v = termMarks.customMarks[col.key];
             }
 
             if (v !== null && v !== '' && !isNaN(v)) {
@@ -41704,14 +42129,12 @@ function calcClassResultStats(dept, className) {
             }
         });
 
-        // ★ অসম্পূর্ণ
         if (entries === 0 || entries < requiredCols) {
             incomplete++;
             details.push({ student: s, grade: 'অসম্পূর্ণ', total: marksArr.reduce((a,b)=>a+b,0), marksArr, entries });
             return;
         }
 
-        // ★ গ্রেড ক্যালকুলেশন
         const calc = calculateGradeAndDivision(dept, marksArr, className);
         const grade = calc.grade;
 
@@ -41723,7 +42146,7 @@ function calcClassResultStats(dept, className) {
             else if (grade === 'জায়্যিদ জিদ্দান' || grade === 'A') jj++;
             else if (grade === 'জায়্যিদ' || grade === 'A-') j++;
             else if (grade === 'মাকবুল') maqbul++;
-            else jj++; // fallback
+            else jj++;
         }
 
         details.push({
@@ -41740,8 +42163,8 @@ function calcClassResultStats(dept, className) {
         total, passed, failed: rasib, absent, incomplete,
         mumtaz, jj, j, maqbul, rasib,
         passRate, mumtazRate,
-        details,  // ★ প্রতিটি ছাত্রের ডিটেইল
-        orderedCols: orderedCols || []  // ★ এখানে || [] যোগ করুন
+        details,
+        orderedCols: orderedCols || []
     };
 }
 
@@ -50191,6 +50614,8 @@ function flattenAdmFormData(form) {
         referralAddress: d.guardian?.referralAddress || '',
 
         examMarks: d.examMarks || form.examMarks || form.data?.examMarks || d.exam?.marks || {},
+        marksByTerm: d.examMarksByTerm || form.examMarksByTerm || {},
+        customMarksByTerm: d.customMarksByTerm || form.customMarksByTerm || {},
         examTotal: d.exam?.totalMarks || 0,
         examiner: d.exam?.examiner || '',
         examComment: d.exam?.comment || '',
@@ -54035,7 +54460,50 @@ window.showTeacherPortal = function() {
             startStudentsRealtimeListener();
         }
     }, 1000);
-};
+
+    // ★★★ এখানে নতুন ডাটা প্রি-লোড কোডটুকু পেস্ট করুন ★★★
+    setTimeout(async () => {
+        try {
+            // ১. configData লোড
+            if (!window.configData || !window.configData.books) {
+                if (typeof loadConfigFromFirestore === 'function') {
+                    await loadConfigFromFirestore();
+                    console.log('✅ configData loaded in Teacher Portal');
+                }
+            }
+            
+            // ২. মার্কস কলাম কনফিগ লোড
+            if (!window._customMarksColumns || Object.keys(window._customMarksColumns).length === 0) {
+                try {
+                    const { doc, getDoc } = window.fbFuncs;
+                    const snap = await getDoc(doc(window.fbDB, 'config', 'marksColumnsConfig'));
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        window._customMarksColumns = data.custom || {};
+                        window._deletedMarksColumns = data.deleted || {};
+                        window._marksColumnOrder = data.order || {};
+                        console.log('✅ Marks columns loaded');
+                    }
+                } catch (e) { console.warn('⚠️', e); }
+            }
+            
+            // ৩. ★★★ _marksContext initialize ★★★
+            if (!window._marksContext) window._marksContext = {};
+            if (!window._marksContext.academicYear) {
+                window._marksContext.academicYear = 
+                    (typeof getCurrentYear === 'function' ? getCurrentYear() : '') || '';
+            }
+            if (!window._marksContext.examType) {
+                window._marksContext.examType = 'term2';
+            }
+            
+            console.log('✅ _marksContext initialized:', window._marksContext);
+        } catch (err) {
+            console.error('❌ Teacher Portal init error:', err);
+        }
+    }, 500); 
+
+}; 
 
 async function loadTpProfileStats() {
     try {
@@ -56137,6 +56605,24 @@ window.switchTpExamSub = async function(sub) {
     const content = document.getElementById('tp-dynamic-content');
     if (!content) return;
 
+    window._tpExamState.currentSub = sub; 
+    
+    // ★★★ নতুন যোগ: context initialize ★★★
+    if (!window._marksContext) window._marksContext = {};
+    if (!window._marksContext.academicYear) {
+        window._marksContext.academicYear = 
+            (typeof getCurrentYear === 'function' ? getCurrentYear() : '') || '';
+    }
+    if (!window._marksContext.examType) {
+        window._marksContext.examType = 'term2';
+    }
+    
+    // বছর লিস্ট লোড
+    if (typeof loadAcademicYears === 'function' && 
+        (!window.academicYears || window.academicYears.length === 0)) {
+        await loadAcademicYears();
+    }
+
     const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
     window._tpExamState.teacherName = teacherName;
 
@@ -56150,8 +56636,10 @@ window.switchTpExamSub = async function(sub) {
             }
         } catch (e) { console.warn('Publish check failed:', e); }
 
-        // যদি আনপাবলিশড থাকে, তবে রেজাল্ট ব্লক করে মেসেজ দেখাবে
-        if (!_examPublishStatus) {
+        // ★★★ নতুন: শুধু চলতি পরীক্ষা ব্লক হবে ★★★
+        const isCurrentExam = (window._marksContext?.examType === 'term2'); 
+        if (!_examPublishStatus && isCurrentExam) {
+            
             content.innerHTML = `
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                     <button onclick="switchTpTab('exam')" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg shadow-sm transition">
@@ -56168,6 +56656,32 @@ window.switchTpExamSub = async function(sub) {
         }
     }
 
+    const ctxYear = window._marksContext?.academicYear || getCurrentYear();
+    const ctxExam = window._marksContext?.examType || 'term2';
+    const yearOptions = (academicYears || []).map(y => 
+        `<option value="${y.name}" ${y.name === ctxYear ? 'selected' : ''}>${y.name}${y.isCurrent ? ' (বর্তমান)' : ''}</option>`
+    ).join('');
+    const contextSelectorHTML = `
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4 flex flex-wrap gap-3 items-center">
+            <div class="flex items-center gap-2">
+                <label class="text-xs font-bold text-slate-600"><i class="fa-solid fa-calendar-check text-indigo-500"></i> শিক্ষাবর্ষ:</label>
+                <select id="tp-result-year" onchange="onTpResultContextChange()" class="rounded-lg border-slate-300 border p-1.5 text-sm font-medium bg-slate-50">
+                    ${yearOptions}
+                </select>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-xs font-bold text-slate-600"><i class="fa-solid fa-file-pen text-orange-500"></i> পরীক্ষা:</label>
+                <select id="tp-result-exam" onchange="onTpResultContextChange()" class="rounded-lg border-slate-300 border p-1.5 text-sm font-medium bg-slate-50">
+                    <option value="term1" ${ctxExam === 'term1' ? 'selected' : ''}>১ম সাময়িক</option>
+                    <option value="term2" ${ctxExam === 'term2' ? 'selected' : ''}>২য় সাময়িক</option>
+                    <option value="model" ${ctxExam === 'model' ? 'selected' : ''}>মডেল টেস্ট</option>
+                    <option value="qurbani" ${ctxExam === 'qurbani' ? 'selected' : ''}>কুরবানী</option>
+                    <option value="annual" ${ctxExam === 'annual' ? 'selected' : ''}>বার্ষিক</option>
+                </select>
+            </div>
+        </div>
+    `;
+
     let title = '';
     if (sub === 'entry') title = '১. ফলাফল এন্ট্রি';
     else if (sub === 'class-view') title = '২. আমার শ্রেণি ভিউ';
@@ -56183,6 +56697,7 @@ window.switchTpExamSub = async function(sub) {
             </button>
             <h3 class="text-sm md:text-base font-bold text-slate-800">${title}</h3>
         </div>
+        ${contextSelectorHTML}
         <div id="tp-exam-wrap" class="min-h-[300px]">
             <!-- কন্টেন্ট এখানে লোড হবে -->
         </div>
@@ -56434,6 +56949,21 @@ window.switchTpExamPolicy = function(policyKey) {
             </div>
         `;
     }, 200);
+};
+
+window.onTpResultContextChange = function() {
+    const newYear = document.getElementById('tp-result-year')?.value;
+    const newExam = document.getElementById('tp-result-exam')?.value;
+    
+    console.log("নতুন সিলেক্ট:", newYear, newExam); // চেক করার জন্য
+
+    if (!window._marksContext) window._marksContext = {};
+    window._marksContext.academicYear = newYear;
+    window._marksContext.examType = newExam;
+
+    // বর্তমানে যে পেজে আছেন সেটাই রিলোড করুন
+    const currentSub = window._tpExamState.currentSub || 'class-view';
+    window.switchTpExamSub(currentSub); 
 };
 
 // ─── রুটিন সাব-ট্যাব হ্যান্ডলার ───
@@ -56853,6 +57383,9 @@ window.saveTpMarks = async function() {
     const className = window._tpExamState.entryClass;
     const inputs = document.querySelectorAll('.tp-mark-input');
     
+    // বর্তমান পরীক্ষা নিন
+    const currentExam = window._marksContext?.examType || 'term1';
+    
     const dataToSave = {};
     inputs.forEach(inp => {
         const sId = inp.dataset.studentId;
@@ -56878,8 +57411,14 @@ window.saveTpMarks = async function() {
             let isSaved = false;
 
             const updateDataForStudent = {};
-            if (Object.keys(data.resultMarksObj).length > 0) updateDataForStudent.resultMarksObj = data.resultMarksObj;
-            if (Object.keys(data.customMarks).length > 0) updateDataForStudent.customMarks = data.customMarks;
+            
+            // ★ শুধুমাত্র নির্দিষ্ট পরীক্ষার ভেতরে ডেটা সেভ হবে (পুরনো ফ্ল্যাট ডেটা আর ওভাররাইট হবে না) ★
+            if (Object.keys(data.resultMarksObj).length > 0) {
+                updateDataForStudent[`examResults.${currentExam}.resultMarksObj`] = data.resultMarksObj;
+            }
+            if (Object.keys(data.customMarks).length > 0) {
+                updateDataForStudent[`examResults.${currentExam}.customMarks`] = data.customMarks;
+            }
 
             if (Object.keys(updateDataForStudent).length > 0) {
                 try {
@@ -56892,8 +57431,8 @@ window.saveTpMarks = async function() {
 
             if (!isSaved) {
                 const updateDataForAdmission = {};
-                if (Object.keys(data.resultMarksObj).length > 0) updateDataForAdmission['data.examMarks'] = data.resultMarksObj;
-                if (Object.keys(data.customMarks).length > 0) updateDataForAdmission['data.customMarks'] = data.customMarks;
+                if (Object.keys(data.resultMarksObj).length > 0) updateDataForAdmission[`data.examResults.${currentExam}.resultMarksObj`] = data.resultMarksObj;
+                if (Object.keys(data.customMarks).length > 0) updateDataForAdmission[`data.examResults.${currentExam}.customMarks`] = data.customMarks;
                 if (Object.keys(updateDataForAdmission).length > 0) {
                     await updateDoc(doc(window.fbDB, 'admissionForms', rawDocId), updateDataForAdmission);
                     isSaved = true;
@@ -56901,15 +57440,18 @@ window.saveTpMarks = async function() {
             }
 
             if (isSaved) {
+                // লোকাল ক্যাশ আপডেট করুন
                 const s = studentsCache.find(x => x.id === sId);
                 if (s) {
-                    if (data.resultMarksObj) s.resultMarksObj = { ...(s.resultMarksObj || {}), ...data.resultMarksObj };
-                    if (data.customMarks) s.customMarks = { ...(s.customMarks || {}), ...data.customMarks };
+                    if (!s.examResults) s.examResults = {};
+                    if (!s.examResults[currentExam]) s.examResults[currentExam] = {};
+                    if (data.resultMarksObj) s.examResults[currentExam].resultMarksObj = { ...(s.examResults[currentExam].resultMarksObj || {}), ...data.resultMarksObj };
+                    if (data.customMarks) s.examResults[currentExam].customMarks = { ...(s.examResults[currentExam].customMarks || {}), ...data.customMarks };
                 }
                 count++;
             }
         }
-        // ★★★ নতুন যোগ: সেভের পর studentsCache কে ফায়ারবেস থেকে রিফ্রেশ করুন ★★★
+        // ফায়ারবেস থেকে রিফ্রেশ
         if (typeof loadStudentsFromFirestore === 'function') {
             await loadStudentsFromFirestore();
         }
@@ -56993,7 +57535,23 @@ window.onTpClassViewChange = async function(val) {
         const currentClass = c;
         
         const deptClasses = (configData?.classes || {})[dept] || [];
-        const allBooks = (configData?.books || {})[currentClass] || [];
+        let allBooks = (configData?.books || {})[currentClass] || [];
+                // ★ এখানে নতুন কোডটুকু বসান ★
+        const examMap = { 
+            term1: '১ম সাময়িক', 
+            term2: '২য় সাময়িক', 
+            model: 'মডেল টেস্ট', 
+            qurbani: 'কুরবানী', 
+            annual: 'বার্ষিক' 
+        };
+        const currentExam = window._marksContext?.examType || 'term1';
+        const selectedExamLabel = examMap[window._marksContext?.examType] || '১ম সাময়িক';
+        const selectedYear = window._marksContext?.academicYear || settings.year || '';
+
+        const hasExamNamesInBooks = allBooks.some(b => Object.values(examMap).some(e => b.includes(e)));
+        if (hasExamNamesInBooks) {
+            allBooks = allBooks.filter(b => b.includes(selectedExamLabel));
+        }
         let tempSubs = [];
         
         allBooks.forEach((book, idx) => {
@@ -57044,20 +57602,28 @@ window.onTpClassViewChange = async function(val) {
             return;
         }
 
+        let hasAnyDataInThisTerm = false;
+
         realStudents.forEach(student => {
             let marks = [];
+
+            // ★★★ getStudentTermMarks ব্যবহার — এটাই মূল ফিক্স ★★★
+            const termMarks = getStudentTermMarks(student, selectedYear, currentExam);
+
+            if (Object.keys(termMarks.resultMarksObj || {}).length > 0 
+                || Object.keys(termMarks.customMarks || {}).length > 0) {
+                hasAnyDataInThisTerm = true;
+            }
+
             orderedSubs.forEach(colItem => {
                 let val = null;
                 if (colItem.type === 'default') {
-                    if (student.resultMarksObj && student.resultMarksObj[colItem.key] !== undefined) {
-                        val = student.resultMarksObj[colItem.key];
-                    } else if (student.resultMarks && student.resultMarks.length > 0) {
-                        val = student.resultMarks[colItem.index];
+                    if (termMarks.resultMarksObj?.[colItem.key] !== undefined) {
+                        val = termMarks.resultMarksObj[colItem.key];
                     }
-                } 
-                else if (colItem.type === 'custom') {
-                    if (student.customMarks && student.customMarks[colItem.key] !== undefined) {
-                        val = student.customMarks[colItem.key];
+                } else if (colItem.type === 'custom') {
+                    if (termMarks.customMarks?.[colItem.key] !== undefined) {
+                        val = termMarks.customMarks[colItem.key];
                     }
                 }
                 marks.push(val !== null && val !== undefined && val !== '' ? Number(val) : 0);
@@ -57066,12 +57632,34 @@ window.onTpClassViewChange = async function(val) {
             let calc = calculateGradeAndDivision(dept, marks, currentClass);
 
             currentDeptData.push({
-                id: student.studentId || 'N/A', 
+                id: student.studentId || 'N/A',
                 name: student.name || 'নাম নেই',
                 dept: dept, className: currentClass, marks: marks,
                 total: calc.total, avg: calc.avg, grade: calc.grade, rank: 0
             });
         });
+
+        // ★★★ খালি টার্মের মেসেজ ★★★
+        if (!hasAnyDataInThisTerm && currentDeptData.length > 0) {
+            const examLabels = { 
+                term1: '১ম সাময়িক', term2: '২য় সাময়িক', 
+                model: 'মডেল টেস্ট', qurbani: 'কুরবানী', annual: 'বার্ষিক' 
+            };
+            wrap.innerHTML = `
+                <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-8 text-center">
+                    <i class="fa-solid fa-inbox text-5xl text-amber-400 mb-3"></i>
+                    <h3 class="text-lg font-bold text-amber-900">
+                        "${examLabels[currentExam] || currentExam}" এর জন্য কোন ফলাফল নেই
+                    </h3>
+                    <p class="text-sm text-amber-700 mt-2">
+                        <strong>${selectedYear}</strong> শিক্ষাবর্ষে <strong>${examLabels[currentExam] || currentExam}</strong> পরীক্ষার মার্কস এন্ট্রি হয়নি।
+                    </p>
+                    <p class="text-xs text-slate-500 mt-3">
+                        উপরের শিক্ষাবর্ষ বা পরীক্ষা সিলেক্ট করে অন্যটা দেখুন।
+                    </p>
+                </div>`;
+            return;
+        }
 
         // ৪. সর্টিং
         if (typeof _spreadsheetSort !== 'undefined' && _spreadsheetSort.col !== null) {
@@ -57164,7 +57752,7 @@ window.onTpClassViewChange = async function(val) {
                     <div class="flex flex-col items-center justify-center text-center py-2">
                         ${settings.logo ? `<img src="${settings.logo}" class="h-14 mb-2" alt="Logo">` : `<i class="fa-solid fa-book-open text-4xl text-emerald-600 mb-2"></i>`}
                         <h3 class="font-bold text-slate-800 text-base">${settings.madrasaName || 'জামিয়া ইসলামিয়া'}</h3>
-                        <p class="text-[11px] text-slate-500 mt-1">১ম সাময়িক পরীক্ষা - ${settings.year || ''}</p>
+                        <p class="text-[11px] text-slate-500 mt-1">${selectedExamLabel} পরীক্ষা - ${selectedYear}</p>
                         <p class="text-xs font-bold font-arabic mt-1">${currentClass}</p>
                     </div>
                     <div class="bg-white rounded border border-slate-300 text-xs overflow-hidden">
@@ -57325,20 +57913,25 @@ window.onTpDeptResultClassChange = async function(val) {
             return;
         }
 
+        // ★ টার্ম কনটেক্সট ★
+        const selectedYear = window._marksContext?.academicYear || getCurrentYear();
+        const currentExam = window._marksContext?.examType || 'term2';
+
+        // ✅ নতুন কোড — টার্ম-স্পেসিফিক মার্কস
         realStudents.forEach(student => {
             let marks = [];
+            // ★ getStudentTermMarks দিয়ে টার্ম-স্পেসিফিক ডাটা
+            const termMarks = getStudentTermMarks(student, selectedYear, currentExam);
+
             orderedSubs.forEach(colItem => {
                 let val = null;
                 if (colItem.type === 'default') {
-                    if (student.resultMarksObj && student.resultMarksObj[colItem.key] !== undefined) {
-                        val = student.resultMarksObj[colItem.key];
-                    } else if (student.resultMarks && student.resultMarks.length > 0) {
-                        val = student.resultMarks[colItem.index];
+                    if (termMarks.resultMarksObj?.[colItem.key] !== undefined) {
+                        val = termMarks.resultMarksObj[colItem.key];
                     }
-                } 
-                else if (colItem.type === 'custom') {
-                    if (student.customMarks && student.customMarks[colItem.key] !== undefined) {
-                        val = student.customMarks[colItem.key];
+                } else if (colItem.type === 'custom') {
+                    if (termMarks.customMarks?.[colItem.key] !== undefined) {
+                        val = termMarks.customMarks[colItem.key];
                     }
                 }
                 marks.push(val !== null && val !== undefined && val !== '' ? Number(val) : 0);
@@ -60173,6 +60766,8 @@ async function startStudentsRealtimeListener() {
                     source: 'admission',
                     admissionFormId: form.id,
                     approvedAt: fd.approvedAt,
+                    marksByTerm: fd.marksByTerm || {},
+                    customMarksByTerm: fd.customMarksByTerm || {},
                     // ✅ মার্কস ফিল্ড যোগ
                     resultMarksObj: fd.examMarks || form.data?.examMarks || {},
                     customMarks: fd.customMarks || form.data?.customMarks || {}
@@ -60278,15 +60873,20 @@ async function renderGpResults(container) {
     }
 
     // ★★★ পাবলিশ চেক ★★★
-    if (!_examPublishStatus) {
+    // ★★★ নতুন: শিক্ষাবর্ষ ও পরীক্ষার কনটেক্সট ★★★
+    const ctxYear = window._marksContext?.academicYear || getCurrentYear();
+    const ctxExam = window._marksContext?.examType || 'term2';
+    
+    // পাবলিশ চেক (শুধু চলতি পরীক্ষার জন্য, আগেরগুলো সবসময় দেখা যাবে)
+    const isCurrentExam = (ctxExam === 'term2'); // আপনার চলতি পরীক্ষা যদি term2 হয়
+    if (!_examPublishStatus && isCurrentExam) {
         container.innerHTML = `
             <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-8 text-center my-10">
                 <i class="fa-solid fa-lock text-5xl text-amber-500 mb-3"></i>
-                <h3 class="text-lg font-bold text-amber-900">রেজাল্ট এখনো পাবলিশ হয়নি</h3>
-                <p class="text-sm text-amber-700 mt-2">অফিসিয়ালি রেজাল্ট পাবলিশ না হওয়া পর্যন্ত আপনার সন্তানের ফলাফল দেখতে পারবেন না।</p>
-                <p class="text-xs text-slate-500 mt-3">অনুগ্রহ করে মাদরাসার অফিসে যোগাযোগ করুন অথবা পরবর্তীতে আবার চেষ্টা করুন।</p>
+                <h3 class="text-lg font-bold text-amber-900">চলমান পরীক্ষার রেজাল্ট এখনো পাবলিশ হয়নি</h3>
+                <p class="text-sm text-amber-700 mt-2">অনুগ্রহ করে অপেক্ষা করুন অথবা উপরে থেকে আগের কোনো পরীক্ষা সিলেক্ট করুন।</p>
             </div>`;
-        return; // বাকি কোড রান হবে না
+        // এখানে return করব না, যাতে ইউজার ড্রপডাউন দেখতে পায়
     }
 
     // ★★★ নতুন যোগ করুন: কনফিগ ডাটা লোড নিশ্চিত করা ★★★
@@ -60398,6 +60998,15 @@ async function renderGpResults(container) {
 
         // ★ সেশনেও আপডেট (পরের বার ব্যবহারের জন্য)
         _guardianSession = { ..._guardianSession, ...mergedStudent };
+        
+        // ★★★ নতুন: গার্ডিয়ানের জন্যও মার্কস কনটেক্সট সেট করি ★★★
+        if (!window._marksContext) window._marksContext = {};
+        if (!window._marksContext.academicYear) {
+            window._marksContext.academicYear = typeof getCurrentYear === 'function' ? getCurrentYear() : '';
+        }
+        if (!window._marksContext.examType) {
+            window._marksContext.examType = 'term2';
+        }
 
         console.log('✅ গার্ডিয়ান মার্কস লোড:', {
             name: mergedStudent.name,
@@ -60411,6 +61020,32 @@ async function renderGpResults(container) {
         // ═══════════════════════════════════════════════════════
         if (!window._gpResultTab) window._gpResultTab = 'my';
 
+        // ★★★ নতুন: শিক্ষাবর্ষ ও পরীক্ষা সিলেক্টর ★★★
+        const yearOptions = (academicYears || []).map(y => 
+            `<option value="${y.name}" ${y.name === ctxYear ? 'selected' : ''}>${y.name}${y.isCurrent ? ' (বর্তমান)' : ''}</option>`
+        ).join('');
+
+        const contextSelectorHTML = `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3 flex flex-wrap gap-2 items-center">
+                <div class="flex items-center gap-1.5 flex-1">
+                    <label class="text-[11px] font-bold text-slate-600"><i class="fa-solid fa-calendar-check text-indigo-500"></i> শিক্ষাবর্ষ:</label>
+                    <select id="gp-result-year" onchange="onGpResultContextChange()" class="w-full md:w-auto rounded-lg border-slate-300 border p-1.5 text-xs font-medium bg-slate-50">
+                        ${yearOptions}
+                    </select>
+                </div>
+                <div class="flex items-center gap-1.5 flex-1">
+                    <label class="text-[11px] font-bold text-slate-600"><i class="fa-solid fa-file-pen text-orange-500"></i> পরীক্ষা:</label>
+                    <select id="gp-result-exam" onchange="onGpResultContextChange()" class="w-full md:w-auto rounded-lg border-slate-300 border p-1.5 text-xs font-medium bg-slate-50">
+                        <option value="term1" ${ctxExam === 'term1' ? 'selected' : ''}>১ম সাময়িক</option>
+                        <option value="term2" ${ctxExam === 'term2' ? 'selected' : ''}>২য় সাময়িক</option>
+                        <option value="model" ${ctxExam === 'model' ? 'selected' : ''}>মডেল টেস্ট</option>
+                        <option value="qurbani" ${ctxExam === 'qurbani' ? 'selected' : ''}>কুরবানী</option>
+                        <option value="annual" ${ctxExam === 'annual' ? 'selected' : ''}>বার্ষিক</option>
+                    </select>
+                </div>
+            </div>
+        `;
+        
         const tabsHTML = `
             <div class="bg-slate-50 rounded-xl p-2 mb-4 flex gap-2 shadow-sm border border-slate-200">
                 <button onclick="window._gpResultTab='my'; switchGpTab('result');" 
@@ -60425,7 +61060,7 @@ async function renderGpResults(container) {
         `;
 
         if (window._gpResultTab === 'my') {
-            container.innerHTML = tabsHTML + buildGpFullMarksheetPreview(mergedStudent);
+            container.innerHTML = contextSelectorHTML + tabsHTML + buildGpFullMarksheetPreview(mergedStudent);
         } else {
             // ═══════════════════════════════════════════════════════
             // 🪄 FIXED: students + admissionForms দুটোই লোড
@@ -60531,7 +61166,7 @@ async function renderGpResults(container) {
                     sample: classStudents.slice(0, 3).map(c => c.name)
                 });
 
-                container.innerHTML = tabsHTML + buildGpClassResultPreview(mergedStudent, classStudents);
+                container.innerHTML = contextSelectorHTML + tabsHTML + buildGpClassResultPreview(mergedStudent, classStudents);
             } catch (err) {
                 console.error('❌ Class result error:', err);
                 container.innerHTML = `<p class="text-red-500 text-center py-6">শ্রেণির ফলাফল লোড ব্যর্থ: ${err.message}</p>`;
@@ -60551,6 +61186,17 @@ async function renderGpResults(container) {
             </div>`;
     }
 }
+
+window.onGpResultContextChange = function() {
+    const yearSel = document.getElementById('gp-result-year');
+    const examSel = document.getElementById('gp-result-exam');
+    
+    if (!window._marksContext) window._marksContext = {};
+    window._marksContext.academicYear = yearSel?.value || '';
+    window._marksContext.examType = examSel?.value || '';
+    
+    switchGpTab('result'); // পেজ রি-রেন্ডার
+};
 
 // ═══════════════════════════════════════════════════════════════
 // 【 ট্যাব ১: "আমার সন্তানের" — হুবহু মার্কশীট (একই ফরম্যাট) 】
