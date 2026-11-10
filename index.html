@@ -1789,10 +1789,6 @@ header button {
         border-radius: 50% !important; /* গোলাকার বক্স */
         margin-bottom: 0.2rem !important;
         
-        /* ★ ব্যাকগ্রাউন্ড কালার সেট (যাতে আইকন সাদা দেখায়) */
-        background-color: #3b82f6 !important; /* ডিফল্ট নীল */
-        color: #ffffff !important;
-        box-shadow: 0 3px 6px -2px rgba(0,0,0,0.2) !important;
     }
 
     /* ৪. বাটনের লেখা ছোট ও স্পষ্ট করা */
@@ -54074,13 +54070,12 @@ async function loadTpProfileStats() {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // ★★★ ধাপ ২: এখনো খালি হলে, Firestore থেকে লোড করি (যদি লোড না হয়) ★★★
+        // ★★★ ধাপ ২: এখনো খালি হলে, Firestore থেকে লোড করি ★★★
         // ═══════════════════════════════════════════════════════════
         if (cacheData.length === 0 && !window._isStudentsLoading) {
             if (typeof loadStudentsFromFirestore === 'function') {
                 console.log("🔄 ফায়ারবেস থেকে ডাটা লোড হচ্ছে...");
                 await loadStudentsFromFirestore();
-                // লোডের পর আবার সব source থেকে চেষ্টা
                 cacheData = window.studentsCache || studentsCache || [];
                 console.log("📦 After load:", cacheData.length);
             }
@@ -54098,13 +54093,50 @@ async function loadTpProfileStats() {
         // ★★★ ধাপ ৪: সক্রিয় ছাত্র গণনা ★★★
         // ═══════════════════════════════════════════════════════════
         const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
-        const totalStudents = cacheData.filter(s => 
+        const activeStudents = cacheData.filter(s => 
             allowed.includes(s.dept + '::' + s.className) &&
             !excludedRemarks.includes((s.remark?.type || '').trim())
-        ).length;
+        );
+        const totalStudents = activeStudents.length;
 
         // ═══════════════════════════════════════════════════════════
-        // ★★★ ধাপ ৫: DOM আপডেট ★★★
+        // ★★★ ধাপ ৫: আজকের উপস্থিতি গণনা (নতুন যোগ করা হলো) ★★★
+        // ═══════════════════════════════════════════════════════════
+        let presentCount = totalStudents; // ডিফল্ট: সবাই উপস্থিত
+
+        try {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const myName = window.currentUserData?.teacherName || window.currentUserData?.name || '';
+            
+            // ফায়ারবেস থেকে আজকের হাজিরা চেক করি (শিক্ষকের নিজের নেওয়া)
+            const { collection, getDocs, query, where } = window.fbFuncs;
+            const q = query(
+                collection(window.fbDB, 'attendance'),
+                where('markedBy', '==', myName),
+                where('date', '==', todayStr)
+            );
+            const snap = await getDocs(q);
+            
+            // যাদের "অনুপস্থিত" বা "ছুটি" দেওয়া হয়েছে, তাদের সেটে রাখি
+            const absentOrLeaveSet = new Set();
+            snap.forEach(d => {
+                const rec = d.data();
+                (rec.students || []).forEach(st => {
+                    if (st.status === 'absent' || st.status === 'leave') {
+                        absentOrLeaveSet.add(String(st.studentDbId));
+                    }
+                });
+            });
+
+            // উপস্থিতি হিসাব: (মোট ছাত্র - অনুপস্থিত/ছুটি)
+            presentCount = activeStudents.filter(s => !absentOrLeaveSet.has(String(s.id))).length;
+
+        } catch (attErr) {
+            console.warn("⚠️ Attendance load failed in Profile Stats:", attErr);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // ★★★ ধাপ ৬: DOM আপডেট ★★★
         // ═══════════════════════════════════════════════════════════
         const classEl = document.getElementById('tp-profile-classes');
         if (classEl) {
@@ -54115,16 +54147,23 @@ async function loadTpProfileStats() {
             }
         }
         
+        // মোট ছাত্র আপডেট
         const studentEl = document.getElementById('tp-profile-total-students');
         if (studentEl) {
             studentEl.textContent = toBanglaNumber(totalStudents);
         }
 
+        // ★★★ উপস্থিতি আপডেট ★★★
+        const presentEl = document.getElementById('tp-profile-present-students');
+        if (presentEl) {
+            presentEl.textContent = toBanglaNumber(presentCount);
+        }
+
         console.log("✅ প্রোফাইল স্ট্যাটস আপডেট:", { 
             classes: classNames.length,
             allowed: allowed.length,
-            students: totalStudents,
-            cacheLength: cacheData.length
+            totalStudents: totalStudents,
+            presentCount: presentCount
         });
 
     } catch (err) {
@@ -54253,33 +54292,33 @@ window.switchTpTab = async function(tab) {
                     </div>
                     
                     <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 max-w-4xl mx-auto">
-                        <!-- ১. পরীক্ষার রুটিন -->
+                        <!-- ১. পরীক্ষার রুটিন (কমলা) -->
                         <button onclick="switchTpExamNewSub('routine')" class="group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
-                            <i class="fa-solid fa-calendar-check text-white bg-amber-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl"></i>
+                            <i class="fa-solid fa-calendar-check text-white bg-amber-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform shadow-sm"></i>
                             <span class="text-sm md:text-base font-bold leading-tight text-center text-amber-900">পরীক্ষার রুটিন</span>
                         </button>
                         
-                        <!-- ২. প্রশ্ন মেকার -->
-                        <button onclick="switchTpExamNewSub('question-maker')" class="group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
-                            <i class="fa-solid fa-file-pen text-white bg-blue-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl"></i>
+                        <!-- ২. প্রশ্ন মেকার (নীল) -->
+                        <button onclick="switchTpExamNewSub('question-maker')" class="group bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
+                            <i class="fa-solid fa-file-pen text-white bg-blue-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform shadow-sm"></i>
                             <span class="text-sm md:text-base font-bold leading-tight text-center text-blue-900">প্রশ্ন মেকার</span>
                         </button>
                         
-                        <!-- ৩. পরীক্ষার হল নেগরানী -->
-                        <button onclick="switchTpExamNewSub('hall')" class="group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
-                            <i class="fa-solid fa-hotel text-white bg-rose-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl"></i>
+                        <!-- ৩. পরীক্ষার হল নেগরানী (রোজ/লাল) -->
+                        <button onclick="switchTpExamNewSub('hall')" class="group bg-rose-50 hover:bg-rose-100 border-2 border-rose-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
+                            <i class="fa-solid fa-hotel text-white bg-rose-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform shadow-sm"></i>
                             <span class="text-sm md:text-base font-bold leading-tight text-center text-rose-900">পরীক্ষার হল নেগরানী</span>
                         </button>
                         
-                        <!-- ৪. নীতিমালা -->
-                        <button onclick="switchTpExamNewSub('policies')" class="group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
-                            <i class="fa-solid fa-scroll text-white bg-indigo-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl"></i>
+                        <!-- ৪. নীতিমালা (ইন্ডিগো) -->
+                        <button onclick="switchTpExamNewSub('policies')" class="group bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
+                            <i class="fa-solid fa-scroll text-white bg-indigo-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform shadow-sm"></i>
                             <span class="text-sm md:text-base font-bold leading-tight text-center text-indigo-900">নীতিমালা</span>
                         </button>
                         
-                        <!-- ৫. পরীক্ষার সম্মানী -->
-                        <button onclick="switchTpExamNewSub('remuneration')" class="group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
-                            <i class="fa-solid fa-money-bill-wave text-white bg-emerald-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl"></i>
+                        <!-- ৫. পরীক্ষার সম্মানী (সবুজ) -->
+                        <button onclick="switchTpExamNewSub('remuneration')" class="group bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-200 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px] md:min-h-[140px]">
+                            <i class="fa-solid fa-money-bill-wave text-white bg-emerald-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform shadow-sm"></i>
                             <span class="text-sm md:text-base font-bold leading-tight text-center text-emerald-900">পরীক্ষার সম্মানী</span>
                         </button>
                     </div>
@@ -54296,7 +54335,7 @@ window.switchTpTab = async function(tab) {
                 </button>
                 
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
-                    <h3 class="font-bold text-sm text-slate-800 mb-3"><i class="fa-solid fa-clipboard-question text-amber-600"></i> ফলাফল</h3>
+                    <h3 class="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2"><i class="fa-solid fa-chart-simple text-white bg-amber-500 rounded-lg w-8 h-8 flex items-center justify-center text-sm shadow-sm"></i> ফলাফল</h3>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
                         <button onclick="switchTpExamSub('entry')" class="px-3 py-3 rounded-lg text-xs md:text-sm font-bold transition bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5">
                             <i class="fa-solid fa-keyboard text-white bg-blue-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl"></i>
@@ -54378,6 +54417,58 @@ window.switchTpTab = async function(tab) {
             const content = document.getElementById('tp-dynamic-content');
             if (dashboard) dashboard.style.display = 'none';
             await renderTpPolicies(content);
+        } else if (tab === 'attendance') {
+            const dashboard = document.getElementById('tp-dashboard-area');
+            const content = document.getElementById('tp-dynamic-content');
+            if (dashboard) dashboard.style.display = 'none';
+
+            content.innerHTML = `
+                <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+                
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 mb-4">
+                    <div class="flex items-center justify-center gap-2 mb-6">
+                        <div class="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <h3 class="text-lg md:text-xl font-bold text-slate-800 leading-none">হাজিরা ব্যবস্থাপনা</h3>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 max-w-5xl mx-auto">
+                        <!-- ১. ক্লাস হাজিরা -->
+                        <button onclick="openTpAttendancePage('class')" class="group bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px]">
+                            <i class="fa-solid fa-chalkboard-user text-white bg-blue-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform"></i>
+                            <span class="text-xs md:text-sm font-bold leading-tight text-center text-blue-900">ক্লাস হাজিরা</span>
+                        </button>
+                        
+                        <!-- ২. দৈনিক হাজিরা -->
+                        <button onclick="openTpAttendancePage('daily')" class="group bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px]">
+                            <i class="fa-solid fa-calendar-day text-white bg-emerald-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform"></i>
+                            <span class="text-xs md:text-sm font-bold leading-tight text-center text-emerald-900">দৈনিক হাজিরা</span>
+                        </button>
+                        
+                        <!-- ৩. সাপ্তাহিক হাজিরা -->
+                        <button onclick="openTpAttendancePage('weekly')" class="group bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px]">
+                            <i class="fa-solid fa-calendar-week text-white bg-amber-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform"></i>
+                            <span class="text-xs md:text-sm font-bold leading-tight text-center text-amber-900">সাপ্তাহিক হাজিরা</span>
+                        </button>
+                        
+                        <!-- ৪. ছুটি পরবর্তী হাজিরা -->
+                        <button onclick="openTpAttendancePage('post-holiday')" class="group bg-rose-50 hover:bg-rose-100 border-2 border-rose-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px]">
+                            <i class="fa-solid fa-plane-arrival text-white bg-rose-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform"></i>
+                            <span class="text-xs md:text-sm font-bold leading-tight text-center text-rose-900">ছুটি পরবর্তী হাজিরা</span>
+                        </button>
+
+                        <!-- ★★★ ৫ম বাটন: হাজিরা হিস্টোরি ★★★ -->
+                        <button onclick="openTpAttendancePage('history')" 
+                                class="group bg-slate-50 hover:bg-slate-100 border-2 border-slate-300 rounded-xl p-4 md:p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[120px]">
+                            <i class="fa-solid fa-history text-white bg-slate-700 rounded-xl w-10 h-10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform"></i>
+                            <span class="text-xs md:text-sm font-bold leading-tight text-center text-slate-800">হাজিরা হিস্টোরি</span>
+                        </button>
+                    </div>
+                </div>
+            `;
         }
     } catch (error) {
         console.error("Tab render error:", error);
@@ -57779,7 +57870,7 @@ window.switchGpTab = async function(tab) {
         await renderGpRules(pageBody);
     }
     else if (tab === 'attendance') {
-        pageBody.innerHTML = comingSoonHTML;
+       await renderGpAttendance(pageBody);
     }
     else if (tab === 'admission-programs') {
         await renderGpAdmissionPrograms(pageBody);
@@ -68567,6 +68658,9 @@ async function calculateMonthlyDues() {
 
 // ★★★ স্ট্যাটাস বার আপডেট করার ফাংশন ★★★
 async function updateHomeStatusBar() {
+    if (window._isHomeStatusLoading) return;
+    window._isHomeStatusLoading = true;
+    
     console.log('📊 updateHomeStatusBar শুরু...');
 
     try {
@@ -68719,8 +68813,8 @@ async function updateHomeStatusBar() {
                             if (!elCountdown) return;
                             
                             const now = new Date();
-                            const target = new Date(activeEv._endDate);
-                            target.setHours(23, 59, 59, 999);
+                            const target = new Date(activeEv._startDate);
+                            target.setHours(0, 0, 0, 0);
                             
                             const diff = target - now;
                             
@@ -68760,6 +68854,13 @@ async function updateHomeStatusBar() {
         }
 
         console.log('✅ updateHomeStatusBar সম্পন্ন');
+
+        setTimeout(() => {
+            if (typeof updateHomeStatusBar === 'function') {
+                updateHomeStatusBar();
+            }
+            updateLiveAttendanceStats(); // ★ নতুন যোগ করুন
+        }, 1500); 
 
     } catch (err) {
         console.error('❌ Status bar load error:', err);
@@ -68925,6 +69026,3853 @@ document.addEventListener('mousedown', function(e) {
 document.addEventListener('mouseup', function() {
     document.body.classList.remove('selecting-mode');
 });
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল — হাজিরা সিস্টেম ★★★
+// ═══════════════════════════════════════════════════════════════
+
+const TP_ATT_STATUS = {
+    'present': { label: 'উপস্থিত', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', color: '#10b981' },
+    'absent': { label: 'অনুপস্থিত', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800', color: '#ef4444' },
+    'sick': { label: 'অসুস্থ', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800', color: '#f59e0b' },
+    'leave': { label: 'ছুটি', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800', color: '#3b82f6' }
+};
+
+window.switchTpAttendanceSub = function(subType) {
+    const content = document.getElementById('tp-attendance-content');
+    if (!content) return;
+    
+    content.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-teal-600"></i></div>`;
+
+    if (subType === 'class') renderTpClassAttendance(content);
+    else if (subType === 'daily') renderTpDailyAttendance(content);
+    else if (subType === 'weekly') renderTpWeeklyAttendance(content);
+    else if (subType === 'post-holiday') renderTpPostHolidayAttendance(content);
+};
+
+async function getTeacherAssignedClasses() {
+    const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
+    const allowed = getTeacherAllowedClasses(); // [{dept, className}]
+    return allowed;
+}
+
+// ─── ১. ক্লাস হাজিরা (সাবজেক্ট ভিত্তিক) ───
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ক্লাস হাজিরা — সম্পূর্ণ ফাংশন ★★★
+// একদিনে একবার, শুধু ক্লাস + তারিখ
+// ═══════════════════════════════════════════════════════════════
+
+// ─── স্টেট ───
+window._tpClassState = window._tpClassState || {
+    selectedClass: '',    // '', 'مشكاة', ...
+    date: '',
+    classHour: '১ম ঘণ্টা',
+    statuses: {}
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ১. মেইন রেন্ডার ফাংশন — প্রথমে ক্লাস সিলেকশন
+// ═══════════════════════════════════════════════════════════════
+async function renderTpClassAttendance(container) {
+    if (!container) return;
+
+    // ★ শিক্ষকের assigned ক্লাস
+    const allowedClasses = typeof getTeacherAllowedClasses === 'function'
+        ? getTeacherAllowedClasses()
+        : [];
+
+    if (!allowedClasses || allowedClasses.length === 0) {
+        container.innerHTML = `
+            <div class="bg-white rounded-xl shadow-md p-10 text-center">
+                <i class="fa-solid fa-user-slash text-5xl text-slate-300 mb-3"></i>
+                <p class="font-bold text-slate-700">আপনার কোন ক্লাস assigned নেই</p>
+                <p class="text-xs text-slate-500 mt-1">এডমিনের সাথে যোগাযোগ করুন।</p>
+            </div>`;
+        return;
+    }
+
+    // ★ ডিফল্ট তারিখ — আজ
+    if (!window._tpClassState.date) {
+        window._tpClassState.date = new Date().toISOString().split('T')[0];
+    }
+
+    // ★ ক্লাস নামগুলো unique করি
+    const classNameList = [...new Set(allowedClasses.map(k => k.split('::')[1]))];
+
+    // ★ ছাত্র ডাটা নিশ্চিত করি
+    if (!studentsCache || studentsCache.length === 0) {
+        if (typeof loadStudentsFromFirestore === 'function') {
+            await loadStudentsFromFirestore();
+        }
+    }
+
+    // ★ প্রতিটি ক্লাসে কতজন ছাত্র (সক্রিয়)
+    const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+    const classCount = {};
+    (studentsCache || []).forEach(s => {
+        if (excludedRemarks.includes((s.remark?.type || '').trim())) return;
+        if (!classNameList.includes(s.className)) return;
+        classCount[s.className] = (classCount[s.className] || 0) + 1;
+    });
+
+    // ★ ক্লাস সিলেকশন UI
+    let classButtonsHTML = classNameList.map(c => `
+        <button onclick="onTpClassSelect('${c.replace(/'/g, "\\'")}')"
+                class="group bg-white hover:bg-blue-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-0.5 flex flex-col items-center justify-center gap-2 min-h-[110px]">
+            <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center text-white text-xl shadow-md group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-users-rectangle"></i>
+            </div>
+            <span class="font-arabic text-sm font-bold text-slate-800 text-center leading-tight">${c}</span>
+            <span class="badge bg-blue-100 text-blue-800 text-[10px] font-bold">${classCount[c] || 0} জন</span>
+        </button>
+    `).join('');
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+            
+            <!-- ★ হেডার -->
+            <div class="bg-blue-50 border-2 border-blue-300 rounded-lg p-3 mb-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-sm">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-blue-900">ক্লাস হাজিরা</h4>
+                        <p class="text-[10px] text-blue-700">প্রতিটি ক্লাসের জন্য আলাদা হাজিরা নিন</p>
+                    </div>
+                </div>
+                <p class="text-xs text-blue-800 leading-relaxed">
+                    <i class="fa-solid fa-info-circle"></i>
+                    যে ক্লাসে <strong>এখন পড়াতে যাচ্ছেন</strong>, সেই ক্লাসের নামে ক্লিক করে হাজিরা নিন।
+                    প্রতিটি ক্লাসের হাজিরা আলাদা সেভ হবে।
+                </p>
+            </div>
+
+            <!-- ★★★ ক্লাস সিলেকশন গ্রিড ★★★ -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                ${classButtonsHTML}
+            </div>
+        </div>
+    `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ২. ক্লাস সিলেক্ট করলে → ছাত্র লিস্ট দেখাই
+// ═══════════════════════════════════════════════════════════════
+window.onTpClassSelect = function(className) {
+    window._tpClassState.selectedClass = className;
+    window._tpClassState.statuses = {};   // রিসেট
+    renderTpClassAttendancePage();
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৩. ক্লাসের ভেতরের হাজিরা পেজ
+// ═══════════════════════════════════════════════════════════════
+async function renderTpClassAttendancePage() {
+    const content = document.getElementById('tp-dynamic-content');
+    if (!content) return;
+
+    const state = window._tpClassState;
+    const className = state.selectedClass;
+
+    // ★ হেডার + কন্ট্রোল
+    const hourOptions = ['১ম ঘণ্টা', '২য় ঘণ্টা', '৩য় ঘণ্টা', '৪র্থ ঘণ্টা', '৫ম ঘণ্টা', '৬ষ্ঠ ঘণ্টা', '৭ম ঘণ্টা', '৮ম ঘণ্টা', '৯ম ঘণ্টা'];
+
+    content.innerHTML = `
+        <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+            <button onclick="backToTpClassList()"
+                    class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-blue-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg shadow-sm transition">
+                <i class="fa-solid fa-arrow-left"></i> ক্লাস তালিকা
+            </button>
+            <div class="flex items-center gap-2">
+                <span class="w-6 h-6 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-users-rectangle"></i>
+                </span>
+                <h3 class="text-sm md:text-base font-bold text-slate-800 font-arabic">${className}</h3>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+            
+            <!-- ★ কন্ট্রোল প্যানেল -->
+            <div class="bg-blue-50 border-2 border-blue-300 rounded-lg p-3 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-blue-900 mb-1">
+                            <i class="fa-solid fa-calendar-day"></i> তারিখ
+                        </label>
+                        <input type="date" id="tp-class-date"
+                               value="${state.date}"
+                               onchange="onTpClassDateChange(this.value)"
+                               class="w-full rounded-lg border-blue-300 border-2 p-2.5 text-sm bg-white font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-blue-900 mb-1">
+                            <i class="fa-solid fa-clock"></i> কততম ঘণ্টা
+                        </label>
+                        <select id="tp-class-hour" onchange="onTpClassHourChange(this.value)"
+                                class="w-full rounded-lg border-blue-300 border-2 p-2.5 text-sm bg-white font-bold">
+                            ${hourOptions.map(h => `
+                                <option value="${h}" ${state.classHour === h ? 'selected' : ''}>${h}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-2 pt-2 border-t border-blue-200 flex items-center justify-between flex-wrap gap-2 text-xs">
+                    <span class="text-blue-800">
+                        <i class="fa-solid fa-info-circle"></i>
+                        এই ক্লাসের হাজিরা — সেভ হলে গার্ডিয়ান পোর্টালে দেখা যাবে
+                    </span>
+                    <span id="tp-class-summary" class="bg-white border border-blue-400 rounded px-3 py-1 font-bold text-blue-900">
+                        ০ / ০ উপস্থিত
+                    </span>
+                </div>
+            </div>
+
+            <!-- ★ ছাত্র লিস্ট -->
+            <div id="tp-class-students-area">
+                <div class="text-center py-10">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-blue-600"></i>
+                    <p class="text-xs mt-2 text-slate-500">ছাত্র লোড হচ্ছে...</p>
+                </div>
+            </div>
+
+            <!-- ★ অ্যাকশন বার -->
+            <div id="tp-class-action-bar" class="hidden mt-4 pt-4 border-t border-slate-200 flex justify-between items-center flex-wrap gap-2">
+                <button onclick="setAllClassStatus('present')"
+                        class="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                    <i class="fa-solid fa-check-double"></i> সবাই উপস্থিত
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="resetClassStatuses()"
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
+                        <i class="fa-solid fa-rotate"></i> রিসেট
+                    </button>
+                    <button onclick="saveTpClassAttendance()"
+                            class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow-md transition flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> সেভ করুন
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    await loadTpClassStudents();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৪. ফিরে যাওয়া ক্লাস লিস্টে
+// ═══════════════════════════════════════════════════════════════
+window.backToTpClassList = function() {
+    window._tpClassState.selectedClass = '';
+    window._tpClassState.statuses = {};
+    renderTpClassAttendance(document.getElementById('tp-dynamic-content'));
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৫. তারিখ / ঘণ্টা পরিবর্তন
+// ═══════════════════════════════════════════════════════════════
+window.onTpClassDateChange = function(date) {
+    window._tpClassState.date = date;
+    loadTpClassStudents();
+};
+
+window.onTpClassHourChange = function(hour) {
+    window._tpClassState.classHour = hour;
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৬. ছাত্র লিস্ট লোড
+// ═══════════════════════════════════════════════════════════════
+async function loadTpClassStudents() {
+    const area = document.getElementById('tp-class-students-area');
+    const actionBar = document.getElementById('tp-class-action-bar');
+    if (!area) return;
+
+    const state = window._tpClassState;
+    const className = state.selectedClass;
+
+    area.innerHTML = `
+        <div class="text-center py-8">
+            <i class="fa-solid fa-circle-notch fa-spin text-xl text-blue-600"></i>
+            <p class="text-xs mt-2 text-slate-500">ছাত্র লোড হচ্ছে...</p>
+        </div>
+    `;
+    if (actionBar) actionBar.classList.add('hidden');
+
+    try {
+        // ★ এই ক্লাসের সক্রিয় ছাত্ররা
+        const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+        const myStudents = (studentsCache || []).filter(s => {
+            if (s.className !== className) return false;
+            if (excludedRemarks.includes((s.remark?.type || '').trim())) return false;
+            return true;
+        });
+
+        if (myStudents.length === 0) {
+            area.innerHTML = `
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
+                    <i class="fa-solid fa-users-slash text-4xl text-slate-300 mb-2"></i>
+                    <p class="font-bold text-slate-600 text-sm">এই ক্লাসে কোন সক্রিয় ছাত্র নেই</p>
+                </div>
+            `;
+            return;
+        }
+
+        // ★ আগের হাজিরা লোড (ঐ তারিখ + ক্লাস + শিক্ষক)
+        let existingStatuses = {};
+        try {
+            const { collection, getDocs, query, where } = window.fbFuncs;
+            const myName = currentUserData?.teacherName || currentUserData?.name || '';
+            const q = query(
+                collection(window.fbDB, 'attendance'),
+                where('attendanceType', '==', 'class'),
+                where('date', '==', state.date),
+                where('className', '==', className),
+                where('markedBy', '==', myName)
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                const existing = snap.docs[0].data();
+                (existing.students || []).forEach(st => {
+                    existingStatuses[st.studentDbId] = st.status;
+                });
+            }
+        } catch (err) {
+            console.warn('⚠️ Previous class attendance load:', err);
+        }
+
+        state.statuses = { ...existingStatuses };
+
+        // ★ ছাত্র লিস্ট রেন্ডার
+        const rowsHTML = myStudents.map((s, i) => {
+            const status = state.statuses[s.id] || 'present';
+            return `
+                <tr class="border-b hover:bg-blue-50">
+                    <td class="p-2 text-center text-xs text-slate-500">${i + 1}</td>
+                    <td class="p-2 text-sm font-bold text-slate-800">${s.name || '—'}</td>
+                    <td class="p-2 text-center text-xs font-mono text-slate-600">${s.studentId || '—'}</td>
+                    <td class="p-2 text-center text-xs text-slate-600">${s.guardian || s.fatherName || '—'}</td>
+                    <td class="p-2">
+                        <div class="flex justify-center gap-1 flex-wrap" data-class-student="${s.id}">
+                            ${['present', 'absent', 'late', 'leave', 'sick'].map(st => `
+                                <button onclick="setClassStudentStatus('${s.id}', '${st}')"
+                                        data-status="${st}"
+                                        class="class-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition ${status === st ? getClassStatusActiveClass(st) : 'bg-white border-slate-300 text-slate-500'}">
+                                    ${getClassStatusLabel(st)}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        area.innerHTML = `
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-2 flex justify-between items-center flex-wrap gap-2">
+                <span class="text-xs font-bold text-blue-900">
+                    <i class="fa-solid fa-users"></i> মোট ${myStudents.length} জন ছাত্র
+                </span>
+                <span class="badge bg-blue-600 text-white text-[10px] font-bold font-arabic">${className}</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-xs">
+                    <thead class="bg-blue-600 text-white">
+                        <tr>
+                            <th class="p-2 text-[10px] text-center w-10">#</th>
+                            <th class="p-2 text-[10px] text-left">নাম</th>
+                            <th class="p-2 text-[10px] text-center w-20">আইডি</th>
+                            <th class="p-2 text-[10px] text-center w-32">অভিভাবক</th>
+                            <th class="p-2 text-[10px] text-center w-72">উপস্থিতি</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHTML}</tbody>
+                </table>
+            </div>
+        `;
+
+        if (actionBar) actionBar.classList.remove('hidden');
+        updateClassSummary();
+
+    } catch (err) {
+        console.error('❌ loadTpClassStudents:', err);
+        area.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                <i class="fa-solid fa-triangle-exclamation text-3xl text-red-400 mb-2"></i>
+                <p class="font-bold text-red-800 text-sm">লোড ব্যর্থ</p>
+                <p class="text-xs text-red-600 mt-1">${err.message}</p>
+            </div>
+        `;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৭. স্ট্যাটাস হেল্পার
+// ═══════════════════════════════════════════════════════════════
+window.setClassStudentStatus = function(studentDbId, status) {
+    window._tpClassState.statuses[studentDbId] = status;
+
+    const wrap = document.querySelector(`[data-class-student="${studentDbId}"]`);
+    if (!wrap) return;
+
+    wrap.querySelectorAll('.class-status-btn').forEach(btn => {
+        if (btn.dataset.status === status) {
+            btn.className = `class-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition ${getClassStatusActiveClass(status)}`;
+        } else {
+            btn.className = `class-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition bg-white border-slate-300 text-slate-500`;
+        }
+    });
+
+    updateClassSummary();
+};
+
+window.setAllClassStatus = function(status) {
+    document.querySelectorAll('[data-class-student]').forEach(wrap => {
+        setClassStudentStatus(wrap.dataset.classStudent, status);
+    });
+    showToast(`✅ সবাইকে "${getClassStatusLabel(status)}" করা হয়েছে`, 'info');
+};
+
+window.resetClassStatuses = function() {
+    if (!confirm('সব ছাত্রকে "উপস্থিত" করতে চান?')) return;
+    setAllClassStatus('present');
+};
+
+function getClassStatusLabel(s) {
+    return {
+        present: 'উপস্থিত',
+        absent: 'অনুপস্থিত',
+        late: 'দেরি',
+        leave: 'ছুটি',
+        sick: 'অসুস্থ'
+    }[s] || s;
+}
+
+function getClassStatusActiveClass(s) {
+    return {
+        present: 'bg-emerald-600 border-emerald-700 text-white',
+        absent: 'bg-red-600 border-red-700 text-white',
+        late: 'bg-amber-500 border-amber-600 text-white',
+        leave: 'bg-blue-600 border-blue-700 text-white',
+        sick: 'bg-violet-600 border-violet-700 text-white'
+    }[s] || 'bg-white border-slate-300 text-slate-500';
+}
+
+function updateClassSummary() {
+    const summaryEl = document.getElementById('tp-class-summary');
+    if (!summaryEl) return;
+
+    const statuses = window._tpClassState.statuses || {};
+    const allIds = Object.keys(statuses);
+    const total = allIds.length;
+    const present = allIds.filter(id => statuses[id] === 'present').length;
+
+    if (total === 0) {
+        summaryEl.textContent = '০ / ০ উপস্থিত';
+        return;
+    }
+
+    const pct = Math.round((present / total) * 100);
+    summaryEl.textContent = `${toBanglaNumber(present)} / ${toBanglaNumber(total)} উপস্থিত (${toBanglaNumber(pct)}%)`;
+
+    if (pct >= 90) summaryEl.className = 'bg-emerald-50 border border-emerald-400 rounded px-3 py-1 font-bold text-emerald-900';
+    else if (pct >= 70) summaryEl.className = 'bg-amber-50 border border-amber-400 rounded px-3 py-1 font-bold text-amber-900';
+    else summaryEl.className = 'bg-red-50 border border-red-400 rounded px-3 py-1 font-bold text-red-900';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৮. সেভ — গার্ডিয়ান পোর্টাল ইন্টিগ্রেশনসহ
+// ═══════════════════════════════════════════════════════════════
+window.saveTpClassAttendance = async function() {
+    const state = window._tpClassState;
+    const className = state.selectedClass;
+
+    // ★ ভ্যালিডেশন
+    if (!className) return showToast('⚠️ ক্লাস সিলেক্ট করুন', 'warn');
+    if (!state.date) return showToast('⚠️ তারিখ দিন', 'warn');
+    if (!state.statuses || Object.keys(state.statuses).length === 0) {
+        return showToast('⚠️ কোন ছাত্রের হাজিরা নেই', 'warn');
+    }
+
+    // ★ ছাত্র ডাটা সংগ্রহ
+    const studentsData = [];
+    Object.keys(state.statuses).forEach(studentId => {
+        const student = (studentsCache || []).find(s => s.id === studentId);
+        if (student) {
+            studentsData.push({
+                studentDbId: student.id,
+                studentId: student.studentId || '',
+                name: student.name || '',
+                className: student.className || '',
+                dept: student.dept || '',
+                guardianMobile: student.mobile1 || '',
+                guardianName: student.guardian || student.fatherName || '',
+                status: state.statuses[studentId] || 'present',
+                remark: '',
+                timeIn: ''
+            });
+        }
+    });
+
+    if (studentsData.length === 0) return showToast('⚠️ কোন বৈধ ছাত্র নেই', 'warn');
+
+    // ★ সংক্ষিপ্ত হিসাব
+    const summary = {
+        total: studentsData.length,
+        present: studentsData.filter(s => s.status === 'present').length,
+        absent: studentsData.filter(s => s.status === 'absent').length,
+        late: studentsData.filter(s => s.status === 'late').length,
+        leave: studentsData.filter(s => s.status === 'leave').length,
+        sick: studentsData.filter(s => s.status === 'sick').length
+    };
+
+    const absentStudentIds = studentsData
+        .filter(s => s.status === 'absent' || s.status === 'sick')
+        .map(s => s.studentDbId);
+
+    // ★ এই ক্লাসের dept বের করি
+    const sampleStudent = studentsData[0];
+    const dept = sampleStudent?.dept || '';
+
+    const payload = {
+        attendanceType: 'class',
+        date: state.date,
+        monthKey: state.date.slice(0, 7),
+        academicYear: typeof getCurrentYear === 'function' ? getCurrentYear() : '',
+        session: 'শীতকালীন',
+
+        // ★ ক্লাস-নির্দিষ্ট ফিল্ড
+        className,
+        dept,
+        classHour: state.classHour,
+        timeSlot: 'ক্লাস চলাকালীন',
+
+        students: studentsData,
+        summary: summary,
+
+        // ★★★ গার্ডিয়ান পোর্টালের জন্য ★★★
+        guardianVisible: true,
+        absentStudentIds: absentStudentIds,
+
+        markedBy: currentUserData?.teacherName || currentUserData?.name || '',
+        markedByUid: currentUser?.uid || '',
+        markedAt: new Date(),
+        lastEditedAt: new Date()
+    };
+
+    // ★ বাটন লোডিং
+    const saveBtn = document.querySelector('button[onclick="saveTpClassAttendance()"]');
+    const origHTML = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> সেভ হচ্ছে...';
+    }
+
+    try {
+        const { addDoc, collection, doc, setDoc, getDocs, query, where, serverTimestamp } = window.fbFuncs;
+
+        // ★ আগে এই ক্লাসের এই তারিখে হাজিরা আছে কি না
+        const q = query(
+            collection(window.fbDB, 'attendance'),
+            where('attendanceType', '==', 'class'),
+            where('date', '==', state.date),
+            where('className', '==', className),
+            where('markedBy', '==', payload.markedBy)
+        );
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+            // ★ আপডেট
+            await setDoc(
+                doc(window.fbDB, 'attendance', snap.docs[0].id),
+                { ...payload, markedAt: serverTimestamp() },
+                { merge: true }
+            );
+            showToast(`✅ "${className}" হাজিরা আপডেট — ${summary.present}/${summary.total} উপস্থিত`, 'success');
+        } else {
+            // ★ নতুন
+            await addDoc(collection(window.fbDB, 'attendance'), {
+                ...payload,
+                markedAt: serverTimestamp()
+            });
+            showToast(`✅ "${className}" নতুন হাজিরা — ${summary.present}/${summary.total} উপস্থিত`, 'success');
+        }
+
+    } catch (err) {
+        console.error('❌ saveTpClassAttendance:', err);
+        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = origHTML;
+        }
+    }
+};
+
+console.log('✅ ক্লাস হাজিরা ফাংশন লোড হয়েছে (গার্ডিয়ান ইন্টিগ্রেশনসহ)');
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ দৈনিক হাজিরা — সম্পূর্ণ ফাংশন ★★★
+// গার্ডিয়ান পোর্টাল ইন্টিগ্রেশনসহ
+// ═══════════════════════════════════════════════════════════════
+
+// ─── স্টেট ───
+window._tpDailyState = window._tpDailyState || {
+    date: '',
+    timeSlot: 'বাদ ফজর',
+    statuses: {}
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ১. মেইন রেন্ডার ফাংশন
+// ═══════════════════════════════════════════════════════════════
+async function renderTpDailyAttendance(container) {
+    if (!container) return;
+
+    // ★ শিক্ষকের assigned ক্লাস
+    const allowedClasses = typeof getTeacherAllowedClasses === 'function'
+        ? getTeacherAllowedClasses()
+        : [];
+
+    if (!allowedClasses || allowedClasses.length === 0) {
+        container.innerHTML = `
+            <div class="bg-white rounded-xl shadow-md p-10 text-center">
+                <i class="fa-solid fa-user-slash text-5xl text-slate-300 mb-3"></i>
+                <p class="font-bold text-slate-700">আপনার কোন ক্লাস assigned নেই</p>
+                <p class="text-xs text-slate-500 mt-1">এডমিনের সাথে যোগাযোগ করুন।</p>
+            </div>`;
+        return;
+    }
+
+    // ★ ডিফল্ট তারিখ — আজ
+    if (!window._tpDailyState.date) {
+        window._tpDailyState.date = new Date().toISOString().split('T')[0];
+    }
+
+    // ★ সময় ড্রপডাউন
+    const timeOptions = ['বাদ ফজর', 'সকাল ৮টা', 'দুপুর', 'বাদ মাগরিব', 'বাদ ইশা'];
+
+    // ★ আজকের তারিখ বাংলায়
+    const todayBn = new Date().toLocaleDateString('bn-BD', {
+        day: 'numeric', month: 'long', year: 'numeric'
+    });
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+            
+            <!-- ★★★ কন্ট্রোল প্যানেল ★★★ -->
+            <div class="bg-emerald-50 border-2 border-emerald-300 rounded-lg p-3 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    
+                    <!-- তারিখ -->
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 mb-1">
+                            <i class="fa-solid fa-calendar-day"></i> তারিখ
+                        </label>
+                        <input type="date" id="tp-daily-date"
+                               value="${window._tpDailyState.date}"
+                               onchange="onTpDailyDateChange(this.value)"
+                               class="w-full rounded-lg border-emerald-300 border-2 p-2.5 text-sm bg-white font-bold">
+                        <p class="text-[10px] text-emerald-700 mt-1 font-semibold">
+                            <i class="fa-solid fa-info-circle"></i> আজ: ${todayBn}
+                        </p>
+                    </div>
+                    
+                    <!-- সময় -->
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 mb-1">
+                            <i class="fa-solid fa-clock"></i> হাজিরার সময়
+                        </label>
+                        <select id="tp-daily-time" onchange="onTpDailyTimeChange(this.value)"
+                                class="w-full rounded-lg border-emerald-300 border-2 p-2.5 text-sm bg-white font-bold">
+                            ${timeOptions.map(t => `
+                                <option value="${t}" ${window._tpDailyState.timeSlot === t ? 'selected' : ''}>
+                                    ${t}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- ইনফো লাইন -->
+                <div class="mt-2 pt-2 border-t border-emerald-200 flex items-center justify-between flex-wrap gap-2 text-xs">
+                    <span class="text-emerald-800">
+                        <i class="fa-solid fa-info-circle"></i>
+                        <strong>প্রতিদিনের হাজিরা</strong> — গার্ডিয়ান পোর্টালে অভিভাবকরা এই হাজিরা দেখতে পাবেন
+                    </span>
+                    <span id="tp-daily-summary" class="bg-white border border-emerald-400 rounded px-3 py-1 font-bold text-emerald-900">
+                        ০ / ০ উপস্থিত
+                    </span>
+                </div>
+            </div>
+
+            <!-- ★★★ ছাত্র লিস্ট এরিয়া ★★★ -->
+            <div id="tp-daily-students-area">
+                <div class="text-center py-10">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-emerald-600"></i>
+                    <p class="text-xs mt-2 text-slate-500">ছাত্র লোড হচ্ছে...</p>
+                </div>
+            </div>
+
+            <!-- ★★★ অ্যাকশন বার ★★★ -->
+            <div id="tp-daily-action-bar" class="hidden mt-4 pt-4 border-t border-slate-200 flex justify-between items-center flex-wrap gap-2">
+                <button onclick="setAllDailyStatus('present')"
+                        class="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                    <i class="fa-solid fa-check-double"></i> সবাইকে উপস্থিত
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="resetDailyStatuses()"
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
+                        <i class="fa-solid fa-rotate"></i> রিসেট
+                    </button>
+                    <button onclick="saveTpDailyAttendance()"
+                            class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg shadow-md transition flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> সেভ করুন
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    await loadTpDailyStudents();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ২. তারিখ / সময় পরিবর্তন
+// ═══════════════════════════════════════════════════════════════
+window.onTpDailyDateChange = function(date) {
+    window._tpDailyState.date = date;
+    loadTpDailyStudents();
+};
+
+window.onTpDailyTimeChange = function(time) {
+    window._tpDailyState.timeSlot = time;
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৩. ছাত্র লিস্ট লোড (ক্লাস অনুযায়ী গ্রুপ)
+// ═══════════════════════════════════════════════════════════════
+async function loadTpDailyStudents() {
+    const area = document.getElementById('tp-daily-students-area');
+    const actionBar = document.getElementById('tp-daily-action-bar');
+    if (!area) return;
+
+    area.innerHTML = `
+        <div class="text-center py-8">
+            <i class="fa-solid fa-circle-notch fa-spin text-xl text-emerald-600"></i>
+            <p class="text-xs mt-2 text-slate-500">ছাত্র লোড হচ্ছে...</p>
+        </div>
+    `;
+    if (actionBar) actionBar.classList.add('hidden');
+
+    try {
+        // ★ ছাত্র ডাটা নিশ্চিত
+        if (!studentsCache || studentsCache.length === 0) {
+            if (typeof loadStudentsFromFirestore === 'function') {
+                await loadStudentsFromFirestore();
+            }
+        }
+
+        const allowedClasses = getTeacherAllowedClasses();
+        const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+
+        const myStudents = (studentsCache || []).filter(s => {
+            if (!allowedClasses.includes(s.dept + '::' + s.className)) return false;
+            if (excludedRemarks.includes((s.remark?.type || '').trim())) return false;
+            return true;
+        });
+
+        if (myStudents.length === 0) {
+            area.innerHTML = `
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
+                    <i class="fa-solid fa-users-slash text-4xl text-slate-300 mb-2"></i>
+                    <p class="font-bold text-slate-600 text-sm">কোন ছাত্র পাওয়া যায়নি</p>
+                </div>
+            `;
+            return;
+        }
+
+        // ★ ক্লাস অনুযায়ী গ্রুপ
+        const byClass = {};
+        myStudents.forEach(s => {
+            if (!byClass[s.className]) byClass[s.className] = [];
+            byClass[s.className].push(s);
+        });
+
+        // ★ আগের হাজিরা লোড
+        let existingStatuses = {};
+        try {
+            const { collection, getDocs, query, where } = window.fbFuncs;
+            const myName = currentUserData?.teacherName || currentUserData?.name || '';
+            const q = query(
+                collection(window.fbDB, 'attendance'),
+                where('attendanceType', '==', 'daily'),
+                where('date', '==', window._tpDailyState.date),
+                where('markedBy', '==', myName)
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                const existing = snap.docs[0].data();
+                (existing.students || []).forEach(st => {
+                    existingStatuses[st.studentDbId] = st.status;
+                });
+            }
+        } catch (err) {
+            console.warn('⚠️ Previous daily attendance load:', err);
+        }
+
+        window._tpDailyState.statuses = { ...existingStatuses };
+
+        // ★ সেকশন তৈরি
+        let sectionsHTML = '';
+        Object.keys(byClass).sort().forEach(className => {
+            const students = byClass[className];
+
+            const rowsHTML = students.map((s, i) => {
+                const status = window._tpDailyState.statuses[s.id] || 'present';
+                return `
+                    <tr class="border-b hover:bg-emerald-50">
+                        <td class="p-2 text-center text-xs text-slate-500">${i + 1}</td>
+                        <td class="p-2 text-sm font-bold text-slate-800">${s.name || '—'}</td>
+                        <td class="p-2 text-center text-xs font-mono text-slate-600">${s.studentId || '—'}</td>
+                        <td class="p-2">
+                            <div class="flex justify-center gap-1 flex-wrap" data-daily-student="${s.id}">
+                                ${['present', 'absent', 'late', 'leave', 'sick'].map(st => `
+                                    <button onclick="setDailyStudentStatus('${s.id}', '${st}')"
+                                            data-status="${st}"
+                                            class="daily-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition ${status === st ? getDailyStatusActiveClass(st) : 'bg-white border-slate-300 text-slate-500'}">
+                                        ${getDailyStatusLabel(st)}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            sectionsHTML += `
+                <div class="bg-white border border-emerald-200 rounded-lg overflow-hidden mb-3">
+                    <div class="bg-emerald-600 text-white px-3 py-2 text-xs font-bold flex justify-between items-center">
+                        <span><i class="fa-solid fa-graduation-cap"></i> <span class="font-arabic">${className}</span></span>
+                        <span class="badge bg-white text-emerald-800 text-[10px] font-bold">${students.length} জন</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-xs">
+                            <thead class="bg-emerald-50 text-emerald-900">
+                                <tr>
+                                    <th class="p-2 text-[10px] text-center w-10">#</th>
+                                    <th class="p-2 text-[10px] text-left">নাম</th>
+                                    <th class="p-2 text-[10px] text-center w-20">আইডি</th>
+                                    <th class="p-2 text-[10px] text-center w-72">উপস্থিতি</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rowsHTML}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+
+        area.innerHTML = sectionsHTML;
+        if (actionBar) actionBar.classList.remove('hidden');
+
+        updateDailySummary();
+
+    } catch (err) {
+        console.error('❌ loadTpDailyStudents:', err);
+        area.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                <i class="fa-solid fa-triangle-exclamation text-3xl text-red-400 mb-2"></i>
+                <p class="font-bold text-red-800 text-sm">লোড ব্যর্থ</p>
+                <p class="text-xs text-red-600 mt-1">${err.message}</p>
+            </div>
+        `;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৪. স্ট্যাটাস সেট
+// ═══════════════════════════════════════════════════════════════
+window.setDailyStudentStatus = function(studentDbId, status) {
+    window._tpDailyState.statuses[studentDbId] = status;
+
+    const wrap = document.querySelector(`[data-daily-student="${studentDbId}"]`);
+    if (!wrap) return;
+
+    wrap.querySelectorAll('.daily-status-btn').forEach(btn => {
+        if (btn.dataset.status === status) {
+            btn.className = `daily-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition ${getDailyStatusActiveClass(status)}`;
+        } else {
+            btn.className = `daily-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition bg-white border-slate-300 text-slate-500`;
+        }
+    });
+
+    updateDailySummary();
+};
+
+window.setAllDailyStatus = function(status) {
+    document.querySelectorAll('[data-daily-student]').forEach(wrap => {
+        setDailyStudentStatus(wrap.dataset.dailyStudent, status);
+    });
+    showToast(`✅ সবাইকে "${getDailyStatusLabel(status)}" করা হয়েছে`, 'info');
+};
+
+window.resetDailyStatuses = function() {
+    if (!confirm('সব ছাত্রকে "উপস্থিত" করতে চান?')) return;
+    setAllDailyStatus('present');
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৫. স্ট্যাটাস হেল্পার
+// ═══════════════════════════════════════════════════════════════
+function getDailyStatusLabel(s) {
+    return {
+        present: 'উপস্থিত',
+        absent: 'অনুপস্থিত',
+        late: 'দেরি',
+        leave: 'ছুটি',
+        sick: 'অসুস্থ'
+    }[s] || s;
+}
+
+function getDailyStatusActiveClass(s) {
+    return {
+        present: 'bg-emerald-600 border-emerald-700 text-white',
+        absent: 'bg-red-600 border-red-700 text-white',
+        late: 'bg-amber-500 border-amber-600 text-white',
+        leave: 'bg-blue-600 border-blue-700 text-white',
+        sick: 'bg-violet-600 border-violet-700 text-white'
+    }[s] || 'bg-white border-slate-300 text-slate-500';
+}
+
+function updateDailySummary() {
+    const summaryEl = document.getElementById('tp-daily-summary');
+    if (!summaryEl) return;
+
+    const statuses = window._tpDailyState.statuses || {};
+    const allIds = Object.keys(statuses);
+    const total = allIds.length;
+    const present = allIds.filter(id => statuses[id] === 'present').length;
+
+    if (total === 0) {
+        summaryEl.textContent = '০ / ০ উপস্থিত';
+        return;
+    }
+
+    const pct = Math.round((present / total) * 100);
+    summaryEl.textContent = `${toBanglaNumber(present)} / ${toBanglaNumber(total)} উপস্থিত (${toBanglaNumber(pct)}%)`;
+
+    if (pct >= 90) summaryEl.className = 'bg-emerald-50 border border-emerald-400 rounded px-3 py-1 font-bold text-emerald-900';
+    else if (pct >= 70) summaryEl.className = 'bg-amber-50 border border-amber-400 rounded px-3 py-1 font-bold text-amber-900';
+    else summaryEl.className = 'bg-red-50 border border-red-400 rounded px-3 py-1 font-bold text-red-900';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৬. সেভ — গার্ডিয়ান পোর্টাল ইন্টিগ্রেশনসহ
+// ═══════════════════════════════════════════════════════════════
+window.saveTpDailyAttendance = async function() {
+    const state = window._tpDailyState;
+
+    // ★ ভ্যালিডেশন
+    if (!state.date) {
+        return showToast('⚠️ তারিখ দিন', 'warn');
+    }
+    if (!state.statuses || Object.keys(state.statuses).length === 0) {
+        return showToast('⚠️ কোন ছাত্রের হাজিরা নেই', 'warn');
+    }
+
+    // ★ ছাত্র ডাটা সংগ্রহ
+    const studentsData = [];
+    Object.keys(state.statuses).forEach(studentId => {
+        const student = (studentsCache || []).find(s => s.id === studentId);
+        if (student) {
+            studentsData.push({
+                studentDbId: student.id,
+                studentId: student.studentId || '',
+                name: student.name || '',
+                className: student.className || '',
+                dept: student.dept || '',
+                guardianMobile: student.mobile1 || '',      // ★ গার্ডিয়ানের জন্য
+                guardianName: student.guardian || student.fatherName || '', // ★
+                status: state.statuses[studentId] || 'present',
+                remark: '',
+                timeIn: ''
+            });
+        }
+    });
+
+    if (studentsData.length === 0) {
+        return showToast('⚠️ কোন বৈধ ছাত্র নেই', 'warn');
+    }
+
+    // ★ সংক্ষিপ্ত হিসাব
+    const summary = {
+        total: studentsData.length,
+        present: studentsData.filter(s => s.status === 'present').length,
+        absent: studentsData.filter(s => s.status === 'absent').length,
+        late: studentsData.filter(s => s.status === 'late').length,
+        leave: studentsData.filter(s => s.status === 'leave').length,
+        sick: studentsData.filter(s => s.status === 'sick').length
+    };
+
+    // ★ কোন ছাত্ররা অনুপস্থিত (গার্ডিয়ান নোটিফিকেশনের জন্য)
+    const absentStudentIds = studentsData
+        .filter(s => s.status === 'absent' || s.status === 'sick')
+        .map(s => s.studentDbId);
+
+    const payload = {
+        attendanceType: 'daily',
+        date: state.date,
+        monthKey: state.date.slice(0, 7),
+        academicYear: typeof getCurrentYear === 'function' ? getCurrentYear() : '',
+        session: 'শীতকালীন',
+
+        // ★ দৈনিক-নির্দিষ্ট ফিল্ড
+        timeSlot: state.timeSlot,
+
+        className: '',
+        dept: '',
+
+        students: studentsData,
+        summary: summary,
+
+        // ★★★ গার্ডিয়ান পোর্টালের জন্য বিশেষ ফিল্ড ★★★
+        guardianVisible: true,                        // অভিভাবকরা দেখতে পারবে
+        absentStudentIds: absentStudentIds,           // কারা অনুপস্থিত
+        notificationSent: false,                      // নোটিফিকেশন পাঠানো হয়েছে কি না
+
+        markedBy: currentUserData?.teacherName || currentUserData?.name || '',
+        markedByUid: currentUser?.uid || '',
+        markedAt: new Date(),
+        lastEditedAt: new Date()
+    };
+
+    // ★ সেভ বাটন ডিজেবল
+    const saveBtn = document.querySelector('button[onclick="saveTpDailyAttendance()"]');
+    const origHTML = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> সেভ হচ্ছে...';
+    }
+
+    try {
+        const { addDoc, collection, doc, setDoc, getDocs, query, where, serverTimestamp } = window.fbFuncs;
+
+        // ★ আগে আছে কি না চেক
+        const q = query(
+            collection(window.fbDB, 'attendance'),
+            where('attendanceType', '==', 'daily'),
+            where('date', '==', state.date),
+            where('markedBy', '==', payload.markedBy)
+        );
+        const snap = await getDocs(q);
+
+        let attendanceId = '';
+        if (!snap.empty) {
+            // ★ আপডেট
+            attendanceId = snap.docs[0].id;
+            await setDoc(
+                doc(window.fbDB, 'attendance', attendanceId),
+                { ...payload, markedAt: serverTimestamp() },
+                { merge: true }
+            );
+            showToast(`✅ হাজিরা আপডেট — ${summary.present}/${summary.total} উপস্থিত`, 'success');
+        } else {
+            // ★ নতুন
+            const ref = await addDoc(collection(window.fbDB, 'attendance'), {
+                ...payload,
+                markedAt: serverTimestamp()
+            });
+            attendanceId = ref.id;
+            showToast(`✅ নতুন হাজিরা সেভ — ${summary.present}/${summary.total} উপস্থিত`, 'success');
+        }
+
+        // ★★★ গার্ডিয়ান নোটিফিকেশন (বিকল্প) ★★★
+        if (absentStudentIds.length > 0) {
+            // এখানে চাইলে WhatsApp/SMS পাঠানো যাবে ভবিষ্যতে
+            console.log(`📢 ${absentStudentIds.length} জন ছাত্র অনুপস্থিত — অভিভাবকরা গার্ডিয়ান পোর্টালে দেখতে পাবেন`);
+        }
+
+    } catch (err) {
+        console.error('❌ saveTpDailyAttendance:', err);
+        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = origHTML;
+        }
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৭. গার্ডিয়ান পোর্টালের জন্য হেল্পার ফাংশন
+// ═══════════════════════════════════════════════════════════════
+
+// ★ একটি নির্দিষ্ট ছাত্রের সব হাজিরা (গার্ডিয়ান দেখবে)
+window.getStudentAttendanceHistory = async function(studentDbId, options = {}) {
+    const { fromDate = '', toDate = '', type = '' } = options;
+    
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        
+        // ★ সব হাজিরা লোড করি
+        const snap = await getDocs(collection(window.fbDB, 'attendance'));
+        const records = [];
+        
+        snap.forEach(d => {
+            const rec = { id: d.id, ...d.data() };
+            
+            // ★ টাইপ ফিল্টার
+            if (type && rec.attendanceType !== type) return;
+            
+            // ★ তারিখ ফিল্টার
+            if (fromDate && rec.date < fromDate) return;
+            if (toDate && rec.date > toDate) return;
+            
+            // ★ গার্ডিয়ান-visibility চেক
+            if (rec.guardianVisible === false) return;
+            
+            // ★ এই ছাত্র এই হাজিরায় আছে কি না
+            const studentEntry = (rec.students || []).find(s => 
+                String(s.studentDbId) === String(studentDbId)
+            );
+            
+            if (studentEntry) {
+                records.push({
+                    attendanceId: rec.id,
+                    attendanceType: rec.attendanceType,
+                    date: rec.date,
+                    timeSlot: rec.timeSlot || '',
+                    holidayName: rec.holidayName || '',
+                    dayOfWeek: rec.dayOfWeek,
+                    status: studentEntry.status,
+                    remark: studentEntry.remark || '',
+                    markedBy: rec.markedBy || ''
+                });
+            }
+        });
+        
+        // ★ তারিখ অনুযায়ী sort (নতুন আগে)
+        records.sort((a, b) => b.date.localeCompare(a.date));
+        
+        return records;
+    } catch (err) {
+        console.error('❌ getStudentAttendanceHistory:', err);
+        return [];
+    }
+};
+
+// ★ একজন ছাত্রের মাসিক হাজিরা সারসংক্ষেপ
+window.getStudentMonthlyAttendanceSummary = async function(studentDbId, monthKey) {
+    try {
+        const records = await getStudentAttendanceHistory(studentDbId, {
+            fromDate: monthKey + '-01',
+            toDate: monthKey + '-31'
+        });
+        
+        const summary = {
+            total: records.length,
+            present: records.filter(r => r.status === 'present').length,
+            absent: records.filter(r => r.status === 'absent').length,
+            late: records.filter(r => r.status === 'late').length,
+            leave: records.filter(r => r.status === 'leave').length,
+            sick: records.filter(r => r.status === 'sick').length
+        };
+        
+        summary.percentage = summary.total > 0 
+            ? Math.round(((summary.present + summary.late) / summary.total) * 100) 
+            : 0;
+        
+        return summary;
+    } catch (err) {
+        console.error('❌ getStudentMonthlyAttendanceSummary:', err);
+        return { total: 0, present: 0, absent: 0, late: 0, leave: 0, sick: 0, percentage: 0 };
+    }
+};
+
+console.log('✅ দৈনিক হাজিরা ফাংশন লোড হয়েছে (গার্ডিয়ান পোর্টাল ইন্টিগ্রেশনসহ)');
+
+// ─── ৩. সাপ্তাহিক হাজিরা ───
+// ═══════════════════════════════════════════════════════════════
+// ★★★ সাপ্তাহিক হাজিরা — সম্পূর্ণ ফাংশন ★★★
+// ═══════════════════════════════════════════════════════════════
+
+// ─── স্টেট ───
+window._tpWeeklyState = window._tpWeeklyState || {
+    dayOfWeek: 5,        // 0=রবি, 5=শুক্রবার (ডিফল্ট)
+    date: '',
+    timeSlot: 'বাদ মাগরিব',
+    statuses: {}         // { studentDbId: 'present' | 'absent' | ... }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ১. মেইন রেন্ডার ফাংশন
+// ═══════════════════════════════════════════════════════════════
+async function renderTpWeeklyAttendance(container) {
+    if (!container) return;
+
+    // ★ শিক্ষকের assigned ক্লাস নিই
+    const allowedClasses = typeof getTeacherAllowedClasses === 'function' 
+        ? getTeacherAllowedClasses() 
+        : [];
+    
+    if (!allowedClasses || allowedClasses.length === 0) {
+        container.innerHTML = `
+            <div class="bg-white rounded-xl shadow-md p-10 text-center">
+                <i class="fa-solid fa-user-slash text-5xl text-slate-300 mb-3"></i>
+                <p class="font-bold text-slate-700">আপনার কোন ক্লাস assigned নেই</p>
+                <p class="text-xs text-slate-500 mt-1">এডমিনের সাথে যোগাযোগ করুন।</p>
+            </div>`;
+        return;
+    }
+
+    // ★ ডিফল্ট তারিখ — এই সপ্তাহের শুক্রবার
+    if (!window._tpWeeklyState.date) {
+        window._tpWeeklyState.date = getUpcomingDateForDayOfWeek(5);
+    }
+
+    // ★ দিনের ড্রপডাউন অপশন
+    const dayOptions = [
+        { value: 5, label: 'শুক্রবার' },
+        { value: 6, label: 'শনিবার' },
+        { value: 0, label: 'রবিবার' },
+        { value: 4, label: 'বৃহস্পতিবার' },
+        { value: 1, label: 'সোমবার' }
+    ];
+
+    // ★ সময় ড্রপডাউন
+    const timeOptions = [
+        'বাদ ফজর',
+        'সকাল ৮টা',
+        'দুপুর',
+        'বাদ মাগরিব',
+        'বাদ ইশা'
+    ];
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+            
+            <!-- ★★★ কন্ট্রোল প্যানেল (দিন + তারিখ + সময়) ★★★ -->
+            <div class="bg-amber-50 border-2 border-amber-300 rounded-lg p-3 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    
+                    <!-- দিন -->
+                    <div>
+                        <label class="block text-xs font-bold text-amber-900 mb-1">
+                            <i class="fa-solid fa-calendar-week"></i> সপ্তাহের দিন
+                        </label>
+                        <select id="tp-weekly-day" onchange="onTpWeeklyDayChange(this.value)"
+                                class="w-full rounded-lg border-amber-300 border-2 p-2.5 text-sm bg-white font-bold">
+                            ${dayOptions.map(d => `
+                                <option value="${d.value}" ${window._tpWeeklyState.dayOfWeek === d.value ? 'selected' : ''}>
+                                    ${d.label}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    
+                    <!-- তারিখ -->
+                    <div>
+                        <label class="block text-xs font-bold text-amber-900 mb-1">
+                            <i class="fa-solid fa-calendar-day"></i> তারিখ
+                        </label>
+                        <input type="date" id="tp-weekly-date" 
+                               value="${window._tpWeeklyState.date}"
+                               onchange="onTpWeeklyDateChange(this.value)"
+                               class="w-full rounded-lg border-amber-300 border-2 p-2.5 text-sm bg-white font-bold">
+                    </div>
+                    
+                    <!-- সময় -->
+                    <div>
+                        <label class="block text-xs font-bold text-amber-900 mb-1">
+                            <i class="fa-solid fa-clock"></i> হাজিরার সময়
+                        </label>
+                        <select id="tp-weekly-time" onchange="onTpWeeklyTimeChange(this.value)"
+                                class="w-full rounded-lg border-amber-300 border-2 p-2.5 text-sm bg-white font-bold">
+                            ${timeOptions.map(t => `
+                                <option value="${t}" ${window._tpWeeklyState.timeSlot === t ? 'selected' : ''}>
+                                    ${t}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- ইনফো লাইন -->
+                <div class="mt-2 pt-2 border-t border-amber-200 flex items-center justify-between flex-wrap gap-2 text-xs">
+                    <span class="text-amber-800">
+                        <i class="fa-solid fa-info-circle"></i>
+                        <strong>এই সপ্তাহের হাজিরা</strong> — সর্বশেষ হাজিরা হবে না হলে নতুন হিসেবে সেভ হবে
+                    </span>
+                    <span id="tp-weekly-summary" class="bg-white border border-amber-400 rounded px-3 py-1 font-bold text-amber-900">
+                        ০ / ০ উপস্থিত
+                    </span>
+                </div>
+            </div>
+
+            <!-- ★★★ ছাত্র লিস্ট এরিয়া ★★★ -->
+            <div id="tp-weekly-students-area">
+                <div class="text-center py-10">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-amber-600"></i>
+                    <p class="text-xs mt-2 text-slate-500">ছাত্র লোড হচ্ছে...</p>
+                </div>
+            </div>
+
+            <!-- ★★★ অ্যাকশন বার ★★★ -->
+            <div id="tp-weekly-action-bar" class="hidden mt-4 pt-4 border-t border-slate-200 flex justify-between items-center flex-wrap gap-2">
+                <button onclick="setAllWeeklyStatus('present')" 
+                        class="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                    <i class="fa-solid fa-check-double"></i> সবাইকে উপস্থিত
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="resetWeeklyStatuses()" 
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
+                        <i class="fa-solid fa-rotate"></i> রিসেট
+                    </button>
+                    <button onclick="saveTpWeeklyAttendance()" 
+                            class="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-lg shadow-md transition flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> সেভ করুন
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // ★ ছাত্র লিস্ট লোড করি
+    await loadTpWeeklyStudents();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ২. দিন পরিবর্তন হলে → তারিখও অটো আপডেট
+// ═══════════════════════════════════════════════════════════════
+window.onTpWeeklyDayChange = function(dayNum) {
+    window._tpWeeklyState.dayOfWeek = parseInt(dayNum);
+    
+    // ★ এই সপ্তাহের সেই দিনের তারিখ বের করি
+    const newDate = getUpcomingDateForDayOfWeek(parseInt(dayNum));
+    window._tpWeeklyState.date = newDate;
+    
+    // তারিখ ইনপুট আপডেট
+    const dateEl = document.getElementById('tp-weekly-date');
+    if (dateEl) dateEl.value = newDate;
+    
+    // ছাত্র লিস্ট রিলোড
+    loadTpWeeklyStudents();
+};
+
+window.onTpWeeklyDateChange = function(date) {
+    window._tpWeeklyState.date = date;
+    loadTpWeeklyStudents();
+};
+
+window.onTpWeeklyTimeChange = function(time) {
+    window._tpWeeklyState.timeSlot = time;
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৩. হেল্পার: নির্দিষ্ট বারের পরবর্তী তারিখ
+// ═══════════════════════════════════════════════════════════════
+function getUpcomingDateForDayOfWeek(targetDay) {
+    // 0=রবি, 1=সোম, ..., 5=শুক্র, 6=শনি
+    const today = new Date();
+    const todayDay = today.getDay();
+    
+    // ★ আজকের দিন == target হলে আজকের তারিখই দিই
+    let diff = targetDay - todayDay;
+    if (diff < 0) diff += 7;  // পরের সপ্তাহে
+    
+    // ★ সাধারণত ৩ দিনের বেশি দূরের দিন চাই না — যদি আজকের পরপরই হয়
+    // কিন্ত শুক্রবার হলে আজ বা এই সপ্তাহের শুক্রবারই দেব
+    const result = new Date(today);
+    result.setDate(today.getDate() + diff);
+    
+    return result.toISOString().split('T')[0];
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৪. ছাত্র লিস্ট লোড (ক্লাস অনুযায়ী গ্রুপ)
+// ═══════════════════════════════════════════════════════════════
+async function loadTpWeeklyStudents() {
+    const area = document.getElementById('tp-weekly-students-area');
+    const actionBar = document.getElementById('tp-weekly-action-bar');
+    if (!area) return;
+
+    area.innerHTML = `
+        <div class="text-center py-8">
+            <i class="fa-solid fa-circle-notch fa-spin text-xl text-amber-600"></i>
+            <p class="text-xs mt-2 text-slate-500">ছাত্র লোড হচ্ছে...</p>
+        </div>
+    `;
+    if (actionBar) actionBar.classList.add('hidden');
+
+    try {
+        // ★ ছাত্র ডাটা নিশ্চিত করি
+        if (!studentsCache || studentsCache.length === 0) {
+            if (typeof loadStudentsFromFirestore === 'function') {
+                await loadStudentsFromFirestore();
+            }
+        }
+
+        // ★ শিক্ষকের assigned ক্লাস
+        const allowedClasses = getTeacherAllowedClasses();
+        
+        // ★ সক্রিয় ছাত্র ফিল্টার
+        const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+        const myStudents = (studentsCache || []).filter(s => {
+            if (!allowedClasses.includes(s.dept + '::' + s.className)) return false;
+            if (excludedRemarks.includes((s.remark?.type || '').trim())) return false;
+            return true;
+        });
+
+        if (myStudents.length === 0) {
+            area.innerHTML = `
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
+                    <i class="fa-solid fa-users-slash text-4xl text-slate-300 mb-2"></i>
+                    <p class="font-bold text-slate-600 text-sm">কোন ছাত্র পাওয়া যায়নি</p>
+                </div>
+            `;
+            return;
+        }
+
+        // ★ ক্লাস অনুযায়ী গ্রুপ
+        const byClass = {};
+        myStudents.forEach(s => {
+            if (!byClass[s.className]) byClass[s.className] = [];
+            byClass[s.className].push(s);
+        });
+
+        // ★ আগের হাজিরা লোড করি (ঐ তারিখ + শুক্রবার/শনিবার + এই শিক্ষক)
+        let existingStudents = {};
+        try {
+            const { collection, getDocs, query, where } = window.fbFuncs;
+            const myName = currentUserData?.teacherName || currentUserData?.name || '';
+            const q = query(
+                collection(window.fbDB, 'attendance'),
+                where('attendanceType', '==', 'weekly'),
+                where('date', '==', window._tpWeeklyState.date),
+                where('markedBy', '==', myName)
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                const existing = snap.docs[0].data();
+                (existing.students || []).forEach(st => {
+                    existingStudents[st.studentDbId] = st.status;
+                });
+            }
+        } catch (err) {
+            console.warn('⚠️ Previous weekly attendance load:', err);
+        }
+
+        // ★ স্টেট রিসেট করি (আগের স্টেট মুছে নতুনটা সেট করি)
+        window._tpWeeklyState.statuses = { ...existingStudents };
+
+        // ★ প্রতিটি ক্লাসের জন্য সেকশন তৈরি
+        let sectionsHTML = '';
+        let totalStudents = 0;
+        
+        Object.keys(byClass).sort().forEach(className => {
+            const students = byClass[className];
+            totalStudents += students.length;
+
+            const rowsHTML = students.map((s, i) => {
+                const status = window._tpWeeklyState.statuses[s.id] || 'present';
+                return `
+                    <tr class="border-b hover:bg-amber-50">
+                        <td class="p-2 text-center text-xs text-slate-500">${i + 1}</td>
+                        <td class="p-2 text-sm font-bold text-slate-800">${s.name || '—'}</td>
+                        <td class="p-2 text-center text-xs font-mono text-slate-600">${s.studentId || '—'}</td>
+                        <td class="p-2">
+                            <div class="flex justify-center gap-1 flex-wrap" data-weekly-student="${s.id}">
+                                ${['present', 'absent', 'late', 'leave', 'sick'].map(st => `
+                                    <button onclick="setWeeklyStudentStatus('${s.id}', '${st}')"
+                                            data-status="${st}"
+                                            class="weekly-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition ${status === st ? getWeeklyStatusActiveClass(st) : 'bg-white border-slate-300 text-slate-500'}">
+                                        ${getWeeklyStatusLabel(st)}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            sectionsHTML += `
+                <div class="bg-white border border-amber-200 rounded-lg overflow-hidden mb-3">
+                    <div class="bg-amber-600 text-white px-3 py-2 text-xs font-bold flex justify-between items-center">
+                        <span><i class="fa-solid fa-graduation-cap"></i> <span class="font-arabic">${className}</span></span>
+                        <span class="badge bg-white text-amber-800 text-[10px] font-bold">${students.length} জন</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-xs">
+                            <thead class="bg-amber-50 text-amber-900">
+                                <tr>
+                                    <th class="p-2 text-[10px] text-center w-10">#</th>
+                                    <th class="p-2 text-[10px] text-left">নাম</th>
+                                    <th class="p-2 text-[10px] text-center w-20">আইডি</th>
+                                    <th class="p-2 text-[10px] text-center w-72">উপস্থিতি</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rowsHTML}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+
+        area.innerHTML = sectionsHTML;
+        if (actionBar) actionBar.classList.remove('hidden');
+
+        // ★ সামারি আপডেট
+        updateWeeklySummary(totalStudents);
+
+    } catch (err) {
+        console.error('❌ loadTpWeeklyStudents:', err);
+        area.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                <i class="fa-solid fa-triangle-exclamation text-3xl text-red-400 mb-2"></i>
+                <p class="font-bold text-red-800 text-sm">লোড ব্যর্থ</p>
+                <p class="text-xs text-red-600 mt-1">${err.message}</p>
+            </div>
+        `;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৫. স্ট্যাটাস বাটন সেট
+// ═══════════════════════════════════════════════════════════════
+window.setWeeklyStudentStatus = function(studentDbId, status) {
+    window._tpWeeklyState.statuses[studentDbId] = status;
+
+    const wrap = document.querySelector(`[data-weekly-student="${studentDbId}"]`);
+    if (!wrap) return;
+    
+    wrap.querySelectorAll('.weekly-status-btn').forEach(btn => {
+        if (btn.dataset.status === status) {
+            btn.className = `weekly-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition ${getWeeklyStatusActiveClass(status)}`;
+        } else {
+            btn.className = `weekly-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition bg-white border-slate-300 text-slate-500`;
+        }
+    });
+
+    // ★ সামারি আপডেট
+    updateWeeklySummary();
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৬. সব উপস্থিত
+// ═══════════════════════════════════════════════════════════════
+window.setAllWeeklyStatus = function(status) {
+    document.querySelectorAll('[data-weekly-student]').forEach(wrap => {
+        const studentId = wrap.dataset.weeklyStudent;
+        setWeeklyStudentStatus(studentId, status);
+    });
+    showToast(`✅ সবাইকে "${getWeeklyStatusLabel(status)}" করা হয়েছে`, 'info');
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৭. রিসেট
+// ═══════════════════════════════════════════════════════════════
+window.resetWeeklyStatuses = function() {
+    if (!confirm('সব ছাত্রের হাজিরা "উপস্থিত" করতে চান? (আগের সিলেকশন মুছে যাবে)')) return;
+    setAllWeeklyStatus('present');
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৮. স্ট্যাটাস হেল্পার (রঙ ও লেবেল)
+// ═══════════════════════════════════════════════════════════════
+function getWeeklyStatusLabel(s) {
+    return {
+        present: 'উপস্থিত',
+        absent: 'অনুপস্থিত',
+        late: 'দেরি',
+        leave: 'ছুটি',
+        sick: 'অসুস্থ'
+    }[s] || s;
+}
+
+function getWeeklyStatusActiveClass(s) {
+    return {
+        present: 'bg-emerald-600 border-emerald-700 text-white',
+        absent:  'bg-red-600 border-red-700 text-white',
+        late:    'bg-amber-500 border-amber-600 text-white',
+        leave:   'bg-blue-600 border-blue-700 text-white',
+        sick:    'bg-violet-600 border-violet-700 text-white'
+    }[s] || 'bg-white border-slate-300 text-slate-500';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৯. সামারি আপডেট (উপরে "০/০ উপস্থিত" লেখাটা)
+// ═══════════════════════════════════════════════════════════════
+function updateWeeklySummary(totalHint) {
+    const summaryEl = document.getElementById('tp-weekly-summary');
+    if (!summaryEl) return;
+
+    const statuses = window._tpWeeklyState.statuses || {};
+    const allIds = Object.keys(statuses);
+    const total = allIds.length;
+    const present = allIds.filter(id => statuses[id] === 'present').length;
+
+    if (total === 0) {
+        summaryEl.textContent = '০ / ০ উপস্থিত';
+        return;
+    }
+    
+    const pct = Math.round((present / total) * 100);
+    summaryEl.textContent = `${toBanglaNumber(present)} / ${toBanglaNumber(total)} উপস্থিত (${toBanglaNumber(pct)}%)`;
+    
+    if (pct >= 90) summaryEl.className = 'bg-emerald-50 border border-emerald-400 rounded px-3 py-1 font-bold text-emerald-900';
+    else if (pct >= 70) summaryEl.className = 'bg-amber-50 border border-amber-400 rounded px-3 py-1 font-bold text-amber-900';
+    else summaryEl.className = 'bg-red-50 border border-red-400 rounded px-3 py-1 font-bold text-red-900';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ১০. সেভ ফাংশন — Firestore-এ সেভ
+// ═══════════════════════════════════════════════════════════════
+window.saveTpWeeklyAttendance = async function() {
+    const state = window._tpWeeklyState;
+    
+    // ★ ভ্যালিডেশন
+    if (!state.date) {
+        return showToast('⚠️ তারিখ দিন', 'warn');
+    }
+    
+    const studentStatuses = state.statuses;
+    if (!studentStatuses || Object.keys(studentStatuses).length === 0) {
+        return showToast('⚠️ কোন ছাত্রের হাজিরা নেই', 'warn');
+    }
+
+    // ★ ছাত্র ডাটা সংগ্রহ
+    const studentsData = [];
+    Object.keys(studentStatuses).forEach(studentId => {
+        const student = (studentsCache || []).find(s => s.id === studentId);
+        if (student) {
+            studentsData.push({
+                studentDbId: student.id,
+                studentId: student.studentId || '',
+                name: student.name || '',
+                className: student.className || '',
+                dept: student.dept || '',
+                status: studentStatuses[studentId] || 'present',
+                remark: '',
+                timeIn: ''
+            });
+        }
+    });
+
+    if (studentsData.length === 0) {
+        return showToast('⚠️ কোন বৈধ ছাত্র নেই', 'warn');
+    }
+
+    // ★ সংক্ষিপ্ত হিসাব
+    const summary = {
+        total: studentsData.length,
+        present: studentsData.filter(s => s.status === 'present').length,
+        absent: studentsData.filter(s => s.status === 'absent').length,
+        late: studentsData.filter(s => s.status === 'late').length,
+        leave: studentsData.filter(s => s.status === 'leave').length,
+        sick: studentsData.filter(s => s.status === 'sick').length
+    };
+
+    // ★ সপ্তাহের নম্বর বের করি (বছরের কততম সপ্তাহ)
+    const weekNumber = getWeekNumber(new Date(state.date));
+
+    // ★ সম্পূর্ণ পেলোড
+    const payload = {
+        attendanceType: 'weekly',
+        date: state.date,
+        monthKey: state.date.slice(0, 7),
+        academicYear: typeof getCurrentYear === 'function' ? getCurrentYear() : '',
+        session: 'শীতকালীন',
+        
+        // ★ সাপ্তাহিক-নির্দিষ্ট ফিল্ড
+        dayOfWeek: state.dayOfWeek,
+        weekNumber: weekNumber,
+        timeSlot: state.timeSlot,
+        
+        className: '',          // একাধিক ক্লাস — তাই খালি
+        dept: '',
+        
+        students: studentsData,
+        summary: summary,
+        
+        markedBy: currentUserData?.teacherName || currentUserData?.name || '',
+        markedByUid: currentUser?.uid || '',
+        markedAt: new Date(),
+        lastEditedAt: new Date()
+    };
+
+    // ★ বাটন ডিজেবল করি
+    const saveBtn = document.querySelector('button[onclick="saveTpWeeklyAttendance()"]');
+    const origHTML = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> সেভ হচ্ছে...';
+    }
+
+    try {
+        const { addDoc, collection, doc, setDoc, getDocs, query, where, serverTimestamp } = window.fbFuncs;
+
+        // ★ আগে এই দিনের হাজিরা আছে কি না চেক
+        const q = query(
+            collection(window.fbDB, 'attendance'),
+            where('attendanceType', '==', 'weekly'),
+            where('date', '==', state.date),
+            where('markedBy', '==', payload.markedBy)
+        );
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+            // ★ আগেরটা update
+            const existingId = snap.docs[0].id;
+            await setDoc(
+                doc(window.fbDB, 'attendance', existingId),
+                { ...payload, markedAt: serverTimestamp() },
+                { merge: true }
+            );
+            showToast(
+                `✅ হাজিরা আপডেট হয়েছে — ${summary.present}/${summary.total} উপস্থিত`,
+                'success'
+            );
+        } else {
+            // ★ নতুন
+            await addDoc(collection(window.fbDB, 'attendance'), {
+                ...payload,
+                markedAt: serverTimestamp()
+            });
+            showToast(
+                `✅ নতুন হাজিরা সেভ হয়েছে — ${summary.present}/${summary.total} উপস্থিত`,
+                'success'
+            );
+        }
+
+    } catch (err) {
+        console.error('❌ saveTpWeeklyAttendance:', err);
+        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = origHTML;
+        }
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ১১. সপ্তাহের নম্বর বের করা
+// ═══════════════════════════════════════════════════════════════
+function getWeekNumber(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ✅ লোড হয়েছে
+// ═══════════════════════════════════════════════════════════════
+console.log('✅ সাপ্তাহিক হাজিরা ফাংশন লোড হয়েছে');
+
+// ─── ৪. ছুটি পরবর্তী হাজিরা ───
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ছুটি পরবর্তী হাজিরা — সম্পূর্ণ ফাংশন ★★★
+// ═══════════════════════════════════════════════════════════════
+
+// ─── স্টেট ───
+window._tpPostHolidayState = window._tpPostHolidayState || {
+    holidayName: '',
+    date: '',
+    timeSlot: 'বাদ মাগরিব',
+    statuses: {}
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ১. মেইন রেন্ডার ফাংশন
+// ═══════════════════════════════════════════════════════════════
+async function renderTpPostHolidayAttendance(container) {
+    if (!container) return;
+
+    // ★ শিক্ষকের assigned ক্লাস
+    const allowedClasses = typeof getTeacherAllowedClasses === 'function'
+        ? getTeacherAllowedClasses()
+        : [];
+
+    if (!allowedClasses || allowedClasses.length === 0) {
+        container.innerHTML = `
+            <div class="bg-white rounded-xl shadow-md p-10 text-center">
+                <i class="fa-solid fa-user-slash text-5xl text-slate-300 mb-3"></i>
+                <p class="font-bold text-slate-700">আপনার কোন ক্লাস assigned নেই</p>
+            </div>`;
+        return;
+    }
+
+    // ★ ডিফল্ট তারিখ — আজ
+    if (!window._tpPostHolidayState.date) {
+        window._tpPostHolidayState.date = new Date().toISOString().split('T')[0];
+    }
+
+    // ★ ক্যালেন্ডার থেকে ছুটির নাম লোড
+    const holidayOptions = await getHolidayOptionsFromCalendar();
+
+    // ★ সময় ড্রপডাউন
+    const timeOptions = ['বাদ ফজর', 'সকাল ৮টা', 'দুপুর', 'বাদ মাগরিব', 'বাদ ইশা'];
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+            
+            <!-- ★★★ কন্ট্রোল প্যানেল ★★★ -->
+            <div class="bg-rose-50 border-2 border-rose-300 rounded-lg p-3 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    
+                    <!-- ছুটির নাম -->
+                    <div>
+                        <label class="block text-xs font-bold text-rose-900 mb-1">
+                            <i class="fa-solid fa-plane-arrival"></i> কোন ছুটির পর?
+                        </label>
+                        <select id="tp-ph-holiday" onchange="onTpPostHolidayNameChange(this.value)"
+                                class="w-full rounded-lg border-rose-300 border-2 p-2.5 text-sm bg-white font-bold">
+                            <option value="">-- ছুটি নির্বাচন করুন --</option>
+                            ${holidayOptions.map(h => `
+                                <option value="${h.name}" ${window._tpPostHolidayState.holidayName === h.name ? 'selected' : ''}>
+                                    ${h.name} ${h.date ? ' — ' + h.date : ''}
+                                </option>
+                            `).join('')}
+                            <option value="custom" ${window._tpPostHolidayState.holidayName === 'custom' ? 'selected' : ''}>
+                                ✏️ নিজে লিখুন...
+                            </option>
+                        </select>
+                        <!-- কাস্টম ইনপুট -->
+                        <input type="text" id="tp-ph-custom-name" 
+                               placeholder="ছুটির নাম লিখুন..." 
+                               value="${window._tpPostHolidayState.holidayName !== 'custom' && holidayOptions.every(h => h.name !== window._tpPostHolidayState.holidayName) && window._tpPostHolidayState.holidayName ? window._tpPostHolidayState.holidayName : ''}"
+                               class="${window._tpPostHolidayState.holidayName === 'custom' ? '' : 'hidden'} mt-2 w-full rounded-lg border-rose-300 border-2 p-2 text-sm bg-white">
+                    </div>
+                    
+                    <!-- খোলার তারিখ -->
+                    <div>
+                        <label class="block text-xs font-bold text-rose-900 mb-1">
+                            <i class="fa-solid fa-calendar-day"></i> খোলার তারিখ
+                        </label>
+                        <input type="date" id="tp-ph-date"
+                               value="${window._tpPostHolidayState.date}"
+                               onchange="onTpPostHolidayDateChange(this.value)"
+                               class="w-full rounded-lg border-rose-300 border-2 p-2.5 text-sm bg-white font-bold">
+                    </div>
+                    
+                    <!-- সময় -->
+                    <div>
+                        <label class="block text-xs font-bold text-rose-900 mb-1">
+                            <i class="fa-solid fa-clock"></i> হাজিরার সময়
+                        </label>
+                        <select id="tp-ph-time" onchange="onTpPostHolidayTimeChange(this.value)"
+                                class="w-full rounded-lg border-rose-300 border-2 p-2.5 text-sm bg-white font-bold">
+                            ${timeOptions.map(t => `
+                                <option value="${t}" ${window._tpPostHolidayState.timeSlot === t ? 'selected' : ''}>
+                                    ${t}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- ইনফো লাইন -->
+                <div class="mt-2 pt-2 border-t border-rose-200 flex items-center justify-between flex-wrap gap-2 text-xs">
+                    <span class="text-rose-800">
+                        <i class="fa-solid fa-info-circle"></i>
+                        <strong>ছুটি শেষে খোলার দিনের হাজিরা</strong> — শিক্ষকরা এই দিনে সবাই উপস্থিত ছিলেন কি না যাচাই করবেন
+                    </span>
+                    <span id="tp-ph-summary" class="bg-white border border-rose-400 rounded px-3 py-1 font-bold text-rose-900">
+                        ০ / ০ উপস্থিত
+                    </span>
+                </div>
+            </div>
+
+            <!-- ★★★ ছাত্র লিস্ট এরিয়া ★★★ -->
+            <div id="tp-ph-students-area">
+                <div class="text-center py-10">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-rose-600"></i>
+                    <p class="text-xs mt-2 text-slate-500">ছাত্র লোড হচ্ছে...</p>
+                </div>
+            </div>
+
+            <!-- ★★★ অ্যাকশন বার ★★★ -->
+            <div id="tp-ph-action-bar" class="hidden mt-4 pt-4 border-t border-slate-200 flex justify-between items-center flex-wrap gap-2">
+                <button onclick="setAllPhStatus('present')"
+                        class="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold rounded-lg transition flex items-center gap-2">
+                    <i class="fa-solid fa-check-double"></i> সবাইকে উপস্থিত
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="resetPhStatuses()"
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
+                        <i class="fa-solid fa-rotate"></i> রিসেট
+                    </button>
+                    <button onclick="saveTpPostHolidayAttendance()"
+                            class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-lg shadow-md transition flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> সেভ করুন
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // ★ ছাত্র লিস্ট লোড
+    await loadTpPostHolidayStudents();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ২. ক্যালেন্ডার থেকে ছুটির তালিকা লোড
+// ═══════════════════════════════════════════════════════════════
+async function getHolidayOptionsFromCalendar() {
+    try {
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, 'calendars', 'main'));
+        if (!snap.exists()) return [];
+
+        const events = snap.data().events || [];
+        const cleanSession = String(getCurrentYear() || '').replace(/\s*\(.*?\)\s*/g, '').trim();
+
+        // ★ শুধু holiday ক্যাটাগরি + চলতি শিক্ষাবর্ষ
+        const holidays = events.filter(e => {
+            if (e.category !== 'holiday') return false;
+            if (e.session && e.session !== 'all') {
+                const eSess = String(e.session).replace(/\s*\(.*?\)\s*/g, '').trim();
+                if (eSess !== cleanSession) return false;
+            }
+            return true;
+        });
+
+        // ★ সাজাই — টাইটেল + তারিখ
+        return holidays.map(e => ({
+            name: e.title || 'ছুটি',
+            date: e.gregorianDate || e.hijriDate || ''
+        }));
+
+    } catch (err) {
+        console.warn('⚠️ getHolidayOptionsFromCalendar:', err);
+        return [];
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৩. ছুটির নাম পরিবর্তন
+// ═══════════════════════════════════════════════════════════════
+window.onTpPostHolidayNameChange = function(value) {
+    const customInput = document.getElementById('tp-ph-custom-name');
+    
+    if (value === 'custom') {
+        // ★ কাস্টম মোড
+        if (customInput) {
+            customInput.classList.remove('hidden');
+            customInput.focus();
+            window._tpPostHolidayState.holidayName = '';
+        }
+    } else {
+        // ★ সিলেক্টেড মোড
+        if (customInput) customInput.classList.add('hidden');
+        window._tpPostHolidayState.holidayName = value;
+    }
+};
+
+// ★ কাস্টম টাইপিং লিসেনার
+document.addEventListener('input', function(e) {
+    if (e.target.id === 'tp-ph-custom-name') {
+        window._tpPostHolidayState.holidayName = e.target.value.trim();
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ৪. তারিখ / সময় পরিবর্তন
+// ═══════════════════════════════════════════════════════════════
+window.onTpPostHolidayDateChange = function(date) {
+    window._tpPostHolidayState.date = date;
+    loadTpPostHolidayStudents();
+};
+
+window.onTpPostHolidayTimeChange = function(time) {
+    window._tpPostHolidayState.timeSlot = time;
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৫. ছাত্র লিস্ট লোড (ক্লাস অনুযায়ী গ্রুপ)
+// ═══════════════════════════════════════════════════════════════
+async function loadTpPostHolidayStudents() {
+    const area = document.getElementById('tp-ph-students-area');
+    const actionBar = document.getElementById('tp-ph-action-bar');
+    if (!area) return;
+
+    area.innerHTML = `
+        <div class="text-center py-8">
+            <i class="fa-solid fa-circle-notch fa-spin text-xl text-rose-600"></i>
+            <p class="text-xs mt-2 text-slate-500">ছাত্র লোড হচ্ছে...</p>
+        </div>
+    `;
+    if (actionBar) actionBar.classList.add('hidden');
+
+    try {
+        // ★ ছাত্র ডাটা নিশ্চিত
+        if (!studentsCache || studentsCache.length === 0) {
+            if (typeof loadStudentsFromFirestore === 'function') {
+                await loadStudentsFromFirestore();
+            }
+        }
+
+        const allowedClasses = getTeacherAllowedClasses();
+        const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+
+        const myStudents = (studentsCache || []).filter(s => {
+            if (!allowedClasses.includes(s.dept + '::' + s.className)) return false;
+            if (excludedRemarks.includes((s.remark?.type || '').trim())) return false;
+            return true;
+        });
+
+        if (myStudents.length === 0) {
+            area.innerHTML = `
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
+                    <i class="fa-solid fa-users-slash text-4xl text-slate-300 mb-2"></i>
+                    <p class="font-bold text-slate-600 text-sm">কোন ছাত্র পাওয়া যায়নি</p>
+                </div>
+            `;
+            return;
+        }
+
+        // ★ ক্লাস অনুযায়ী গ্রুপ
+        const byClass = {};
+        myStudents.forEach(s => {
+            if (!byClass[s.className]) byClass[s.className] = [];
+            byClass[s.className].push(s);
+        });
+
+        // ★ আগের হাজিরা লোড (ঐ তারিখে এই শিক্ষকের ছুটি পরবর্তী হাজিরা)
+        let existingStatuses = {};
+        try {
+            const { collection, getDocs, query, where } = window.fbFuncs;
+            const myName = currentUserData?.teacherName || currentUserData?.name || '';
+            const q = query(
+                collection(window.fbDB, 'attendance'),
+                where('attendanceType', '==', 'post-holiday'),
+                where('date', '==', window._tpPostHolidayState.date),
+                where('markedBy', '==', myName)
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                const existing = snap.docs[0].data();
+                (existing.students || []).forEach(st => {
+                    existingStatuses[st.studentDbId] = st.status;
+                });
+            }
+        } catch (err) {
+            console.warn('⚠️ Previous post-holiday attendance load:', err);
+        }
+
+        window._tpPostHolidayState.statuses = { ...existingStatuses };
+
+        // ★ সেকশন তৈরি
+        let sectionsHTML = '';
+        Object.keys(byClass).sort().forEach(className => {
+            const students = byClass[className];
+
+            const rowsHTML = students.map((s, i) => {
+                const status = window._tpPostHolidayState.statuses[s.id] || 'present';
+                return `
+                    <tr class="border-b hover:bg-rose-50">
+                        <td class="p-2 text-center text-xs text-slate-500">${i + 1}</td>
+                        <td class="p-2 text-sm font-bold text-slate-800">${s.name || '—'}</td>
+                        <td class="p-2 text-center text-xs font-mono text-slate-600">${s.studentId || '—'}</td>
+                        <td class="p-2">
+                            <div class="flex justify-center gap-1 flex-wrap" data-ph-student="${s.id}">
+                                ${['present', 'absent', 'late', 'leave', 'sick'].map(st => `
+                                    <button onclick="setPhStudentStatus('${s.id}', '${st}')"
+                                            data-status="${st}"
+                                            class="ph-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition ${status === st ? getPhStatusActiveClass(st) : 'bg-white border-slate-300 text-slate-500'}">
+                                        ${getPhStatusLabel(st)}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            sectionsHTML += `
+                <div class="bg-white border border-rose-200 rounded-lg overflow-hidden mb-3">
+                    <div class="bg-rose-600 text-white px-3 py-2 text-xs font-bold flex justify-between items-center">
+                        <span><i class="fa-solid fa-graduation-cap"></i> <span class="font-arabic">${className}</span></span>
+                        <span class="badge bg-white text-rose-800 text-[10px] font-bold">${students.length} জন</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-xs">
+                            <thead class="bg-rose-50 text-rose-900">
+                                <tr>
+                                    <th class="p-2 text-[10px] text-center w-10">#</th>
+                                    <th class="p-2 text-[10px] text-left">নাম</th>
+                                    <th class="p-2 text-[10px] text-center w-20">আইডি</th>
+                                    <th class="p-2 text-[10px] text-center w-72">উপস্থিতি</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rowsHTML}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+
+        area.innerHTML = sectionsHTML;
+        if (actionBar) actionBar.classList.remove('hidden');
+
+        updatePhSummary();
+
+    } catch (err) {
+        console.error('❌ loadTpPostHolidayStudents:', err);
+        area.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                <i class="fa-solid fa-triangle-exclamation text-3xl text-red-400 mb-2"></i>
+                <p class="font-bold text-red-800 text-sm">লোড ব্যর্থ</p>
+                <p class="text-xs text-red-600 mt-1">${err.message}</p>
+            </div>
+        `;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৬. স্ট্যাটাস সেট
+// ═══════════════════════════════════════════════════════════════
+window.setPhStudentStatus = function(studentDbId, status) {
+    window._tpPostHolidayState.statuses[studentDbId] = status;
+
+    const wrap = document.querySelector(`[data-ph-student="${studentDbId}"]`);
+    if (!wrap) return;
+
+    wrap.querySelectorAll('.ph-status-btn').forEach(btn => {
+        if (btn.dataset.status === status) {
+            btn.className = `ph-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition ${getPhStatusActiveClass(status)}`;
+        } else {
+            btn.className = `ph-status-btn px-2 py-1 rounded text-[10px] font-bold border-2 transition bg-white border-slate-300 text-slate-500`;
+        }
+    });
+
+    updatePhSummary();
+};
+
+window.setAllPhStatus = function(status) {
+    document.querySelectorAll('[data-ph-student]').forEach(wrap => {
+        setPhStudentStatus(wrap.dataset.phStudent, status);
+    });
+    showToast(`✅ সবাইকে "${getPhStatusLabel(status)}" করা হয়েছে`, 'info');
+};
+
+window.resetPhStatuses = function() {
+    if (!confirm('সব ছাত্রকে "উপস্থিত" করতে চান?')) return;
+    setAllPhStatus('present');
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৭. স্ট্যাটাস হেল্পার
+// ═══════════════════════════════════════════════════════════════
+function getPhStatusLabel(s) {
+    return {
+        present: 'উপস্থিত',
+        absent: 'অনুপস্থিত',
+        late: 'দেরি',
+        leave: 'ছুটি',
+        sick: 'অসুস্থ'
+    }[s] || s;
+}
+
+function getPhStatusActiveClass(s) {
+    return {
+        present: 'bg-emerald-600 border-emerald-700 text-white',
+        absent: 'bg-red-600 border-red-700 text-white',
+        late: 'bg-amber-500 border-amber-600 text-white',
+        leave: 'bg-blue-600 border-blue-700 text-white',
+        sick: 'bg-violet-600 border-violet-700 text-white'
+    }[s] || 'bg-white border-slate-300 text-slate-500';
+}
+
+function updatePhSummary() {
+    const summaryEl = document.getElementById('tp-ph-summary');
+    if (!summaryEl) return;
+
+    const statuses = window._tpPostHolidayState.statuses || {};
+    const allIds = Object.keys(statuses);
+    const total = allIds.length;
+    const present = allIds.filter(id => statuses[id] === 'present').length;
+
+    if (total === 0) {
+        summaryEl.textContent = '০ / ০ উপস্থিত';
+        return;
+    }
+
+    const pct = Math.round((present / total) * 100);
+    summaryEl.textContent = `${toBanglaNumber(present)} / ${toBanglaNumber(total)} উপস্থিত (${toBanglaNumber(pct)}%)`;
+
+    if (pct >= 90) summaryEl.className = 'bg-emerald-50 border border-emerald-400 rounded px-3 py-1 font-bold text-emerald-900';
+    else if (pct >= 70) summaryEl.className = 'bg-amber-50 border border-amber-400 rounded px-3 py-1 font-bold text-amber-900';
+    else summaryEl.className = 'bg-red-50 border border-red-400 rounded px-3 py-1 font-bold text-red-900';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৮. সেভ
+// ═══════════════════════════════════════════════════════════════
+window.saveTpPostHolidayAttendance = async function() {
+    const state = window._tpPostHolidayState;
+
+    // ★ ভ্যালিডেশন
+    if (!state.holidayName || state.holidayName.trim() === '') {
+        return showToast('⚠️ ছুটির নাম দিন', 'warn');
+    }
+    if (!state.date) {
+        return showToast('⚠️ তারিখ দিন', 'warn');
+    }
+    if (!state.statuses || Object.keys(state.statuses).length === 0) {
+        return showToast('⚠️ কোন ছাত্রের হাজিরা নেই', 'warn');
+    }
+
+    // ★ ছাত্র ডাটা সংগ্রহ
+    const studentsData = [];
+    Object.keys(state.statuses).forEach(studentId => {
+        const student = (studentsCache || []).find(s => s.id === studentId);
+        if (student) {
+            studentsData.push({
+                studentDbId: student.id,
+                studentId: student.studentId || '',
+                name: student.name || '',
+                className: student.className || '',
+                dept: student.dept || '',
+                status: state.statuses[studentId] || 'present',
+                remark: '',
+                timeIn: ''
+            });
+        }
+    });
+
+    if (studentsData.length === 0) {
+        return showToast('⚠️ কোন বৈধ ছাত্র নেই', 'warn');
+    }
+
+    // ★ সংক্ষিপ্ত হিসাব
+    const summary = {
+        total: studentsData.length,
+        present: studentsData.filter(s => s.status === 'present').length,
+        absent: studentsData.filter(s => s.status === 'absent').length,
+        late: studentsData.filter(s => s.status === 'late').length,
+        leave: studentsData.filter(s => s.status === 'leave').length,
+        sick: studentsData.filter(s => s.status === 'sick').length
+    };
+
+    const payload = {
+        attendanceType: 'post-holiday',
+        date: state.date,
+        monthKey: state.date.slice(0, 7),
+        academicYear: typeof getCurrentYear === 'function' ? getCurrentYear() : '',
+        session: 'শীতকালীন',
+
+        // ★ ছুটি পরবর্তী-নির্দিষ্ট ফিল্ড
+        holidayName: state.holidayName,
+        timeSlot: state.timeSlot,
+
+        className: '',
+        dept: '',
+
+        students: studentsData,
+        summary: summary,
+
+        markedBy: currentUserData?.teacherName || currentUserData?.name || '',
+        markedByUid: currentUser?.uid || '',
+        markedAt: new Date(),
+        lastEditedAt: new Date()
+    };
+
+    // ★ সেভ বাটন ডিজেবল
+    const saveBtn = document.querySelector('button[onclick="saveTpPostHolidayAttendance()"]');
+    const origHTML = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> সেভ হচ্ছে...';
+    }
+
+    try {
+        const { addDoc, collection, doc, setDoc, getDocs, query, where, serverTimestamp } = window.fbFuncs;
+
+        // ★ আগে আছে কি না?
+        const q = query(
+            collection(window.fbDB, 'attendance'),
+            where('attendanceType', '==', 'post-holiday'),
+            where('date', '==', state.date),
+            where('markedBy', '==', payload.markedBy)
+        );
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+            // ★ আপডেট
+            const existingId = snap.docs[0].id;
+            await setDoc(
+                doc(window.fbDB, 'attendance', existingId),
+                { ...payload, markedAt: serverTimestamp() },
+                { merge: true }
+            );
+            showToast(`✅ হাজিরা আপডেট — ${summary.present}/${summary.total} উপস্থিত`, 'success');
+        } else {
+            // ★ নতুন
+            await addDoc(collection(window.fbDB, 'attendance'), {
+                ...payload,
+                markedAt: serverTimestamp()
+            });
+            showToast(`✅ নতুন হাজিরা সেভ — ${summary.present}/${summary.total} উপস্থিত`, 'success');
+        }
+    } catch (err) {
+        console.error('❌ saveTpPostHolidayAttendance:', err);
+        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = origHTML;
+        }
+    }
+};
+
+console.log('✅ ছুটি পরবর্তী হাজিরা ফাংশন লোড হয়েছে');
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ মূল হাজিরা টেবিল লোড করার ফাংশন ★★★
+// ═══════════════════════════════════════════════════════════════
+async function loadAttendanceTable(container, className, date, periodInfo) {
+    container.innerHTML = `<div class="text-center py-6"><i class="fa-solid fa-spinner fa-spin text-xl text-teal-600"></i></div>`;
+    
+    // ছাত্র লোড
+    if (!studentsCache || studentsCache.length === 0) {
+        if (typeof loadStudentsFromFirestore === 'function') await loadStudentsFromFirestore();
+    }
+    
+    const dept = currentUserData?.dept === 'শরীয়াহ' ? 'shariah' : (currentUserData?.dept === 'নূরানী-নাযেরা' ? 'noorani' : 'non_res');
+    let students = (studentsCache || []).filter(s => s.className === className && s.dept === dept);
+    
+    if (students.length === 0) {
+        container.innerHTML = `<p class="text-center text-slate-500 py-6">এই ক্লাসে কোনো ছাত্র নেই।</p>`;
+        return;
+    }
+
+    // পুরনো হাজিরা লোড
+    const attId = `att_${date}_${className}_${periodInfo}`;
+    let savedAttendance = {};
+    try {
+        const { doc, getDoc } = window.fbFuncs;
+        const snap = await getDoc(doc(window.fbDB, 'attendance', attId));
+        if (snap.exists()) savedAttendance = snap.data().records || {};
+    } catch(e) {}
+
+    let rowsHTML = students.map((s, i) => {
+        const status = savedAttendance[s.id] || 'present';
+        const st = TP_ATT_STATUS[status];
+        
+        return `
+            <tr class="border-b hover:bg-slate-50 transition row-status-${status}" id="att-row-${s.id}">
+                <td class="p-2 text-center text-xs text-slate-500">${i + 1}</td>
+                <td class="p-2 text-sm font-bold">${s.name}</td>
+                <td class="p-2 text-xs font-mono text-center">${s.studentId || '-'}</td>
+                <td class="p-2 text-center">
+                    <span class="badge ${st.bg} ${st.text} border ${st.border} px-2 py-1" id="att-badge-${s.id}">${st.label}</span>
+                </td>
+                <td class="p-2 text-center">
+                    <button onclick="openAttModal('${s.id}', '${s.name}', '${s.studentId}', '${className}', '${date}', '${periodInfo}', '${status}')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded shadow-sm">
+                        <i class="fa-solid fa-pen"></i> পরিবর্তন
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="overflow-x-auto border border-slate-200 rounded-lg">
+            <table class="w-full border-collapse">
+                <thead class="bg-slate-100">
+                    <tr>
+                        <th class="p-2 text-xs w-10 text-center">#</th>
+                        <th class="p-2 text-xs text-left">নাম</th>
+                        <th class="p-2 text-xs w-24 text-center">আইডি</th>
+                        <th class="p-2 text-xs w-32 text-center">স্ট্যাটাস</th>
+                        <th class="p-2 text-xs w-32 text-center">অ্যাকশন</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHTML}</tbody>
+            </table>
+        </div>
+        <div class="mt-4 flex justify-end">
+            <button onclick="saveAttendanceData('${attId}', '${className}', '${date}', '${periodInfo}')" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-lg shadow">
+                <i class="fa-solid fa-floppy-disk"></i> সেভ করুন
+            </button>
+        </div>
+    `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ হাজিরা হিস্টোরি — সম্পূর্ণ ফাংশন ★★★
+// ═══════════════════════════════════════════════════════════════
+
+// ─── স্টেট ───
+window._tpAttHistoryState = window._tpAttHistoryState || {
+    fromDate: '',
+    toDate: '',
+    type: '',
+    className: '',
+    records: [],
+    loaded: false
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ১. মেইন রেন্ডার
+// ═══════════════════════════════════════════════════════════════
+async function renderTpAttendanceHistory(container) {
+    if (!container) return;
+
+    const state = window._tpAttHistoryState;
+
+    // ★ ডিফল্ট তারিখ রেঞ্জ — চলতি মাস
+    if (!state.fromDate) {
+        const today = new Date();
+        state.fromDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        state.toDate = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+    }
+
+    // ★ শিক্ষকের assigned ক্লাস
+    const allowedClasses = typeof getTeacherAllowedClasses === 'function'
+        ? getTeacherAllowedClasses() : [];
+    const classNames = [...new Set(allowedClasses.map(k => k.split('::')[1]))];
+
+    // ★ ধরনের লেবেল
+    const typeLabels = {
+        'class': { label: 'ক্লাস', icon: 'fa-chalkboard-user', color: 'blue' },
+        'daily': { label: 'দৈনিক', icon: 'fa-calendar-day', color: 'emerald' },
+        'weekly': { label: 'সাপ্তাহিক', icon: 'fa-calendar-week', color: 'amber' },
+        'post-holiday': { label: 'ছুটি পরবর্তী', icon: 'fa-plane-arrival', color: 'rose' }
+    };
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+
+            <!-- ★ হেডার -->
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-9 h-9 bg-slate-700 rounded-lg flex items-center justify-center text-white text-sm">
+                        <i class="fa-solid fa-history"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm md:text-base font-bold text-slate-800">হাজিরা হিস্টোরি</h3>
+                        <p class="text-[10px] text-slate-500">আপনার সব ধরনের হাজিরার রেকর্ড</p>
+                    </div>
+                </div>
+                <button onclick="refreshTpAttendanceHistory()" 
+                        class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate"></i> রিফ্রেশ
+                </button>
+            </div>
+
+            <!-- ★★★ ফিল্টার বার ★★★ -->
+            <div class="bg-slate-50 rounded-lg p-3 mb-4 border border-slate-200">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 mb-1">শুরুর তারিখ</label>
+                        <input type="date" id="att-hist-from" 
+                               value="${state.fromDate}"
+                               onchange="onAttHistFilterChange()"
+                               class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 mb-1">শেষ তারিখ</label>
+                        <input type="date" id="att-hist-to"
+                               value="${state.toDate}"
+                               onchange="onAttHistFilterChange()"
+                               class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 mb-1">ধরন</label>
+                        <select id="att-hist-type" onchange="onAttHistFilterChange()"
+                                class="w-full rounded border border-slate-300 p-1.5 text-xs">
+                            <option value="">সব ধরন</option>
+                            <option value="class" ${state.type === 'class' ? 'selected' : ''}>ক্লাস</option>
+                            <option value="daily" ${state.type === 'daily' ? 'selected' : ''}>দৈনিক</option>
+                            <option value="weekly" ${state.type === 'weekly' ? 'selected' : ''}>সাপ্তাহিক</option>
+                            <option value="post-holiday" ${state.type === 'post-holiday' ? 'selected' : ''}>ছুটি পরবর্তী</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 mb-1">ক্লাস</label>
+                        <select id="att-hist-class" onchange="onAttHistFilterChange()"
+                                class="w-full rounded border border-slate-300 p-1.5 text-xs font-arabic">
+                            <option value="">সব ক্লাস</option>
+                            ${classNames.map(c => `
+                                <option value="${c}" ${state.className === c ? 'selected' : ''}>${c}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="resetAttHistFilters()" 
+                                class="w-full px-3 py-1.5 bg-white border border-slate-300 text-slate-600 text-xs font-bold rounded hover:bg-slate-100 transition">
+                            <i class="fa-solid fa-xmark"></i> রিসেট
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ★★★ সারসংক্ষেপ কার্ড ★★★ -->
+            <div id="att-hist-summary" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-[10px] text-blue-800 font-bold">মোট হাজিরা</p>
+                    <p id="att-hist-total" class="text-xl font-bold text-blue-900">০</p>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                    <p class="text-[10px] text-emerald-800 font-bold">গড় উপস্থিতি</p>
+                    <p id="att-hist-avg" class="text-xl font-bold text-emerald-900">০%</p>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p class="text-[10px] text-amber-800 font-bold">সর্বোচ্চ উপস্থিতি</p>
+                    <p id="att-hist-max" class="text-xl font-bold text-amber-900">—</p>
+                </div>
+                <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p class="text-[10px] text-red-800 font-bold">মোট অনুপস্থিত</p>
+                    <p id="att-hist-absent" class="text-xl font-bold text-red-900">০</p>
+                </div>
+            </div>
+
+            <!-- ★★★ হাজিরা লিস্ট ★★★ -->
+            <div id="att-hist-list">
+                <div class="text-center py-10">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-slate-400"></i>
+                    <p class="text-xs mt-2 text-slate-500">হাজিরা লোড হচ্ছে...</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    await loadTpAttendanceHistory();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ২. হাজিরা লোড
+// ═══════════════════════════════════════════════════════════════
+async function loadTpAttendanceHistory() {
+    const listArea = document.getElementById('att-hist-list');
+    if (!listArea) return;
+
+    const state = window._tpAttHistoryState;
+    const myName = currentUserData?.teacherName || currentUserData?.name || '';
+
+    listArea.innerHTML = `
+        <div class="text-center py-8">
+            <i class="fa-solid fa-circle-notch fa-spin text-xl text-slate-500"></i>
+            <p class="text-xs mt-2 text-slate-500">লোড হচ্ছে...</p>
+        </div>
+    `;
+
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+
+        // ★ এই শিক্ষকের হাজিরা
+        const q = query(
+            collection(window.fbDB, 'attendance'),
+            where('markedBy', '==', myName)
+        );
+        const snap = await getDocs(q);
+
+        let records = [];
+        snap.forEach(d => records.push({ id: d.id, ...d.data() }));
+
+        // ★ ফিল্টার: তারিখ
+        if (state.fromDate) records = records.filter(r => r.date >= state.fromDate);
+        if (state.toDate) records = records.filter(r => r.date <= state.toDate);
+
+        // ★ ফিল্টার: ধরন
+        if (state.type) records = records.filter(r => r.attendanceType === state.type);
+
+        // ★ ফিল্টার: ক্লাস
+        if (state.className) records = records.filter(r => r.className === state.className);
+
+        // ★ Sort: নতুন আগে
+        records.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+        state.records = records;
+
+        // ★ সারসংক্ষেপ আপডেট
+        updateAttHistSummary(records);
+
+        // ★ লিস্ট রেন্ডার
+        if (records.length === 0) {
+            listArea.innerHTML = `
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-10 text-center">
+                    <i class="fa-solid fa-inbox text-5xl text-slate-300 mb-3"></i>
+                    <p class="font-bold text-slate-600 text-sm">কোন হাজিরা রেকর্ড নেই</p>
+                    <p class="text-xs text-slate-400 mt-1">ফিল্টার বদলে দেখুন অথবা নতুন হাজিরা নিন</p>
+                </div>
+            `;
+            return;
+        }
+
+        // ★ ধরনের লেবেল
+        const typeLabels = {
+            'class': { label: 'ক্লাস', icon: 'fa-chalkboard-user', color: 'blue' },
+            'daily': { label: 'দৈনিক', icon: 'fa-calendar-day', color: 'emerald' },
+            'weekly': { label: 'সাপ্তাহিক', icon: 'fa-calendar-week', color: 'amber' },
+            'post-holiday': { label: 'ছুটি পরবর্তী', icon: 'fa-plane-arrival', color: 'rose' }
+        };
+
+        const rowsHTML = records.map((r, i) => {
+            const t = typeLabels[r.attendanceType] || { label: r.attendanceType, icon: 'fa-circle', color: 'slate' };
+            const total = r.summary?.total || 0;
+            const present = r.summary?.present || 0;
+            const absent = r.summary?.absent || 0;
+            const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+
+            const pctColor = pct >= 90 ? 'emerald' : pct >= 70 ? 'amber' : 'red';
+
+            // ★ অতিরিক্ত তথ্য (ধরন অনুযায়ী)
+            let extraInfo = '';
+            if (r.attendanceType === 'weekly') {
+                extraInfo = `<span class="text-[10px] text-slate-500"><i class="fa-solid fa-clock"></i> ${r.timeSlot || ''}</span>`;
+            } else if (r.attendanceType === 'post-holiday') {
+                extraInfo = `<span class="text-[10px] text-rose-600 font-bold"><i class="fa-solid fa-plane-arrival"></i> ${r.holidayName || ''}</span>`;
+            } else if (r.attendanceType === 'daily') {
+                extraInfo = `<span class="text-[10px] text-slate-500"><i class="fa-solid fa-clock"></i> ${r.timeSlot || ''}</span>`;
+            } else if (r.attendanceType === 'class') {
+                extraInfo = `<span class="text-[10px] text-blue-600"><i class="fa-solid fa-clock"></i> ${r.classHour || ''}</span>`;
+            }
+
+            // ★ ক্লাস দেখাবে কি না (শুধু class-type এর জন্য class-name আছে)
+            const classDisplay = r.className 
+                ? `<span class="font-arabic text-xs text-slate-700">${r.className}</span>`
+                : `<span class="text-[10px] text-slate-400 italic">সব ক্লাস</span>`;
+
+            return `
+                <tr class="border-b hover:bg-slate-50">
+                    <td class="p-2 text-center text-xs text-slate-500">${i + 1}</td>
+                    <td class="p-2 text-xs text-center font-bold text-slate-800 whitespace-nowrap">
+                        ${r.date}
+                    </td>
+                    <td class="p-2">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-${t.color}-100 text-${t.color}-800">
+                            <i class="fa-solid ${t.icon} text-[8px]"></i> ${t.label}
+                        </span>
+                    </td>
+                    <td class="p-2">${classDisplay}</td>
+                    <td class="p-2">${extraInfo}</td>
+                    <td class="p-2 text-center text-xs font-bold text-emerald-700">${present}/${total}</td>
+                    <td class="p-2 text-center text-xs font-bold text-red-700">${absent}</td>
+                    <td class="p-2 text-center">
+                        <div class="inline-flex items-center gap-1">
+                            <span class="text-[10px] font-bold text-${pctColor}-700">${pct}%</span>
+                            <div class="w-12 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-${pctColor}-500" style="width:${pct}%"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-2 text-center">
+                        <button onclick="viewTpAttendanceDetail('${r.id}')" 
+                                class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-[10px] font-bold rounded transition"
+                                title="বিস্তারিত দেখুন">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        listArea.innerHTML = `
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 mb-2 flex justify-between items-center">
+                <span class="text-xs font-bold text-slate-700">
+                    <i class="fa-solid fa-list"></i> মোট ${records.length}টি হাজিরা
+                </span>
+                <button onclick="exportAttHistoryCSV()" 
+                        class="px-3 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-[10px] font-bold rounded transition">
+                    <i class="fa-solid fa-file-csv"></i> Export CSV
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-xs" style="min-width:800px;">
+                    <thead class="bg-slate-700 text-white">
+                        <tr>
+                            <th class="p-2 text-[10px] text-center w-8">#</th>
+                            <th class="p-2 text-[10px] text-center whitespace-nowrap">তারিখ</th>
+                            <th class="p-2 text-[10px]">ধরন</th>
+                            <th class="p-2 text-[10px]">ক্লাস</th>
+                            <th class="p-2 text-[10px]">অতিরিক্ত</th>
+                            <th class="p-2 text-[10px] text-center">উপস্থিত</th>
+                            <th class="p-2 text-[10px] text-center">অনুপস্থিত</th>
+                            <th class="p-2 text-[10px] text-center">হার</th>
+                            <th class="p-2 text-[10px] text-center">অ্যাকশন</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHTML}</tbody>
+                </table>
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('❌ loadTpAttendanceHistory:', err);
+        listArea.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                <i class="fa-solid fa-triangle-exclamation text-3xl text-red-400 mb-2"></i>
+                <p class="font-bold text-red-800 text-sm">লোড ব্যর্থ</p>
+                <p class="text-xs text-red-600 mt-1">${err.message}</p>
+            </div>
+        `;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৩. সারসংক্ষেপ আপডেট
+// ═══════════════════════════════════════════════════════════════
+function updateAttHistSummary(records) {
+    const totalEl = document.getElementById('att-hist-total');
+    const avgEl = document.getElementById('att-hist-avg');
+    const maxEl = document.getElementById('att-hist-max');
+    const absentEl = document.getElementById('att-hist-absent');
+
+    if (!totalEl) return;
+
+    const totalRecords = records.length;
+    totalEl.textContent = toBanglaNumber(totalRecords);
+
+    if (totalRecords === 0) {
+        avgEl.textContent = '—';
+        maxEl.textContent = '—';
+        absentEl.textContent = '০';
+        return;
+    }
+
+    // ★ মোট উপস্থিতি ও মোট ছাত্র
+    let totalPresent = 0;
+    let totalStudents = 0;
+    let maxPct = 0;
+    let totalAbsent = 0;
+
+    records.forEach(r => {
+        const present = r.summary?.present || 0;
+        const total = r.summary?.total || 0;
+        const absent = r.summary?.absent || 0;
+
+        totalPresent += present;
+        totalStudents += total;
+        totalAbsent += absent;
+
+        if (total > 0) {
+            const pct = (present / total) * 100;
+            if (pct > maxPct) maxPct = pct;
+        }
+    });
+
+    const avgPct = totalStudents > 0 ? Math.round((totalPresent / totalStudents) * 100) : 0;
+
+    avgEl.textContent = `${toBanglaNumber(avgPct)}%`;
+    maxEl.textContent = `${toBanglaNumber(Math.round(maxPct))}%`;
+    absentEl.textContent = toBanglaNumber(totalAbsent);
+
+    // ★ রঙ আপডেট
+    avgEl.className = `text-xl font-bold ${avgPct >= 90 ? 'text-emerald-900' : avgPct >= 70 ? 'text-amber-900' : 'text-red-900'}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৪. ফিল্টার হ্যান্ডলার
+// ═══════════════════════════════════════════════════════════════
+window.onAttHistFilterChange = function() {
+    const state = window._tpAttHistoryState;
+    state.fromDate = document.getElementById('att-hist-from')?.value || '';
+    state.toDate = document.getElementById('att-hist-to')?.value || '';
+    state.type = document.getElementById('att-hist-type')?.value || '';
+    state.className = document.getElementById('att-hist-class')?.value || '';
+
+    loadTpAttendanceHistory();
+};
+
+window.resetAttHistFilters = function() {
+    const state = window._tpAttHistoryState;
+    const today = new Date();
+    state.fromDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+    state.toDate = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+    state.type = '';
+    state.className = '';
+    renderTpAttendanceHistory(document.getElementById('tp-dynamic-content'));
+};
+
+window.refreshTpAttendanceHistory = function() {
+    loadTpAttendanceHistory();
+    showToast('🔄 হাজিরা রিফ্রেশ হয়েছে', 'info');
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৫. বিস্তারিত দেখা
+// ═══════════════════════════════════════════════════════════════
+window.viewTpAttendanceDetail = function(attendanceId) {
+    const rec = window._tpAttHistoryState.records.find(r => r.id === attendanceId);
+    if (!rec) return showToast('❌ রেকর্ড পাওয়া যায়নি', 'error');
+
+    const typeLabels = {
+        'class': 'ক্লাস হাজিরা',
+        'daily': 'দৈনিক হাজিরা',
+        'weekly': 'সাপ্তাহিক হাজিরা',
+        'post-holiday': 'ছুটি পরবর্তী হাজিরা'
+    };
+
+    const statusLabels = {
+        present: { label: 'উপস্থিত', color: 'emerald' },
+        absent: { label: 'অনুপস্থিত', color: 'red' },
+        late: { label: 'দেরি', color: 'amber' },
+        leave: { label: 'ছুটি', color: 'blue' },
+        sick: { label: 'অসুস্থ', color: 'violet' }
+    };
+
+    // ★ ক্লাস অনুযায়ী গ্রুপ
+    const byClass = {};
+    (rec.students || []).forEach(s => {
+        if (!byClass[s.className]) byClass[s.className] = [];
+        byClass[s.className].push(s);
+    });
+
+    let classSectionsHTML = Object.keys(byClass).sort().map(className => {
+        const students = byClass[className];
+        const rows = students.map((s, i) => {
+            const st = statusLabels[s.status] || { label: s.status, color: 'slate' };
+            return `
+                <tr class="border-b">
+                    <td class="p-1.5 text-center text-xs text-slate-500">${i + 1}</td>
+                    <td class="p-1.5 text-xs font-bold">${s.name || '—'}</td>
+                    <td class="p-1.5 text-center text-xs font-mono text-slate-600">${s.studentId || '—'}</td>
+                    <td class="p-1.5 text-center">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-${st.color}-100 text-${st.color}-800">
+                            ${st.label}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        return `
+            <div class="mb-3 border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-800 font-arabic">
+                    ${className} (${students.length} জন)
+                </div>
+                <table class="w-full">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="p-1.5 text-[10px] text-center w-8">#</th>
+                            <th class="p-1.5 text-[10px] text-left">নাম</th>
+                            <th class="p-1.5 text-[10px] text-center w-20">আইডি</th>
+                            <th class="p-1.5 text-[10px] text-center w-24">স্ট্যাটাস</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        `;
+    }).join('');
+
+    document.getElementById('att-detail-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'att-detail-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+            <div class="bg-slate-700 text-white p-4 flex justify-between items-center flex-shrink-0">
+                <div>
+                    <h3 class="font-bold text-sm"><i class="fa-solid fa-eye"></i> ${typeLabels[rec.attendanceType] || 'হাজিরা'}</h3>
+                    <p class="text-[10px] opacity-80 mt-0.5">
+                        ${rec.date} | ${rec.markedBy || ''}
+                        ${rec.classHour ? ' | ' + rec.classHour : ''}
+                        ${rec.timeSlot ? ' | ' + rec.timeSlot : ''}
+                        ${rec.holidayName ? ' | ' + rec.holidayName : ''}
+                    </p>
+                </div>
+                <button onclick="document.getElementById('att-detail-modal').remove()" class="text-white text-2xl">×</button>
+            </div>
+
+            <!-- ★ সারসংক্ষেপ -->
+            <div class="p-3 bg-slate-50 border-b flex gap-2 justify-around text-center flex-shrink-0">
+                <div>
+                    <p class="text-[10px] text-emerald-800 font-bold">উপস্থিত</p>
+                    <p class="text-lg font-bold text-emerald-700">${rec.summary?.present || 0}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-red-800 font-bold">অনুপস্থিত</p>
+                    <p class="text-lg font-bold text-red-700">${rec.summary?.absent || 0}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-amber-800 font-bold">দেরি</p>
+                    <p class="text-lg font-bold text-amber-700">${rec.summary?.late || 0}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-blue-800 font-bold">ছুটি</p>
+                    <p class="text-lg font-bold text-blue-700">${rec.summary?.leave || 0}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-violet-800 font-bold">অসুস্থ</p>
+                    <p class="text-lg font-bold text-violet-700">${rec.summary?.sick || 0}</p>
+                </div>
+            </div>
+
+            <!-- ★ ছাত্র লিস্ট -->
+            <div class="p-3 overflow-y-auto flex-1">
+                ${classSectionsHTML || '<p class="text-center text-slate-400 py-6">কোন ছাত্র নেই</p>'}
+            </div>
+
+            <!-- ★ ফুটার -->
+            <div class="p-3 bg-slate-50 border-t flex justify-end gap-2 flex-shrink-0">
+                <button onclick="printTpAttendanceDetail('${attendanceId}')" 
+                        class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-lg shadow">
+                    <i class="fa-solid fa-print"></i> প্রিন্ট
+                </button>
+                <button onclick="shareTpAttendanceDetailPDF('${attendanceId}')" 
+                        class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg shadow">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </button>
+                <button onclick="document.getElementById('att-detail-modal').remove()" 
+                        class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg">
+                    বন্ধ
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৬. প্রিন্ট
+// ═══════════════════════════════════════════════════════════════
+window.printTpAttendanceDetail = function(attendanceId) {
+    const rec = window._tpAttHistoryState.records.find(r => r.id === attendanceId);
+    if (!rec) return;
+
+    const madrasaBn = settings.madrasaName || 'মাদরাসা';
+    const madrasaAr = settings.madrasaNameAr || '';
+    const logo = settings.logo || '';
+
+    const typeLabels = {
+        'class': 'ক্লাস হাজিরা',
+        'daily': 'দৈনিক হাজিরা',
+        'weekly': 'সাপ্তাহিক হাজিরা',
+        'post-holiday': 'ছুটি পরবর্তী হাজিরা'
+    };
+
+    const statusLabels = {
+        present: 'উপস্থিত',
+        absent: 'অনুপস্থিত',
+        late: 'দেরি',
+        leave: 'ছুটি',
+        sick: 'অসুস্থ'
+    };
+
+    // ★ ক্লাস অনুযায়ী গ্রুপ
+    const byClass = {};
+    (rec.students || []).forEach(s => {
+        if (!byClass[s.className]) byClass[s.className] = [];
+        byClass[s.className].push(s);
+    });
+
+    let tableHTML = Object.keys(byClass).sort().map(className => {
+        const students = byClass[className];
+        const rows = students.map((s, i) => `
+            <tr>
+                <td style="border:1px solid #000;padding:4px;text-align:center;">${i + 1}</td>
+                <td style="border:1px solid #000;padding:4px;">${s.name || '—'}</td>
+                <td style="border:1px solid #000;padding:4px;text-align:center;font-family:monospace;">${s.studentId || '—'}</td>
+                <td style="border:1px solid #000;padding:4px;text-align:center;font-weight:bold;">${statusLabels[s.status] || s.status}</td>
+            </tr>
+        `).join('');
+
+        return `
+            <h3 style="margin:8px 0 4px;font-size:13px;color:#065f46;font-family:'Amiri','Hind Siliguri',serif;">${className} (${students.length} জন)</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:10px;">
+                <thead>
+                    <tr style="background:#065f46;color:white;">
+                        <th style="border:1px solid #000;padding:4px;width:40px;">#</th>
+                        <th style="border:1px solid #000;padding:4px;">নাম</th>
+                        <th style="border:1px solid #000;padding:4px;width:100px;">আইডি</th>
+                        <th style="border:1px solid #000;padding:4px;width:100px;">স্ট্যাটাস</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    }).join('');
+
+    const html = `
+        <div style="font-family:'Hind Siliguri',sans-serif;color:#1e293b;padding:10mm;">
+            <!-- হেডার -->
+            <div style="display:flex;align-items:center;gap:12px;border-bottom:2px solid #065f46;padding-bottom:10px;margin-bottom:15px;">
+                ${logo ? `<img src="${logo}" style="width:60px;height:60px;object-fit:contain;border:2px solid #065f46;border-radius:50%;padding:3px;background:white;">` : ''}
+                <div style="flex:1;text-align:center;">
+                    ${madrasaAr ? `<h2 style="margin:0;font-size:20px;color:#064e3b;font-family:'Amiri',serif;" dir="rtl">${madrasaAr}</h2>` : ''}
+                    <h3 style="margin:2px 0 0;font-size:15px;color:#065f46;font-weight:bold;">${madrasaBn}</h3>
+                    <p style="margin:2px 0 0;font-size:10px;color:#64748b;">${settings.address || ''}</p>
+                </div>
+            </div>
+
+            <!-- টাইটেল -->
+            <div style="background:#065f46;color:white;padding:6px;text-align:center;border-radius:4px;margin-bottom:12px;">
+                <h3 style="margin:0;font-size:14px;font-weight:bold;">${typeLabels[rec.attendanceType] || 'হাজিরা'}</h3>
+                <p style="margin:2px 0 0;font-size:10px;">${rec.date} | শিক্ষক: ${rec.markedBy || '—'}</p>
+            </div>
+
+            <!-- সারসংক্ষেপ -->
+            <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11pt;">
+                <tr>
+                    <td style="border:1px solid #000;padding:6px;text-align:center;background:#d1fae5;">
+                        <strong>উপস্থিত:</strong> ${rec.summary?.present || 0}
+                    </td>
+                    <td style="border:1px solid #000;padding:6px;text-align:center;background:#fee2e2;">
+                        <strong>অনুপস্থিত:</strong> ${rec.summary?.absent || 0}
+                    </td>
+                    <td style="border:1px solid #000;padding:6px;text-align:center;background:#fef3c7;">
+                        <strong>দেরি:</strong> ${rec.summary?.late || 0}
+                    </td>
+                    <td style="border:1px solid #000;padding:6px;text-align:center;background:#dbeafe;">
+                        <strong>ছুটি:</strong> ${rec.summary?.leave || 0}
+                    </td>
+                    <td style="border:1px solid #000;padding:6px;text-align:center;background:#ede9fe;">
+                        <strong>অসুস্থ:</strong> ${rec.summary?.sick || 0}
+                    </td>
+                </tr>
+            </table>
+
+            ${tableHTML}
+
+            <!-- স্বাক্ষর -->
+            <div style="display:flex;justify-content:space-around;margin-top:40px;font-size:11px;font-weight:bold;">
+                <div style="text-align:center;border-top:1.5px solid #000;padding-top:4px;min-width:120px;">শিক্ষকের স্বাক্ষর</div>
+                <div style="text-align:center;border-top:1.5px solid #000;padding-top:4px;min-width:120px;">প্রিন্সিপালের স্বাক্ষর</div>
+            </div>
+
+            <!-- ফুটার -->
+            <div style="margin-top:15px;padding-top:6px;border-top:1px solid #065f46;text-align:center;font-size:9px;color:#065f46;">
+                মাকাদীরে আসবাক | প্রিন্ট: ${new Date().toLocaleDateString('bn-BD')}
+            </div>
+        </div>
+    `;
+
+    const w = window.open('', '_blank');
+    w.document.write(`
+        <html><head><title>হাজিরা প্রিন্ট</title>
+        <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{margin:0;padding:0;background:white}@page{size:A4 portrait;margin:8mm}</style>
+        </head><body>${html}</body></html>
+    `);
+    w.document.close();
+    setTimeout(() => { w.print(); w.close(); }, 700);
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৭. PDF শেয়ার (Print-to-PDF পদ্ধতি)
+// ═══════════════════════════════════════════════════════════════
+window.shareTpAttendanceDetailPDF = function(attendanceId) {
+    showToast('📄 PDF উইন্ডো খুলছে — "Save as PDF" বেছে নিন', 'info');
+    printTpAttendanceDetail(attendanceId);
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৮. CSV Export
+// ═══════════════════════════════════════════════════════════════
+window.exportAttHistoryCSV = function() {
+    const records = window._tpAttHistoryState.records;
+    if (!records || records.length === 0) {
+        return showToast('⚠️ কোন ডাটা নেই', 'warn');
+    }
+
+    const esc = v => {
+        const s = String(v == null ? '' : v);
+        return (s.includes(',') || s.includes('"') || s.includes('\n'))
+            ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+
+    const typeLabels = {
+        'class': 'ক্লাস',
+        'daily': 'দৈনিক',
+        'weekly': 'সাপ্তাহিক',
+        'post-holiday': 'ছুটি পরবর্তী'
+    };
+
+    const rows = [
+        ['তারিখ', 'ধরন', 'ক্লাস', 'ঘণ্টা', 'সময়', 'ছুটির নাম', 'মোট', 'উপস্থিত', 'অনুপস্থিত', 'দেরি', 'ছুটি', 'অসুস্থ', 'শিক্ষক']
+    ];
+
+    records.forEach(r => {
+        rows.push([
+            r.date,
+            typeLabels[r.attendanceType] || r.attendanceType,
+            r.className || 'সব ক্লাস',
+            r.classHour || '',
+            r.timeSlot || '',
+            r.holidayName || '',
+            r.summary?.total || 0,
+            r.summary?.present || 0,
+            r.summary?.absent || 0,
+            r.summary?.late || 0,
+            r.summary?.leave || 0,
+            r.summary?.sick || 0,
+            r.markedBy || ''
+        ]);
+    });
+
+    const csv = '\uFEFF' + rows.map(r => r.map(esc).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `attendance_history_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    showToast(`✅ ${records.length}টি রেকর্ড Export হয়েছে`, 'success');
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৯. গার্ডিয়ান পোর্টালের জন্য মাসিক সারসংক্ষেপ
+// ═══════════════════════════════════════════════════════════════
+window.getStudentMonthlyAttendanceSummary = async function(studentDbId, monthKey) {
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, 'attendance'));
+
+        const summary = {
+            total: 0, present: 0, absent: 0, late: 0, leave: 0, sick: 0,
+            classWise: {}    // ★ ক্লাস অনুযায়ী
+        };
+
+        snap.forEach(d => {
+            const rec = d.data();
+
+            // ★ এই মাসের কি না
+            if (!rec.monthKey || rec.monthKey !== monthKey) return;
+
+            // ★ গার্ডিয়ান-visible কি না
+            if (rec.guardianVisible === false) return;
+
+            // ★ এই ছাত্র আছে কি না
+            const entry = (rec.students || []).find(s =>
+                String(s.studentDbId) === String(studentDbId)
+            );
+            if (!entry) return;
+
+            summary.total++;
+            if (summary[entry.status] !== undefined) {
+                summary[entry.status]++;
+            }
+
+            // ★ ক্লাস অনুযায়ী
+            const cls = rec.className || 'সব ক্লাস';
+            if (!summary.classWise[cls]) {
+                summary.classWise[cls] = { total: 0, present: 0, absent: 0, late: 0, leave: 0, sick: 0 };
+            }
+            summary.classWise[cls].total++;
+            if (summary.classWise[cls][entry.status] !== undefined) {
+                summary.classWise[cls][entry.status]++;
+            }
+        });
+
+        summary.percentage = summary.total > 0
+            ? Math.round(((summary.present + summary.late) / summary.total) * 100)
+            : 0;
+
+        return summary;
+    } catch (err) {
+        console.error('❌ getStudentMonthlyAttendanceSummary:', err);
+        return { total: 0, present: 0, absent: 0, late: 0, leave: 0, sick: 0, percentage: 0, classWise: {} };
+    }
+};
+
+console.log('✅ হাজিরা হিস্টোরি ফাংশন লোড হয়েছে');
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ হাজিরা পরিবর্তনের মডাল ও গার্ডিয়ান মেসেজ ★★★
+// ═══════════════════════════════════════════════════════════════
+window.openAttModal = function(studentId, studentName, studentIdNum, className, date, periodInfo, currentStatus) {
+    document.getElementById('att-modal')?.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'att-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div class="bg-slate-800 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold text-sm"><i class="fa-solid fa-user-check"></i> স্ট্যাটাস পরিবর্তন</h3>
+                <button onclick="document.getElementById('att-modal').remove()" class="text-white text-xl">×</button>
+            </div>
+            <div class="p-4 space-y-2">
+                <p class="text-sm font-bold text-slate-700 mb-3">${studentName} (${studentIdNum})</p>
+                
+                ${Object.keys(TP_ATT_STATUS).map(key => {
+                    const st = TP_ATT_STATUS[key];
+                    const isActive = currentStatus === key;
+                    return `
+                        <button onclick="selectAttStatus('${studentId}', '${key}', '${className}', '${date}', '${periodInfo}')" class="w-full text-left px-4 py-3 rounded-lg border-2 ${isActive ? st.border + ' ' + st.bg : 'border-slate-100 hover:border-slate-300'} transition flex items-center justify-between">
+                            <span class="text-sm font-bold ${st.text}">${st.label}</span>
+                            ${isActive ? '<i class="fa-solid fa-check-circle ' + st.text + '"></i>' : ''}
+                        </button>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+
+window.selectAttStatus = async function(studentId, status, className, date, periodInfo) {
+    document.getElementById('att-modal')?.remove();
+    
+    // UI আপডেট
+    const st = TP_ATT_STATUS[status];
+    const badge = document.getElementById(`att-badge-${studentId}`);
+    const row = document.getElementById(`att-row-${studentId}`);
+    
+    if (badge) {
+        badge.className = `badge ${st.bg} ${st.text} border ${st.border} px-2 py-1`;
+        badge.textContent = st.label;
+    }
+    if (row) {
+        row.className = `border-b hover:bg-slate-50 transition row-status-${status}`;
+        row.style.backgroundColor = status === 'present' ? '' : st.bg;
+    }
+
+    // ★★★ অনুপস্থিত হলে গার্ডিয়ানে মেসেজ পাঠানোর অপশন ★★★
+    if (status === 'absent' || status === 'sick' || status === 'leave') {
+        const student = studentsCache.find(s => s.id === studentId);
+        if(student) {
+            const periodText = periodInfo === 'daily' ? 'সারাদিন' : periodInfo.replace('_', ' - ');
+            const msg = `আপনার বাচ্চা ${student.name} (আইডি: ${student.studentId}, শ্রেণি: ${className}) তারিখ: ${date}, ${periodText} মাদরাসায় অনুপস্থিত আছে। দ্রুত তাকে মাদরাসায় নিয়ে আসুন। ওয়াস সালাম।\nনিবেদক: শ্রেণি শিক্ষক।`;
+            
+            // এখানে আমরা গার্ডিয়ান পোর্টালে দেখানোর জন্য 'guardianMessages' কালেকশনে সেভ করব
+            try {
+                const { addDoc, collection, serverTimestamp } = window.fbFuncs;
+                await addDoc(collection(window.fbDB, 'guardianMessages'), {
+                    studentDbId: studentId,
+                    studentName: student.name,
+                    studentId: student.studentId,
+                    className: className,
+                    date: date,
+                    period: periodText,
+                    message: msg,
+                    type: 'attendance',
+                    status: status,
+                    createdAt: serverTimestamp(),
+                    teacherName: currentUserData?.name || 'শিক্ষক',
+                    isRead: false
+                });
+                showToast(`📩 ${student.name}-এর গার্ডিয়ানে মেসেজ পাঠানো হয়েছে`, 'info');
+            } catch(e) {
+                console.error('Message save error:', e);
+            }
+        }
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ হাজিরা ডাটা সেভ করা (Firestore) ★★★
+// ═══════════════════════════════════════════════════════════════
+window.saveAttendanceData = async function(attId, className, date, periodInfo) {
+    const rows = document.querySelectorAll('[id^="att-row-"]');
+    let records = {};
+    
+    rows.forEach(row => {
+        const studentId = row.id.replace('att-row-', '');
+        const badge = row.querySelector(`#att-badge-${studentId}`);
+        let statusKey = 'present';
+        
+        // ব্যাজ থেকে স্ট্যাটাস বের করা
+        Object.keys(TP_ATT_STATUS).forEach(k => {
+            if (badge.classList.contains(TP_ATT_STATUS[k].bg)) statusKey = k;
+        });
+        records[studentId] = statusKey;
+    });
+
+    try {
+        const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+        await setDoc(doc(window.fbDB, 'attendance', attId), {
+            date: date,
+            className: className,
+            periodInfo: periodInfo,
+            records: records,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUserData?.name || 'শিক্ষক'
+        }, { merge: true });
+        
+        showToast('✅ হাজিরা সেভ হয়েছে', 'success');
+    } catch (err) {
+        showToast('❌ হাজিরা সেভ ব্যর্থ: ' + err.message, 'error');
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ হাজিরা সাব-পেজ ডিসপ্যাচার (নতুন পেজ) ★★★
+// ═══════════════════════════════════════════════════════════════
+window.openTpAttendancePage = function(type) {
+    const content = document.getElementById('tp-dynamic-content');
+    if (!content) return;
+
+    // মূল মেনু হাইড করে নতুন পেজ রেন্ডার
+    content.innerHTML = `
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <button onclick="switchTpTab('attendance')" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg shadow-sm transition">
+                <i class="fa-solid fa-arrow-left"></i> হাজিরা মেনু
+            </button>
+            <div class="flex items-center gap-2">
+                <span class="w-6 h-6 bg-teal-100 text-teal-700 rounded-lg flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-user-check"></i>
+                </span>
+                <h3 class="text-sm md:text-base font-bold text-slate-800">
+                    ${type === 'class' ? 'ক্লাস হাজিরা' : type === 'daily' ? 'দৈনিক হাজিরা' : type === 'weekly' ? 'সাপ্তাহিক হাজিরা' : 'ছুটি পরবর্তী হাজিরা'}
+                </h3>
+            </div>
+        </div>
+        <div id="tp-attendance-page-content"></div>
+    `;
+
+    const pageContainer = document.getElementById('tp-attendance-page-content');
+    
+    // টাইপ অনুযায়ী ফাংশন কল
+    if (type === 'class') renderTpClassAttendance(pageContainer);
+    else if (type === 'daily') renderTpDailyAttendance(pageContainer);
+    else if (type === 'weekly') renderTpWeeklyAttendance(pageContainer);
+    else if (type === 'post-holiday') renderTpPostHolidayAttendance(pageContainer);
+    else if (type === 'history') renderTpAttendanceHistory(pageContainer);
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ গার্ডিয়ান পোর্টাল — হাজিরা (উপস্থিতি) ★★★
+// ═══════════════════════════════════════════════════════════════
+
+// ─── স্টেট ───
+window._gpAttendanceState = window._gpAttendanceState || {
+    monthKey: '',       // '2026-11'
+    loaded: false
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ১. মেইন রেন্ডার
+// ═══════════════════════════════════════════════════════════════
+async function renderGpAttendance(container) {
+    if (!container) return;
+
+    const student = _guardianSession;
+    if (!student) {
+        container.innerHTML = `<p class="text-center text-red-500 py-6">সেশন এক্সপায়ার — আবার লগইন করুন</p>`;
+        return;
+    }
+
+    // ★ ডিফল্ট মাস — চলতি মাস
+    if (!window._gpAttendanceState.monthKey) {
+        window._gpAttendanceState.monthKey = new Date().toISOString().slice(0, 7);
+    }
+
+    const state = window._gpAttendanceState;
+
+    // ★ মাস অপশন (গত ১২ মাস)
+    const monthOptions = [];
+    const today = new Date();
+    const monthNames = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+                        'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+    
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const key = d.toISOString().slice(0, 7);
+        const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+        monthOptions.push({ key, label });
+    }
+
+    container.innerHTML = `
+        <div class="space-y-4 pb-10">
+            
+            <!-- ★★★ হেডার + মাস সিলেকশন ★★★ -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 bg-cyan-100 text-cyan-700 rounded-lg flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm md:text-base font-bold text-slate-800">উপস্থিতি</h3>
+                            <p class="text-[10px] text-slate-500">${student.name} — ${student.className || ''}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- মাস সিলেকশন -->
+                    <select onchange="onGpAttendanceMonthChange(this.value)"
+                            class="rounded-lg border border-slate-300 p-2 text-sm font-bold bg-white">
+                        ${monthOptions.map(m => `
+                            <option value="${m.key}" ${state.monthKey === m.key ? 'selected' : ''}>${m.label}</option>
+                        `).join('')}
+                    </select>
+                </div>
+            </div>
+
+            <!-- ★★★ লোডিং + কনটেন্ট ★★★ -->
+            <div id="gp-attendance-content">
+                <div class="text-center py-10">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-cyan-600"></i>
+                    <p class="text-xs mt-2 text-slate-500">হাজিরা লোড হচ্ছে...</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // ★ ডাটা লোড করি
+    await loadGpAttendanceData();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ২. মাস পরিবর্তন
+// ═══════════════════════════════════════════════════════════════
+window.onGpAttendanceMonthChange = function(monthKey) {
+    window._gpAttendanceState.monthKey = monthKey;
+    loadGpAttendanceData();
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ৩. হাজিরা ডাটা লোড
+// ═══════════════════════════════════════════════════════════════
+async function loadGpAttendanceData() {
+    const content = document.getElementById('gp-attendance-content');
+    if (!content) return;
+
+    const student = _guardianSession;
+    const monthKey = window._gpAttendanceState.monthKey;
+
+    content.innerHTML = `
+        <div class="text-center py-8">
+            <i class="fa-solid fa-circle-notch fa-spin text-xl text-cyan-600"></i>
+            <p class="text-xs mt-2 text-slate-500">লোড হচ্ছে...</p>
+        </div>
+    `;
+
+    try {
+        // ★ ছাত্রের সব হাজিরা লোড করি (শুধু এই মাসের)
+        const allRecords = await getGpStudentAttendance(student.id, {
+            fromDate: monthKey + '-01',
+            toDate: monthKey + '-31'
+        });
+
+        // ★ সব ধরনের হাজিরা থেকে ডাটা ফিল্টার
+        const records = allRecords.filter(r => r.guardianVisible !== false);
+
+        // ★ সারসংক্ষেপ বানাই
+        const summary = buildGpAttendanceSummary(records);
+
+        // ★ ক্লাস অনুযায়ী গ্রুপ
+        const byClass = groupGpAttendanceByClass(records);
+
+        // ★ সাম্প্রতিক লিস্ট (সর্বশেষ ৩০টি)
+        const recent = records
+            .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+            .slice(0, 30);
+
+        // ★ কনটেন্ট রেন্ডার
+        content.innerHTML = `
+            <!-- ★★★ সারসংক্ষেপ কার্ড ★★★ -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+                
+                <div class="bg-gradient-to-br from-cyan-500 to-cyan-700 text-white rounded-xl p-4 shadow-md">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold opacity-90">উপস্থিতি হার</span>
+                        <i class="fa-solid fa-percent text-lg opacity-70"></i>
+                    </div>
+                    <p class="text-3xl font-bold">${toBanglaNumber(summary.percentage)}%</p>
+                    <p class="text-[10px] opacity-80 mt-1">${toBanglaNumber(summary.present + summary.late)} / ${toBanglaNumber(summary.total)} দিন</p>
+                </div>
+                
+                <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white rounded-xl p-4 shadow-md">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold opacity-90">উপস্থিত</span>
+                        <i class="fa-solid fa-check-circle text-lg opacity-70"></i>
+                    </div>
+                    <p class="text-3xl font-bold">${toBanglaNumber(summary.present)}</p>
+                    <p class="text-[10px] opacity-80 mt-1">দিন</p>
+                </div>
+                
+                <div class="bg-gradient-to-br from-red-500 to-red-700 text-white rounded-xl p-4 shadow-md">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold opacity-90">অনুপস্থিত</span>
+                        <i class="fa-solid fa-times-circle text-lg opacity-70"></i>
+                    </div>
+                    <p class="text-3xl font-bold">${toBanglaNumber(summary.absent)}</p>
+                    <p class="text-[10px] opacity-80 mt-1">দিন</p>
+                </div>
+                
+                <div class="bg-gradient-to-br from-amber-500 to-amber-700 text-white rounded-xl p-4 shadow-md">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold opacity-90">দেরি</span>
+                        <i class="fa-solid fa-clock text-lg opacity-70"></i>
+                    </div>
+                    <p class="text-3xl font-bold">${toBanglaNumber(summary.late)}</p>
+                    <p class="text-[10px] opacity-80 mt-1">দিন</p>
+                </div>
+            </div>
+
+            <!-- ★★★ ক্লাস অনুযায়ী ★★★ -->
+            ${Object.keys(byClass).length > 0 ? `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+                    <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-chalkboard-user text-indigo-600"></i> ক্লাস অনুযায়ী উপস্থিতি
+                    </h4>
+                    <div class="space-y-2">
+                        ${Object.keys(byClass).map(cls => {
+                            const c = byClass[cls];
+                            const pct = c.total > 0 ? Math.round(((c.present + c.late) / c.total) * 100) : 0;
+                            const color = pct >= 90 ? 'emerald' : pct >= 70 ? 'amber' : 'red';
+                            return `
+                                <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="font-arabic font-bold text-sm text-slate-800">${cls}</span>
+                                        <span class="text-xs font-bold text-${color}-700">${toBanglaNumber(pct)}%</span>
+                                    </div>
+                                    <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                                        <div class="h-full bg-${color}-500 rounded-full" style="width:${pct}%"></div>
+                                    </div>
+                                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                                        <span>উপস্থিত: ${toBanglaNumber(c.present + c.late)} / ${toBanglaNumber(c.total)}</span>
+                                        <span>অনুপস্থিত: ${toBanglaNumber(c.absent)}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- ★★★ সাম্প্রতিক হাজিরা ★★★ -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-history text-slate-600"></i> সাম্প্রতিক হাজিরা (${toBanglaNumber(recent.length)} টি)
+                </h4>
+                
+                ${recent.length > 0 ? `
+                    <div class="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
+                        ${recent.map(r => buildGpAttendanceRow(r)).join('')}
+                    </div>
+                ` : `
+                    <div class="text-center py-8">
+                        <i class="fa-solid fa-calendar-xmark text-4xl text-slate-300 mb-2"></i>
+                        <p class="text-sm text-slate-500 font-bold">এই মাসে কোন হাজিরা নেই</p>
+                        <p class="text-xs text-slate-400 mt-1">অন্য মাস নির্বাচন করে দেখুন</p>
+                    </div>
+                `}
+            </div>
+
+            <!-- ★★★ ফুটার ইনফো ★★★ -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900">
+                <i class="fa-solid fa-info-circle"></i>
+                <strong>উপস্থিতি = উপস্থিত + দেরি</strong> হিসেবে গণনা করা হয়। অনুপস্থিত বা ছুটির দিনগুলো উপস্থিতিতে যোগ হবে না।
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('❌ loadGpAttendanceData:', err);
+        content.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                <i class="fa-solid fa-triangle-exclamation text-3xl text-red-400 mb-2"></i>
+                <p class="font-bold text-red-800 text-sm">লোড ব্যর্থ</p>
+                <p class="text-xs text-red-600 mt-1">${err.message}</p>
+            </div>
+        `;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৪. একটি ছাত্রের হাজিরা লোড (ফিল্টারসহ)
+// ═══════════════════════════════════════════════════════════════
+async function getGpStudentAttendance(studentDbId, options = {}) {
+    const { fromDate = '', toDate = '', type = '' } = options;
+
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, 'attendance'));
+
+        const records = [];
+        snap.forEach(d => {
+            const rec = { id: d.id, ...d.data() };
+
+            // ★ গার্ডিয়ান-visibility চেক
+            if (rec.guardianVisible === false) return;
+
+            // ★ ধরন ফিল্টার
+            if (type && rec.attendanceType !== type) return;
+
+            // ★ তারিখ ফিল্টার
+            if (fromDate && rec.date < fromDate) return;
+            if (toDate && rec.date > toDate) return;
+
+            // ★ এই ছাত্র এই হাজিরায় আছে কি না
+            const entry = (rec.students || []).find(s =>
+                String(s.studentDbId) === String(studentDbId)
+            );
+
+            if (entry) {
+                records.push({
+                    attendanceId: rec.id,
+                    attendanceType: rec.attendanceType,
+                    date: rec.date,
+                    className: rec.className || entry.className || '',
+                    classHour: rec.classHour || '',
+                    timeSlot: rec.timeSlot || '',
+                    holidayName: rec.holidayName || '',
+                    status: entry.status,
+                    remark: entry.remark || '',
+                    markedBy: rec.markedBy || '',
+                    guardianVisible: rec.guardianVisible !== false
+                });
+            }
+        });
+
+        return records;
+
+    } catch (err) {
+        console.error('❌ getGpStudentAttendance:', err);
+        return [];
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৫. সারসংক্ষেপ বানানোর হেল্পার
+// ═══════════════════════════════════════════════════════════════
+function buildGpAttendanceSummary(records) {
+    const summary = {
+        total: records.length,
+        present: 0,
+        absent: 0,
+        late: 0,
+        leave: 0,
+        sick: 0,
+        percentage: 0
+    };
+
+    records.forEach(r => {
+        if (summary[r.status] !== undefined) {
+            summary[r.status]++;
+        }
+    });
+
+    // ★ উপস্থিতি % = (উপস্থিত + দেরি) / মোট
+    if (summary.total > 0) {
+        summary.percentage = Math.round(((summary.present + summary.late) / summary.total) * 100);
+    }
+
+    return summary;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৬. ক্লাস অনুযায়ী গ্রুপ
+// ═══════════════════════════════════════════════════════════════
+function groupGpAttendanceByClass(records) {
+    const byClass = {};
+    records.forEach(r => {
+        const cls = r.className || 'সাধারণ';
+        if (!byClass[cls]) {
+            byClass[cls] = { total: 0, present: 0, absent: 0, late: 0, leave: 0, sick: 0 };
+        }
+        byClass[cls].total++;
+        if (byClass[cls][r.status] !== undefined) {
+            byClass[cls][r.status]++;
+        }
+    });
+    return byClass;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ৭. একটি হাজিরার সারি (রঙিন)
+// ═══════════════════════════════════════════════════════════════
+function buildGpAttendanceRow(rec) {
+    const statusMap = {
+        present: { label: 'উপস্থিত', color: 'emerald', icon: 'fa-check-circle' },
+        absent:  { label: 'অনুপস্থিত', color: 'red', icon: 'fa-times-circle' },
+        late:    { label: 'দেরি', color: 'amber', icon: 'fa-clock' },
+        leave:   { label: 'ছুটি', color: 'blue', icon: 'fa-plane' },
+        sick:    { label: 'অসুস্থ', color: 'violet', icon: 'fa-hospital' }
+    };
+
+    const st = statusMap[rec.status] || { label: rec.status, color: 'slate', icon: 'fa-circle' };
+
+    // ★ ধরন অনুযায়ী ছোট লেবেল
+    const typeIcon = {
+        'class': 'fa-chalkboard-user',
+        'daily': 'fa-calendar-day',
+        'weekly': 'fa-calendar-week',
+        'post-holiday': 'fa-plane-arrival'
+    }[rec.attendanceType] || 'fa-circle';
+
+    // ★ তারিখ ফরম্যাট
+    const dateObj = new Date(rec.date);
+    const dayName = dateObj.toLocaleDateString('bn-BD', { weekday: 'short' });
+    const dateStr = dateObj.toLocaleDateString('bn-BD', { day: 'numeric', month: 'short' });
+
+    return `
+        <div class="flex items-center gap-2 p-2 bg-${st.color}-50 border border-${st.color}-200 rounded-lg">
+            
+            <!-- স্ট্যাটাস আইকন -->
+            <div class="w-8 h-8 bg-${st.color}-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid ${st.icon} text-sm"></i>
+            </div>
+            
+            <!-- তারিখ ও ধরন -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-bold text-slate-800">${dateStr}</span>
+                    <span class="text-[10px] text-slate-500">(${dayName})</span>
+                    <i class="fa-solid ${typeIcon} text-[10px] text-slate-400"></i>
+                </div>
+                ${rec.className ? `<p class="text-[10px] text-slate-600 font-arabic">${rec.className}</p>` : ''}
+                ${rec.holidayName ? `<p class="text-[10px] text-rose-600 font-bold">${rec.holidayName}</p>` : ''}
+            </div>
+            
+            <!-- স্ট্যাটাস লেবেল -->
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-${st.color}-500 text-white whitespace-nowrap">
+                ${st.label}
+            </span>
+        </div>
+    `;
+}
+
+console.log('✅ গার্ডিয়ান পোর্টাল — উপস্থিতি মডিউল লোড হয়েছে');
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ গার্ডিয়ান পোর্টাল — উপস্থিতি বার্তা (হাজিরা) ★★★
+// ═══════════════════════════════════════════════════════════════
+async function renderGpAttendance(container) {
+    const student = _guardianSession;
+    container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>`;
+
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        
+        // ১. গার্ডিয়ানের ছাত্রের হাজিরা মেসেজ লোড
+        const q = query(
+            collection(window.fbDB, 'guardianMessages'), 
+            where('studentDbId', '==', student.id)
+        );
+        const snap = await getDocs(q);
+        const messages = [];
+        snap.forEach(d => messages.push({ id: d.id, ...d.data() }));
+        
+        // নতুন আগে
+        messages.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+        // ২. UI তৈরি
+        let messagesHTML = messages.map(m => {
+            const dateStr = m.date || '—';
+            const statusLabels = { 'absent': 'অনুপস্থিত', 'sick': 'অসুস্থ', 'leave': 'ছুটি' };
+            const statusColors = { 'absent': 'bg-red-100 text-red-800', 'sick': 'bg-amber-100 text-amber-800', 'leave': 'bg-blue-100 text-blue-800' };
+            
+            return `
+                <div class="bg-white rounded-xl shadow-sm border-2 border-slate-200 p-4 mb-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="badge ${statusColors[m.status] || 'bg-slate-100'} text-[10px] font-bold px-2 py-1 rounded-full">
+                            ${statusLabels[m.status] || m.status}
+                        </span>
+                        <span class="text-[10px] text-slate-500">${dateStr}</span>
+                    </div>
+                    <p class="text-sm text-slate-800 leading-relaxed" style="white-space: pre-wrap;">${m.message}</p>
+                    <div class="mt-2 text-right text-[10px] text-slate-500">
+                        — ${m.teacherName || 'শিক্ষক'}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        if (messages.length === 0) {
+            messagesHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-10 text-center">
+                    <i class="fa-solid fa-calendar-check text-4xl text-slate-300 mb-3"></i>
+                    <p class="text-sm font-bold text-slate-600">কোনো অনুপস্থিতি বার্তা নেই</p>
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            <div class="space-y-3 pb-10">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3 flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-bullhorn text-teal-600"></i> উপস্থিতি বার্তা</h3>
+                    <span class="badge bg-teal-100 text-teal-800 text-[10px]">মোট ${messages.length}টি</span>
+                </div>
+                ${messagesHTML}
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('❌ renderGpAttendance:', err);
+        container.innerHTML = `<p class="text-center text-red-500 py-6">লোড ব্যর্থ: ${err.message}</p>`;
+    }
+}
+// ═══════════════════════════════════════════════════════════════
+// ★★★ লাইভ উপস্থিতি স্ট্যাটাস ক্যালকুলেশন (মেইন + শিক্ষক পোর্টাল) ★★★
+// ═══════════════════════════════════════════════════════════════
+async function updateLiveAttendanceStats() {
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        const todayStr = new Date().toISOString().split('T')[0];
+        const myName = window.currentUserData?.teacherName || window.currentUserData?.name || '';
+
+        // ১. আজকের হাজিরা ডাটা লোড
+        let todayRecords = [];
+        if (window.currentUserData?.role === 'teacher') {
+            // শিক্ষক শুধু তার নিজের নেওয়া হাজিরা দেখবেন
+            const q = query(
+                collection(window.fbDB, 'attendance'),
+                where('markedBy', '==', myName),
+                where('date', '==', todayStr)
+            );
+            const snap = await getDocs(q);
+            snap.forEach(d => todayRecords.push(d.data()));
+        } else {
+            // এডমিন বা মেইন সেকশনে সবার হাজিরা দেখাবে
+            const q = query(
+                collection(window.fbDB, 'attendance'),
+                where('date', '==', todayStr)
+            );
+            const snap = await getDocs(q);
+            snap.forEach(d => todayRecords.push(d.data()));
+        }
+
+        // ২. আজ কারা অনুপস্থিত বা ছুটি
+        const absentOrLeaveSet = new Set();
+        todayRecords.forEach(rec => {
+            (rec.students || []).forEach(st => {
+                // ★ আপনার নিয়ম: শুধু absent এবং leave বাদে বাকিরা উপস্থিত
+                if (st.status === 'absent' || st.status === 'leave') {
+                    absentOrLeaveSet.add(String(st.studentDbId));
+                }
+            });
+        });
+
+        // ৩. মোট সক্রিয় ছাত্র সংখ্যা (শিক্ষক হলে শুধু তার ক্লাসের)
+        const allowedClasses = typeof getTeacherAllowedClasses === 'function' ? getTeacherAllowedClasses() : [];
+        const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+        
+        const activeStudents = (studentsCache || []).filter(s => {
+            if (excludedRemarks.includes((s.remark?.type || '').trim())) return false;
+            if (window.currentUserData?.role === 'teacher') {
+                return allowedClasses.includes(s.dept + '::' + s.className);
+            }
+            return true; // এডমিন হলে সবাই
+        });
+
+        // ৪. উপস্থিতি হিসাব
+        let presentCount = 0;
+        activeStudents.forEach(s => {
+            if (!absentOrLeaveSet.has(String(s.id))) {
+                presentCount++;
+            }
+        });
+
+        const totalCount = activeStudents.length;
+
+        // ৫. UI আপডেট (মেইন সেকশন)
+        const statPresentMain = document.getElementById('stat-present');
+        if (statPresentMain) {
+            statPresentMain.textContent = toBanglaNumber(presentCount) + ' জন';
+        }
+
+        // ৬. UI আপডেট (শিক্ষক পোর্টাল)
+        const statPresentTp = document.getElementById('tp-profile-present-students');
+        if (statPresentTp) {
+            statPresentTp.textContent = toBanglaNumber(presentCount);
+        }
+        
+        console.log(`✅ Attendance Stats Updated: ${presentCount} present / ${totalCount} total`);
+
+    } catch (error) {
+        console.error("❌ updateLiveAttendanceStats Error:", error);
+    }
+}
 </script>
 </body>
 </html>
