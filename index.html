@@ -7582,36 +7582,31 @@ function getDefaultMarksheetLang(dept) {
 }
 
 // ═══════════════════ সর্বোচ্চ প্রাপ্ত নম্বর ক্যালকুলেটর ═══════════════════
-// একই জামাতের ঐ নির্দিষ্ট কিতাবে সব ছাত্রের মধ্যে সর্বোচ্চ প্রাপ্ত নম্বর
+// ═══════════════════ সর্বোচ্চ প্রাপ্ত নম্বর ক্যালকুলেটর ═══════════════════
 function getHighestMarkInClass(dept, className, colKey) {
     if (!studentsCache || studentsCache.length === 0) return null;
 
-    // ★★★ নতুন: কনটেক্সট থেকে শিক্ষাবর্ষ ও পরীক্ষা নাও ★★★
     const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
     const examType = window._marksContext?.examType || 'term2';
 
+    // ★★★ ফিক্স: স্পেস ও ব্র্যাকেট ইগনোর করে নাম মেলানোর ফাংশন ★★★
+    const cleanStr = (str) => String(str || '').replace(/\(.*?\)/g, '').replace(/\s+/g, '').trim().toLowerCase();
+    const targetDept = cleanStr(dept);
+    const targetClass = cleanStr(className);
+
     let highest = null;
     studentsCache.forEach(s => {
-        if (s.dept !== dept || s.className !== className) return;
+        // ★★★ এখানে cleanStr দিয়ে চেক করা হচ্ছে ★★★
+        if (cleanStr(s.dept) !== targetDept || cleanStr(s.className) !== targetClass) return;
 
-        // ★★★ এই ছাত্রের নির্দিষ্ট টার্মের মার্কস ★★★
         const termMarks = getStudentTermMarks(s, academicYear, examType);
 
         let val = null;
-        // নতুন nested ফরম্যাট
         if (termMarks.resultMarksObj && termMarks.resultMarksObj[colKey] !== undefined) {
             val = termMarks.resultMarksObj[colKey];
         }
-        // কাস্টম কলাম
         else if (colKey.startsWith('custom_') && termMarks.customMarks && termMarks.customMarks[colKey] !== undefined) {
             val = termMarks.customMarks[colKey];
-        }
-        // পুরনো অ্যারে ফরম্যাট fallback (default_N এর জন্য — মাইগ্রেশন)
-        else if (colKey.startsWith('default_') && s.resultMarks) {
-            const idx = parseInt(colKey.split('_')[1]);
-            if (!isNaN(idx) && s.resultMarks[idx] !== undefined) {
-                val = s.resultMarks[idx];
-            }
         }
 
         if (val !== null && val !== '' && !isNaN(val)) {
@@ -7847,34 +7842,32 @@ function getStudentMarksheetData(student) {
 function getStudentRankInClass(student) {
     if (!studentsCache || studentsCache.length === 0) return null;
 
-    // ★★★ নতুন: কনটেক্সট ★★★
     const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
     const examType = window._marksContext?.examType || 'term2';
 
-    const classmates = studentsCache.filter(s =>
-        s.dept === student.dept && 
-        s.className === student.className &&
-        (!student.section || student.section === 'নাই' || s.section === student.section)
+    // ★★★ ফিক্স: Clean String ম্যাচিং ★★★
+    const cleanStr = (str) => String(str || '').replace(/\(.*?\)/g, '').replace(/\s+/g, '').trim().toLowerCase();
+    const myDept = cleanStr(student.dept);
+    const myClass = cleanStr(student.className);
+    const mySection = student.section || 'নাই';
+
+    const classmates = studentsCache.filter(s => 
+        cleanStr(s.dept) === myDept && 
+        cleanStr(s.className) === myClass &&
+        (!mySection || mySection === 'নাই' || cleanStr(s.section) === cleanStr(mySection))
     );
 
     if (classmates.length === 0) return null;
 
-    // ★★★ কুরআন কারীম শনাক্ত করার helper ★★★
     const isQuranKareem = (bookName) => {
         if (!bookName) return false;
         if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
-        return bookName.includes('কুরআন কারীম') || 
-               bookName.includes('আল-কুরআন') || 
-               bookName.includes('القرآن') || 
-               bookName.toLowerCase().includes('quran');
+        return bookName.includes('কুরআন কারীম') || bookName.includes('আল-কুরআন') || bookName.includes('القرآن') || bookName.toLowerCase().includes('quran');
     };
 
     const scored = classmates.map(s => {
         const data = { total: 0, hasAnyMarks: false, isFail: false };
-
-        // ★★★ এই ছাত্রের নির্দিষ্ট টার্মের মার্কস ★★★
         const termMarks = getStudentTermMarks(s, academicYear, examType);
-
         const books = (configData?.books || {})[s.className] || [];
         const deletedCols = (_deletedMarksColumns[s.className] || []);
 
@@ -7882,7 +7875,6 @@ function getStudentRankInClass(student) {
             const colKey = `default_${idx}`;
             if (deletedCols.includes(colKey)) return;
 
-            // ★ কুরআন কারীম কিনা চেক (৪র্থ ছাড়া শরীয়াহ)
             const isSpecialQuran = (
                 s.dept === 'shariah' && 
                 s.className !== 'صف رابع (৪র্থ শ্রেণী)' && 
@@ -7891,28 +7883,22 @@ function getStudentRankInClass(student) {
 
             let v = null;
             if (termMarks.resultMarksObj && termMarks.resultMarksObj[colKey] !== undefined) v = termMarks.resultMarksObj[colKey];
-            else if (s.resultMarks && s.resultMarks[idx] !== undefined) v = s.resultMarks[idx]; // fallback
-
+            
             if (v === null || v === '' || isNaN(v)) return;
 
             const num = Number(v);
 
             if (isSpecialQuran) {
-                // ★ কুরআন কারীম: পাশ = ৫০, টোটালে যোগ হবে না
-                if (num > 0) data.hasAnyMarks = true;   // কুরআনে নম্বর দিলেও "মার্কস আছে" হিসেবে ধরা
-                if (num < 50) data.isFail = true;        // কুরআনে ফেল → মেধাক্রম থেকে বাদ
+                if (num > 0) data.hasAnyMarks = true;
+                if (num < 50) data.isFail = true;
             } else {
-                // ★ সাধারণ বিষয়: টোটালে যোগ হবে
                 data.total += num;
                 data.hasAnyMarks = true;
-
-                // ★ অন্যান্য বিষয়ে ফেল চেক (৩৩-এর নিচে)
                 const cfg = getExamMarksConfig(book);
                 if (num < cfg.passMarks) data.isFail = true;
             }
         });
 
-        // ★ কাস্টম কলাম (সাধারণ বিষয়ের মতোই)
         (_customMarksColumns[s.className] || []).forEach(col => {
             if (deletedCols.includes(col.key)) return;
             if (termMarks.customMarks && termMarks.customMarks[col.key] !== undefined) {
@@ -7921,7 +7907,6 @@ function getStudentRankInClass(student) {
                     const num = Number(v);
                     data.total += num;
                     data.hasAnyMarks = true;
-
                     const cfg = getExamMarksConfig(col.label);
                     if (num < cfg.passMarks) data.isFail = true;
                 }
@@ -7931,15 +7916,12 @@ function getStudentRankInClass(student) {
         return { student: s, total: data.total, hasAnyMarks: data.hasAnyMarks, isFail: data.isFail };
     });
 
-    // ★★★ ফিক্স: যাদের মার্কস আছে কিন্তু ফেল করেনি, শুধু তারাই মেধাক্রমে ★★★
     const eligibleForRank = scored.filter(x => x.hasAnyMarks && !x.isFail);
     if (eligibleForRank.length === 0) return null;
 
     eligibleForRank.sort((a, b) => b.total - a.total);
 
     const myIdx = eligibleForRank.findIndex(x => x.student.id === student.id);
-    
-    // ★★★ ফিক্স: আমি নিজে ফেল করলে মেধাক্রমে থাকব না ★★★
     if (myIdx === -1) return null;
 
     let rank = 1;
@@ -7953,14 +7935,20 @@ function getStudentRankInClass(student) {
 
 // ★ ক্লাসে মোট পাশ/ফেল সংখ্যা (section-aware + অসম্পূর্ণ নম্বর বাদ)
 function getClassPassFailStats(dept, className, section) {
+    // ★★★ ফিক্স: Clean String ম্যাচিং ★★★
+    const cleanStr = (str) => String(str || '').replace(/\(.*?\)/g, '').replace(/\s+/g, '').trim().toLowerCase();
+    const targetDept = cleanStr(dept);
+    const targetClass = cleanStr(className);
+    const targetSection = section || 'নাই';
+
     const classmates = studentsCache.filter(s => 
-        s.dept === dept && 
-        s.className === className &&
-        (!section || section === 'নাই' || s.section === section)
+        cleanStr(s.dept) === targetDept && 
+        cleanStr(s.className) === targetClass &&
+        (!targetSection || targetSection === 'নাই' || cleanStr(s.section) === cleanStr(targetSection))
     );
+    
     let passed = 0, failed = 0, absent = 0, incomplete = 0;
 
-    // ★★★ নতুন: কনটেক্সট ★★★
     const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
     const examType = window._marksContext?.examType || 'term2';
 
@@ -7971,15 +7959,10 @@ function getClassPassFailStats(dept, className, section) {
     const requiredCols = books.filter((_, i) => !deletedCols.includes(`default_${i}`)).length
                        + customCols.filter(c => !deletedCols.includes(c.key)).length;
 
-    // ★★★ কুরআন কারীম শনাক্ত করার helper ★★★
     const isQuranKareem = (bookName) => {
         if (!bookName) return false;
-        // তরজমাতুল কুরআন / তাফসীর হলে সেটা কুরআন কারীম নয়
         if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
-        return bookName.includes('কুরআন কারীম') || 
-               bookName.includes('আল-কুরআন') || 
-               bookName.includes('القرآن') || 
-               bookName.toLowerCase().includes('quran');
+        return bookName.includes('কুরআন কারীম') || bookName.includes('আল-কুরআন') || bookName.includes('القرآن') || bookName.toLowerCase().includes('quran');
     };
 
     classmates.forEach(s => {
@@ -7987,14 +7970,12 @@ function getClassPassFailStats(dept, className, section) {
         let anyFail = false;
         let totalEntries = 0;
 
-        // ★★★ এই ছাত্রের নির্দিষ্ট টার্মের মার্কস ★★★
         const termMarks = getStudentTermMarks(s, academicYear, examType);
 
         books.forEach((book, idx) => {
             const colKey = `default_${idx}`;
             if (deletedCols.includes(colKey)) return;
 
-            // ★★★ ফিক্স: book-এর নাম দিয়ে কুরআন চেক (idx নয়) ★★★
             const isSpecialQuran = (
                 dept === 'shariah' && 
                 className !== 'صف رابع (৪র্থ শ্রেণী)' && 
@@ -8003,7 +7984,6 @@ function getClassPassFailStats(dept, className, section) {
 
             let v = null;
             if (termMarks.resultMarksObj && termMarks.resultMarksObj[colKey] !== undefined) v = termMarks.resultMarksObj[colKey];
-            else if (s.resultMarks && s.resultMarks[idx] !== undefined) v = s.resultMarks[idx]; // fallback
 
             if (v === null || v === '' || isNaN(v)) return;
 
@@ -8012,7 +7992,6 @@ function getClassPassFailStats(dept, className, section) {
             if (num === 0) anyAbsent = true;
             
             if (isSpecialQuran) {
-                // কুরআন কারীমে পাশ = ৫০
                 if (num < 50) anyFail = true;
             } else {
                 const cfg = getExamMarksConfig(book);
@@ -60885,8 +60864,9 @@ async function renderGpResults(container) {
                 <i class="fa-solid fa-lock text-5xl text-amber-500 mb-3"></i>
                 <h3 class="text-lg font-bold text-amber-900">চলমান পরীক্ষার রেজাল্ট এখনো পাবলিশ হয়নি</h3>
                 <p class="text-sm text-amber-700 mt-2">অনুগ্রহ করে অপেক্ষা করুন অথবা উপরে থেকে আগের কোনো পরীক্ষা সিলেক্ট করুন।</p>
+                <!-- অপশনাল: ট্যাব বা ড্রপডাউন যদি এখানে দেখাতে চান তবে সেটার HTML দিন -->
             </div>`;
-        // এখানে return করব না, যাতে ইউজার ড্রপডাউন দেখতে পায়
+        return; // ★★★ এই return টি যোগ করুন ★★★
     }
 
     // ★★★ নতুন যোগ করুন: কনফিগ ডাটা লোড নিশ্চিত করা ★★★
@@ -60964,20 +60944,69 @@ async function renderGpResults(container) {
         }
 
         // ৪. মার্জ করা ছাত্র অবজেক্ট (গার্ডিয়ানের সেশন সহ)
+        const marksKey = buildMarksKey(ctxYear, ctxExam);
+        
+        // ★★★ ফিক্স: শুধুমাত্র নির্দিষ্ট টার্মের ডাটা নিশ্চিত করা ★★★
+        let finalMarksForThisTerm = {};
+        let finalCustomMarksForThisTerm = {};
+
+        // ১. স্টুডেন্ট অবজেক্টে যদি নতুন ফরম্যাটে (marksByTerm) ডাটা থাকে, সেটাই প্রাধান্য পাবে
+        if (freshStudent?.marksByTerm && freshStudent.marksByTerm[marksKey]) {
+            finalMarksForThisTerm = freshStudent.marksByTerm[marksKey];
+        } 
+        else if (student?.marksByTerm && student.marksByTerm[marksKey]) {
+            finalMarksForThisTerm = student.marksByTerm[marksKey];
+        }
+        // ২. যদি নতুন ফরম্যাটে ডাটা না থাকে, তবে ফ্ল্যাট ডাটাকে কনভার্ট করি (পুরনো ডাটার জন্য)
+        else if (freshStudent?.resultMarksObj || student.resultMarksObj) {
+            finalMarksForThisTerm = {
+                ...(student.resultMarksObj || {}),
+                ...(freshStudent?.resultMarksObj || {})
+            };
+        }
+
+        // কাস্টম মার্কসের জন্যও একই লজিক
+        if (freshStudent?.customMarksByTerm && freshStudent.customMarksByTerm[marksKey]) {
+            finalCustomMarksForThisTerm = freshStudent.customMarksByTerm[marksKey];
+        }
+        else if (student?.customMarksByTerm && student.customMarksByTerm[marksKey]) {
+            finalCustomMarksForThisTerm = student.customMarksByTerm[marksKey];
+        }
+        else if (freshStudent?.customMarks || student.customMarks) {
+            finalCustomMarksForThisTerm = {
+                ...(student.customMarks || {}),
+                ...(freshStudent?.customMarks || {})
+            };
+        }
+
         const mergedStudent = {
             ...student,
             ...(freshStudent || {}),
-            // ★★★ দুই জায়গা থেকে মার্কস একসাথে merge ★★★
-            resultMarksObj: {
-                ...(student.resultMarksObj || {}),
-                ...(freshStudent?.resultMarksObj || {})
+            // পুরনো ফিল্ড
+            resultMarksObj: { 
+                ...(student.resultMarksObj || {}), 
+                ...(freshStudent?.resultMarksObj || {}) 
             },
-            customMarks: {
-                ...(student.customMarks || {}),
-                ...(freshStudent?.customMarks || {})
+            customMarks: { 
+                ...(student.customMarks || {}), 
+                ...(freshStudent?.customMarks || {}) 
             },
+            
+            // ★★★ ফিক্স: marksByTerm-এ শুধু এই টার্মের ডাটা রাখা হচ্ছে ★★★
+            marksByTerm: {
+                ...(student.marksByTerm || {}),
+                ...(freshStudent?.marksByTerm || {}),
+                [marksKey]: finalMarksForThisTerm // শুধু এই টার্মের ডাটা
+            },
+            customMarksByTerm: {
+                ...(student.customMarksByTerm || {}),
+                ...(freshStudent?.customMarksByTerm || {}),
+                [marksKey]: finalCustomMarksForThisTerm
+            },
+            
             section: freshStudent?.section || student.section || 'নাই'
         };
+
         // ★★★ ডিবাগ লগ ★★★
         console.log('📊 mergedStudent মার্কস:', {
             name: mergedStudent.name,
@@ -60987,13 +61016,96 @@ async function renderGpResults(container) {
             customCount: Object.keys(mergedStudent.customMarks).length
         });
 
-        // ★ ক্যাশেও আপডেট
-        if (freshStudent && Array.isArray(studentsCache)) {
+        // ✅ ক্যাশে mergedStudent দিয়ে আপডেট (marksByTerm সহ)
+        if (Array.isArray(studentsCache)) {
             const idx = studentsCache.findIndex(s => 
-                s.id === freshStudent.id || String(s.studentId) === String(freshStudent.studentId)
+                s.id === mergedStudent.id 
+                || String(s.studentId) === String(mergedStudent.studentId)
             );
-            if (idx >= 0) studentsCache[idx] = { ...studentsCache[idx], ...freshStudent };
-            else studentsCache.push(freshStudent);
+            if (idx >= 0) studentsCache[idx] = mergedStudent;
+            else studentsCache.push(mergedStudent);
+        }
+
+        // ★★★ নতুন: সমস্ত classmates studentsCache-এ লোড করি (শিক্ষক পোর্টালের মতো) ★★★
+        try {
+            const existingIds = new Set((studentsCache || []).map(s => String(s.id)));
+            const cMarksKey = buildMarksKey(ctxYear, ctxExam); // কারেন্ট কনটেক্সট কি (যেমন: 2026-2027__term2)
+
+            // (ক) students কালেকশন
+            const clSnap = await getDocs(collection(window.fbDB, 'students'));
+            clSnap.forEach(d => {
+                const s = { id: d.id, ...d.data() };
+                if (!existingIds.has(String(s.id))) {
+                    
+                    // ★ ফিক্স: classmates এর ডাটাও marksByTerm এ কনভার্ট করি
+                    if (!s.marksByTerm) s.marksByTerm = {};
+                    if (!s.marksByTerm[cMarksKey]) {
+                        s.marksByTerm[cMarksKey] = s.resultMarksObj || {};
+                    }
+                    if (!s.customMarksByTerm) s.customMarksByTerm = {};
+                    if (!s.customMarksByTerm[cMarksKey]) {
+                        s.customMarksByTerm[cMarksKey] = s.customMarks || {};
+                    }
+
+                    studentsCache.push(s);
+                    existingIds.add(String(s.id));
+                }
+            });
+
+            // (খ) admissionForms (approved)
+            const fSnap2 = await getDocs(collection(window.fbDB, 'admissionForms'));
+            fSnap2.forEach(d => {
+                const form = { id: d.id, ...d.data() };
+                const isApproved = form.status === 'approved'
+                    || form.currentStep === 'COMPLETED'
+                    || form.currentStep === 12
+                    || (form.savedSteps && form.savedSteps.includes(11));
+                if (!isApproved) return;
+
+                const admId = 'admission_' + form.id;
+                if (existingIds.has(admId)) return;
+
+                const fd = (typeof flattenAdmFormData === 'function')
+                    ? flattenAdmFormData(form) : null;
+                if (!fd) return;
+
+                // ফ্ল্যাট মার্কসগুলো বের করি
+                const flatMarks = fd.examMarks || form.data?.examMarks || {};
+                const flatCustom = form.data?.customMarks || {};
+
+                // ★ ফিক্স: admissionForm এর ডাটাও marksByTerm এ কনভার্ট করি
+                const studentObj = {
+                    id: admId,
+                    name: fd.name,
+                    guardian: fd.guardianName,
+                    studentId: fd.studentId,
+                    dept: fd.dept,
+                    className: fd.nextClass,
+                    section: 'নাই',
+                    remark: null,
+                    source: 'admission',
+                    admissionFormId: form.id,
+                    resultMarksObj: flatMarks,
+                    customMarks: flatCustom,
+                    marksByTerm: form.data?.examMarksByTerm || {},
+                    customMarksByTerm: form.data?.customMarksByTerm || {}
+                };
+
+                // যদি ডাটাবেসে আগে থেকেই marksByTerm না থাকে, তবে ফ্ল্যাট ডাটা থেকে তৈরি করে নিই
+                if (!studentObj.marksByTerm[cMarksKey]) {
+                    studentObj.marksByTerm[cMarksKey] = flatMarks;
+                }
+                if (!studentObj.customMarksByTerm[cMarksKey]) {
+                    studentObj.customMarksByTerm[cMarksKey] = flatCustom;
+                }
+
+                studentsCache.push(studentObj);
+                existingIds.add(admId);
+            });
+
+            console.log('✅ Classmates loaded with marksByTerm:', studentsCache.length);
+        } catch (clErr) {
+            console.warn('⚠️ Classmates load failed:', clErr);
         }
 
         // ★ সেশনেও আপডেট (পরের বার ব্যবহারের জন্য)
@@ -63900,6 +64012,14 @@ window.toggleExamPublishStatus = async function() {
     // ★ UI রিফ্রেশ
     if (typeof renderResultDeptPage === 'function') {
         renderResultDeptPage();
+    }
+        // ★★★ নতুন: গার্ডিয়ান পোর্টাল ওপেন থাকলে সেটাও রিফ্রেশ করি ★★★
+    if (window._guardianSession && document.getElementById('guardian-portal-view')) {
+        const gpTab = window._gpResultTab || 'my';
+        if (document.getElementById('gp-tab-content') && gpTab) {
+            // গার্ডিয়ান রেজাল্ট পেজ ওপেন থাকলে রি-রেন্ডার করি
+            switchGpTab('result');
+        }
     }
 };
 
