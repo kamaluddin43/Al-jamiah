@@ -7836,6 +7836,7 @@ function getStudentMarksheetData(student) {
 
         rows.push({
             colKey: col.key,
+            type: col.type,
             label: col.label,
             fullMarks: marksCfg.fullMarks,
             passMarks: marksCfg.passMarks,
@@ -7861,11 +7862,10 @@ function getStudentMarksheetData(student) {
     };
 
     const quranRowIndex = rows.findIndex(r => 
-        isQuranKareem(r.label)  // ← r.label-এ কুরআনের নাম আছে
+        isQuranKareem(r.label)
     );
 
     rows.forEach((r, idx) => {
-        // ★ শুধু প্রকৃত কুরআন কলাম হলে বাদ; নাহলে সবই যোগ
         const isSpecialQuran = (
             dept === 'shariah' && 
             className !== 'صف رابع (৪র্থ শ্রেণী)' && 
@@ -7884,19 +7884,27 @@ function getStudentMarksheetData(student) {
     
     const average = enteredCount > 0 ? (totalObtained / enteredCount) : 0;
 
+    // ★★★ নতুন যোগ করা হলো: columnMeta তৈরি ★★★
+    const columnMeta = rows.map(r => ({
+        key: r.colKey,
+        type: r.type || 'default',
+        label: r.label
+    }));
+
     // ★ চূড়ান্ত গ্রেড 
     let finalCalc = { grade: '—', total: 0, avg: 0 };
     const requiredEntries = rows.length - (dept === 'shariah' && className !== 'صف رابع (৪র্থ শ্রেণী)' ? 1 : 0);
     
     if (enteredCount === 0 && rows.length > 0) {
-        // যদি কেউ শুধু কুরআনেই নম্বর দেয়
-        const markArr = rows.map(r => r.obtained !== null ? Number(r.obtained) : 0);
-        finalCalc = calculateGradeAndDivision(dept, markArr, className);
+        // ★★★ খালি ঘর null হিসেবে পাঠানো হলো ★★★
+        const markArr = rows.map(r => (r.obtained !== null && r.obtained !== '') ? Number(r.obtained) : null);
+        finalCalc = calculateGradeAndDivision(dept, markArr, className, columnMeta); 
     } else if (enteredCount < requiredEntries) {
         finalCalc.grade = 'অসম্পূর্ণ';
     } else if (rows.length > 0) {
-        const markArr = rows.map(r => r.obtained !== null ? Number(r.obtained) : 0);
-        finalCalc = calculateGradeAndDivision(dept, markArr, className); // এখানে className পাস করা হলো
+        // ★★★ খালি ঘর null হিসেবে পাঠানো হলো ★★★
+        const markArr = rows.map(r => (r.obtained !== null && r.obtained !== '') ? Number(r.obtained) : null);
+        finalCalc = calculateGradeAndDivision(dept, markArr, className, columnMeta); 
     }
 
     // ★ মেধাস্থান (পুরো জামাতের মধ্যে)
@@ -39601,194 +39609,115 @@ window.rejectUser = async function(idx) {
 // ★★★ রেজাল্ট সিস্টেম — ক্যালকুলেশন ইঞ্জিন (এখানে পেস্ট করুন) ★★★
 // ═══════════════════════════════════════════════════════════════
 
-function calculateGradeAndDivision(dept, marksArray, className = '') {
-    // ১. খালি বা ভুল ডাটা থাকলে সেটাকে 0 ধরে নেওয়া
-    const marks = marksArray.map(m => {
-        const num = Number(m);
-        return isNaN(num) ? 0 : num;
-    });
+function calculateGradeAndDivision(dept, marksArray, className = '', columnMeta = []) {
+    // ১. খালি বা ভুল ডাটা থাকলে সেটাকে null ধরে নেওয়া
+    const marks = marksArray.map(m => (m === '' || m === null || m === undefined) ? null : Number(m));
+    
+    // ভ্যালিড নম্বরগুলো বের করা (null বাদে)
+    const validMarks = marks.filter(m => m !== null && !isNaN(m));
+    const totalMarks = validMarks.reduce((a, b) => a + b, 0);
+    const avgMarks = validMarks.length > 0 ? totalMarks / validMarks.length : 0;
 
-    // ২. আসল মোট ও গড় বের করা
-    const totalMarks = marks.reduce((a, b) => a + b, 0);
-    const avgMarks = marks.length > 0 ? totalMarks / marks.length : 0;
-
-    // ৩. নতুন পাশ/ফেল সেটিংস
+    // ২. নতুন পাশ/ফেল সেটিংস
     const _passRule = window._passRule || 'all_subjects';
     const _mandatorySubs = window._mandatorySubjects || [];
     const _defaultPass = window._defaultPassMark || 33;
 
-    // ═══════════════════════════════════════════════════════════
-    // ★★★ নিখুঁত কলাম ম্যাপিং (marks অ্যারের সাথে orderedSubs মেলানো) ★★★
-    // ═══════════════════════════════════════════════════════════
-    const allBooks = (configData?.books || {})[className] || [];
-    const deletedCols = (_deletedMarksColumns?.[className]) || [];
-    const customCols = (_customMarksColumns?.[className]) || [];
-    const savedOrder = (_marksColumnOrder?.[className]) || [];
-
-    let tempSubs = [];
-    allBooks.forEach((book, idx) => {
-        const colKey = `default_${idx}`;
-        if (!deletedCols.includes(colKey)) {
-            tempSubs.push({ key: colKey, type: 'default', index: idx, label: book });
-        }
-    });
-    customCols.forEach(col => {
-        if (!deletedCols.includes(col.key)) {
-            tempSubs.push({ key: col.key, type: 'custom', label: col.label });
-        }
-    });
-
-    let orderedSubs = [];
-    savedOrder.forEach(key => {
-        const found = tempSubs.find(c => c.key === key);
-        if (found) orderedSubs.push(found);
-    });
-    tempSubs.forEach(col => {
-        if (!orderedSubs.find(c => c.key === col.key)) orderedSubs.push(col);
-    });
-
-    // ★★★ বাধ্যতামূলক (মিয়ারী) বিষয় চেক ★★★
-    let mandatoryFail = false;
-    if (_mandatorySubs.length > 0) {
-        orderedSubs.forEach((sub, idx) => {
-            const subName = sub.label || '';
-            // এখানে индекс নিখুঁতভাবে মিলছে
-            if (_mandatorySubs.some(m => subName.includes(m))) {
-                if (marks[idx] < _defaultPass) {
-                    mandatoryFail = true;
-                }
-            }
-        });
-    }
-
-    // ★★★ কুরআন কারীম খোঁজার লজিক ★★★
+    // ৩. কলাম মেটা থেকে কুরআন ও মিয়ারী খোঁজা
     let quranIndex = -1;
-    const isQuranKareem = (bookName) => {
-        if (!bookName) return false;
-        if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
-        return bookName.includes('কুরআন কারীম') || 
-            bookName.includes('আল-কুরআন') || 
-            bookName.includes('القرآن') || 
-            bookName.toLowerCase().includes('quran');
-    };
+    let mandatoryIndexes = [];
 
-    if (dept === 'shariah' && className !== 'صف رابع (৪র্থ শ্রেণী)') {
-        quranIndex = orderedSubs.findIndex(col => 
-            col.type === 'default' && isQuranKareem(col.label)
-        );
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // ★★★ শরীয়াহ (৪র্থ ছাড়া) — কুরআন লজিক ★★★
-    // ═══════════════════════════════════════════════════════════
-    if (dept === 'shariah' && className !== 'صف رابع (৪র্থ শ্রেণী)') {
+    columnMeta.forEach((col, idx) => {
+        const subName = col.label || '';
         
-        // ─── কুরআন কলাম না থাকলে ───
-        if (quranIndex === -1) {
-            if (marks.some(m => m === 0)) return { grade: 'অনুপস্থিত', total: totalMarks, avg: avgMarks.toFixed(2) };
-            
-            let hasAnyFail = marks.some(m => m < _defaultPass);
-            let isPass = (_passRule === 'all_subjects') ? !hasAnyFail 
-                       : (_passRule === 'total_only') ? (avgMarks >= _defaultPass) 
-                       : (avgMarks >= _defaultPass) && !mandatoryFail;
-
-            if (!isPass) return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
-            
-            const scale = JSON.parse(localStorage.getItem('madrasa_grade_scale') || '{"mumtaz":80,"jj":65,"jayed":50,"maqbul":33}');
-            if (avgMarks >= scale.mumtaz) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
-            if (avgMarks >= scale.jj) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
-            if (avgMarks >= scale.jayed) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
-            if (avgMarks >= scale.maqbul) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
-            return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+        // কুরআন কারীম চেক (আগের লজিক বহাল)
+        const isQuran = (subName.includes('القرآن') || subName.includes('কুরআন') || subName.toLowerCase().includes('quran')) 
+                        && !subName.includes('তরজমাতুল') && !subName.includes('تفسير') && !subName.includes('ترجمة');
+        
+        if (isQuran && quranIndex === -1) {
+            quranIndex = idx;
         }
+        
+        // মিয়ারী/বাধ্যতামূলক চেক
+        if (_mandatorySubs.some(m => subName.includes(m))) {
+            mandatoryIndexes.push(idx);
+        }
+    });
 
-        // ─── কুরআন কলাম আছে ───
-        const quranMark = marks[quranIndex] || 0;
-        const otherMarks = marks.filter((_, i) => i !== quranIndex);
+    // মিয়ারীতে ফেল করা আছে কি না
+    let mandatoryFail = false;
+    mandatoryIndexes.forEach(idx => {
+        if (marks[idx] !== null && marks[idx] < _defaultPass) {
+            mandatoryFail = true;
+        }
+    });
+
+    // ★★★ শরীয়াহ (৪র্থ ছাড়া) এবং কুরআন থাকলে ★★★
+    if (dept === 'shariah' && className !== 'صف رابع (৪র্থ শ্রেণী)' && quranIndex !== -1) {
+        const quranMark = marks[quranIndex] !== null ? marks[quranIndex] : 0;
+        
+        // কুরআনের ৫০ নম্বরের লজিক (অপরিবর্তিত)
+        if (quranMark < 50) return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+        
+        // কুরআন বাদে বাকি বিষয়
+        const otherMarks = marks.filter((m, i) => i !== quranIndex && m !== null);
         const totalOther = otherMarks.reduce((a, b) => a + b, 0);
         const avgOther = otherMarks.length > 0 ? totalOther / otherMarks.length : 0;
 
-        if (quranMark < 50) return { grade: 'রাসিব', total: totalOther, avg: avgOther.toFixed(2) };
-        if (otherMarks.some(m => m === 0)) return { grade: 'অনুপস্থিত', total: totalOther, avg: avgOther.toFixed(2) };
+        if (otherMarks.length === 0) return { grade: 'অসম্পূর্ণ', total: 0, avg: '0.00' };
 
-        // নতুন পাশ/ফেল (কুরআন বাদে বাকিগুলোর জন্য)
-        let hasAnyFailOther = otherMarks.some(m => m < _defaultPass);
-        let isPass = (_passRule === 'all_subjects') ? !hasAnyFailOther 
+        let hasAnyFail = otherMarks.some(m => m < _defaultPass);
+        let isPass = (_passRule === 'all_subjects') ? !hasAnyFail 
                    : (_passRule === 'total_only') ? (avgOther >= _defaultPass) 
                    : (avgOther >= _defaultPass) && !mandatoryFail;
 
         if (!isPass) return { grade: 'রাসিব', total: totalOther, avg: avgOther.toFixed(2) };
 
-        // গ্রেডিং
         let grade = 'রাসিব';
         if (avgOther >= 80) grade = 'মুমতায';
         else if (avgOther >= 65) grade = 'জায়্যিদ জিদ্দান';
         else if (avgOther >= 50) grade = 'জায়্যিদ';
         else if (avgOther >= 33) grade = 'মাকবুল';
-
         return { grade, total: totalOther, avg: avgOther.toFixed(2) };
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // ★★★ অন্যান্য বিভাগ (নন-রেস, হিফজ, নূরানী) ★★★
-    // ═══════════════════════════════════════════════════════════
-    
-    // সাধারণ পাশ/ফেল চেক (নন-রেস, হিফজ, নূরানীর জন্য)
-    if (dept === 'non_res' || dept === 'hifz' || dept === 'noorani') {
-        if (marks.some(m => m === 0)) {
-            return { grade: 'অনুপস্থিত', gpa: dept === 'non_res' ? '0.00' : undefined, total: totalMarks, avg: avgMarks.toFixed(2) };
-        }
-        
-        let hasAnyFail = marks.some(m => m < _defaultPass);
-        let isPass = (_passRule === 'all_subjects') ? !hasAnyFail 
-                   : (_passRule === 'total_only') ? (avgMarks >= _defaultPass) 
-                   : (avgMarks >= _defaultPass) && !mandatoryFail;
-
-        if (!isPass) {
-            return { grade: dept === 'non_res' ? 'F' : 'রাসিব', gpa: dept === 'non_res' ? '0.00' : undefined, total: totalMarks, avg: avgMarks.toFixed(2) };
-        }
-
-        // ফেল না হলে তাদের নিজস্ব গ্রেডিং
-        if (dept === 'non_res') {
-            let gpa = (avgMarks >= 80) ? 5.00 : (avgMarks >= 70) ? 4.00 : (avgMarks >= 60) ? 3.50 : (avgMarks >= 50) ? 3.00 : (avgMarks >= 40) ? 2.00 : (avgMarks >= 33) ? 1.00 : 0.00;
-            let grade = (avgMarks >= 80) ? 'A+' : (avgMarks >= 70) ? 'A' : (avgMarks >= 60) ? 'A-' : (avgMarks >= 50) ? 'B' : (avgMarks >= 40) ? 'C' : (avgMarks >= 33) ? 'D' : 'F';
-            return { grade, gpa: gpa.toFixed(2), total: totalMarks, avg: avgMarks.toFixed(2) };
-        }
-        
-        if (dept === 'hifz') {
-            const qIdx = quranIndex !== -1 ? quranIndex : (marks[0] > 0 ? 0 : (marks[1] > 0 ? 1 : 2));
-            let quranMarks = marks[qIdx] || 0;
-            
-            if (quranMarks >= 80 && avgMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
-            else if (quranMarks >= 65 && avgMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
-            else if (quranMarks >= 50 && avgMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
-            else if (quranMarks >= 33 && avgMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
-            return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
-        }
-        
-        if (dept === 'noorani') {
-            const qIdx = quranIndex !== -1 ? quranIndex : (marks[0] > 0 ? 0 : 5);
-            const quranMarks = marks[qIdx] || 0;
-
-            if (quranMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
-            if (quranMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
-            if (quranMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
-            if (quranMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
-            return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
-        }
-    }
-    
-    // ═══════════════════════════════════════════════════════════
-    // ★★★ শরীয়াহ ৪র্থ শ্রেণী বা অন্যান্য সাধারণ ★★★
-    // ═══════════════════════════════════════════════════════════
-    if (marks.some(m => m === 0)) return { grade: 'অনুপস্থিত', total: totalMarks, avg: avgMarks.toFixed(2) };
+    // ★★★ বাকি সব বিভাগ ও শরীয়াহ ৪র্থ ★★★
+    if (marks.some(m => m === null)) return { grade: 'অসম্পূর্ণ', total: totalMarks, avg: avgMarks.toFixed(2) };
     
     let hasAnyFail = marks.some(m => m < _defaultPass);
     let isPass = (_passRule === 'all_subjects') ? !hasAnyFail 
                : (_passRule === 'total_only') ? (avgMarks >= _defaultPass) 
                : (avgMarks >= _defaultPass) && !mandatoryFail;
 
-    if (!isPass) return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+    if (!isPass) {
+        if (dept === 'non_res') return { grade: 'F', gpa: '0.00', total: totalMarks, avg: avgMarks.toFixed(2) };
+        return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+    }
+
+    // ★★★ গ্রেড ক্যালকুলেশন (আগের মতোই) ★★★
+    if (dept === 'non_res') {
+        let gpa = (avgMarks >= 80) ? 5.00 : (avgMarks >= 70) ? 4.00 : (avgMarks >= 60) ? 3.50 : (avgMarks >= 50) ? 3.00 : (avgMarks >= 40) ? 2.00 : (avgMarks >= 33) ? 1.00 : 0.00;
+        let grade = (avgMarks >= 80) ? 'A+' : (avgMarks >= 70) ? 'A' : (avgMarks >= 60) ? 'A-' : (avgMarks >= 50) ? 'B' : (avgMarks >= 40) ? 'C' : (avgMarks >= 33) ? 'D' : 'F';
+        return { grade, gpa: gpa.toFixed(2), total: totalMarks, avg: avgMarks.toFixed(2) };
+    }
+    
+    if (dept === 'hifz') {
+        let quranMarks = quranIndex !== -1 ? marks[quranIndex] : (marks[0] || 0);
+        if (quranMarks >= 80 && avgMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
+        else if (quranMarks >= 65 && avgMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
+        else if (quranMarks >= 50 && avgMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
+        else if (quranMarks >= 33 && avgMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
+        return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+    }
+    
+    if (dept === 'noorani') {
+        const quranMarks = quranIndex !== -1 ? marks[quranIndex] : (marks[0] || 0);
+        if (quranMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
+        if (quranMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
+        if (quranMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
+        if (quranMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
+        return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+    }
     
     const gm = parseInt(localStorage.getItem('madrasa_grade_scale') ? JSON.parse(localStorage.getItem('madrasa_grade_scale')).mumtaz : 80);
     const gjj = parseInt(localStorage.getItem('madrasa_grade_scale') ? JSON.parse(localStorage.getItem('madrasa_grade_scale')).jj : 65);
@@ -40607,9 +40536,9 @@ async function renderResultDeptPage() {
             });
         }
         let currentDeptData = [];
-            // ★★★ নতুন: কনটেক্সট ★★★
-            const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
-            const examType = window._marksContext?.examType || 'term2';
+        // ★★★ নতুন: কনটেক্সট ★★★
+        const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
+        const examType = window._marksContext?.examType || 'term2';
 
         if (realStudents.length > 0) {
             realStudents.forEach(student => {
@@ -40617,13 +40546,13 @@ async function renderResultDeptPage() {
                 const termMarks = getStudentTermMarks(student, academicYear, examType);
 
                 let marks = [];
+                let columnMeta = []; // ★★★ নতুন যোগ করুন ★★★
                 let calc = null;
 
                 orderedSubs.forEach(colItem => {
                     let val = null;
                     
                     if (colItem.type === 'default') {
-                        // ★★★ পরিবর্তিত ★★★
                         if (termMarks.resultMarksObj && termMarks.resultMarksObj[colItem.key] !== undefined) {
                             val = termMarks.resultMarksObj[colItem.key];
                         } else if (student.resultMarks && student.resultMarks.length > 0) {
@@ -40631,16 +40560,20 @@ async function renderResultDeptPage() {
                         }
                     } 
                     else if (colItem.type === 'custom') {
-                        // ★★★ পরিবর্তিত ★★★
                         if (termMarks.customMarks && termMarks.customMarks[colItem.key] !== undefined) {
                             val = termMarks.customMarks[colItem.key];
                         }
                     }
                     
-                    marks.push(val !== null && val !== undefined && val !== '' ? Number(val) : 0);
+                    // ★★★ খালি ঘর হলে null, নাহলে Number ★★★
+                    marks.push(val !== null && val !== undefined && val !== '' ? Number(val) : null);
+                    
+                    // ★★★ কলামের মেটা যোগ করুন ★★★
+                    columnMeta.push({ key: colItem.key, type: colItem.type, label: colItem.label });
                 });
 
-                calc = calculateGradeAndDivision(dept, marks, _currentResultTab);
+                // ★★★ columnMeta সহ কল করুন ★★★
+                calc = calculateGradeAndDivision(dept, marks, _currentResultTab, columnMeta);
 
                 currentDeptData.push({
                     id: student.studentId || 'N/A', 
@@ -41096,6 +41029,7 @@ window.renderMarksEntryTable = async function() {
                 cellsHTML += `<td class="p-0 border text-center">
                     <input type="text" inputmode="numeric" 
                             data-row="${rIdx}" data-student-id="${student.id}" data-col-key="${col.key}" data-col-type="routine_multi" 
+                            data-col-label="${col.label}"
                             data-books="${encodeURIComponent(JSON.stringify(col.books))}"
                             value="${val}" 
                             class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm mark-input outline-none bg-transparent"
@@ -41121,6 +41055,7 @@ window.renderMarksEntryTable = async function() {
                 cellsHTML += `<td class="p-0 border text-center">
                     <input type="text" inputmode="numeric" 
                         data-row="${rIdx}" data-student-id="${student.id}" data-col-key="${col.key}" data-col-type="${col.type}" 
+                        data-col-label="${col.label}"
                         value="${val !== null ? val : ''}" 
                         class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm mark-input outline-none bg-transparent"
                         onkeydown="handleSpreadsheetKeydown(event)"
@@ -41898,9 +41833,19 @@ window.updateRowLiveStats = function(rIdx, deptParam, classParam) {
     
     const inputs = document.querySelectorAll(`.mark-input[data-row="${rIdx}"]`);
     let marksArray = [];
+    let columnMeta = []; // ★★★ নতুন যোগ করুন ★★★
+
     inputs.forEach(inp => {
         const val = inp.value.trim();
-        marksArray.push(val === '' ? 0 : Number(val));
+        // ★★★ খালি ঘরকে null হিসেবে পাঠাবো, ০ হলে ০-ই থাকবে ★★★
+        marksArray.push(val === '' ? null : Number(val)); 
+        
+        // ★★★ কলামের তথ্য সংগ্রহ ★★★
+        columnMeta.push({
+            key: inp.dataset.colKey,
+            type: inp.dataset.colType,
+            label: inp.dataset.colLabel || ''
+        });
     });
 
     const totalEl = document.getElementById(`total-${rIdx}`);
@@ -41908,127 +41853,20 @@ window.updateRowLiveStats = function(rIdx, deptParam, classParam) {
     const gradeEl = document.getElementById(`grade-${rIdx}`);
     if (!totalEl || !avgEl || !gradeEl) return;
 
-    const hasAnyMark = marksArray.some(m => m > 0);
+    const hasAnyMark = marksArray.some(m => m !== null && m > 0);
     if (!hasAnyMark) {
         totalEl.textContent = '-'; avgEl.textContent = '-'; gradeEl.textContent = '-';
         return;
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // ★★★ শরীয়াহ (৪র্থ ছাড়া) — কুরআন কারীম আলাদা ★★★
-    // ═══════════════════════════════════════════════════════════
-    if (dept === 'shariah' && currentClass !== 'صف رابع (৪র্থ শ্রেণী)') {
-        
-        // ─── মার্কস অ্যারের সাথে মিলে যাওয়া orderedSubs পুনর্গঠন ───
-        const allBooks    = (configData?.books || {})[currentClass] || [];
-        const deletedCols = (_deletedMarksColumns?.[currentClass]) || [];
-        const customCols  = (_customMarksColumns?.[currentClass]) || [];
-        const savedOrder  = (_marksColumnOrder?.[currentClass]) || [];
+    // ★★★ নতুন প্যারামিটারসহ কল করুন ★★★
+    const calc = calculateGradeAndDivision(dept, marksArray, currentClass, columnMeta);
 
-        let tempSubs = [];
-        allBooks.forEach((book, idx) => {
-            const colKey = `default_${idx}`;
-            if (!deletedCols.includes(colKey)) {
-                tempSubs.push({ key: colKey, type: 'default', index: idx, label: book });
-            }
-        });
-        customCols.forEach(col => {
-            if (!deletedCols.includes(col.key)) {
-                tempSubs.push({ key: col.key, type: 'custom', label: col.label });
-            }
-        });
-
-        let orderedSubs = [];
-        savedOrder.forEach(key => {
-            const f = tempSubs.find(c => c.key === key);
-            if (f) orderedSubs.push(f);
-        });
-        tempSubs.forEach(col => {
-            if (!orderedSubs.find(c => c.key === col.key)) orderedSubs.push(col);
-        });
-
-        const isQuranKareem = (bookName) => {
-            if (!bookName) return false;
-            if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
-            return bookName.includes('কুরআন কারীম') || 
-                   bookName.includes('আল-কুরআন') || 
-                   bookName.includes('القرآن') || 
-                   bookName.toLowerCase().includes('quran');
-        };
-
-        const quranIndex = orderedSubs.findIndex(col =>
-            col.type === 'default' && isQuranKareem(col.label)
-        );
-
-        // ═══ কুরআন কলাম নেই → সব বিষয়ের গড় ═══
-        if (quranIndex === -1) {
-            const totalAll = marksArray.reduce((a, b) => a + b, 0);
-            const avgAll   = marksArray.length > 0 ? totalAll / marksArray.length : 0;
-            
-            totalEl.textContent = totalAll;
-            avgEl.textContent   = avgAll.toFixed(2);
-
-            if (marksArray.some(m => m === 0)) {
-                gradeEl.textContent = 'অনুপস্থিত';
-                gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-red-600';
-            } else if (marksArray.some(m => m < 33)) {
-                gradeEl.textContent = 'রাসিব';
-                gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-red-600';
-            } else {
-                let g = 'রাসিব';
-                if (avgAll >= 80) g = 'মুমতায';
-                else if (avgAll >= 65) g = 'জায়্যিদ জিদ্দান';
-                else if (avgAll >= 50) g = 'জায়্যিদ';
-                else if (avgAll >= 33) g = 'মাকবুল';
-                gradeEl.textContent = g;
-                gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-amber-800';
-            }
-            return;
-        }
-
-        // ═══ কুরআন কলাম আছে → কুরআন বাদ দিয়ে টোটাল/গড় ═══
-        const quranMark  = marksArray[quranIndex] || 0;
-        const otherMarks = marksArray.filter((_, i) => i !== quranIndex);
-        const totalOther = otherMarks.reduce((a, b) => a + b, 0);
-        const avgOther   = otherMarks.length > 0 ? totalOther / otherMarks.length : 0;
-
-        // ★ মোট = কুরআন বাদ (otherMarks-এর যোগফল)
-        totalEl.textContent = totalOther;
-        avgEl.textContent   = avgOther.toFixed(2);
-
-        if (quranMark < 50) {
-            gradeEl.textContent = 'রাসিব';
-            gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-red-600';
-        } else if (otherMarks.some(m => m === 0)) {
-            gradeEl.textContent = 'অনুপস্থিত';
-            gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-red-600';
-        } else if (otherMarks.some(m => m < 33)) {
-            gradeEl.textContent = 'রাসিব';
-            gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-red-600';
-        } else {
-            let g = 'রাসিব';
-            if (avgOther >= 80) g = 'মুমতায';
-            else if (avgOther >= 65) g = 'জায়্যিদ জিদ্দান';
-            else if (avgOther >= 50) g = 'জায়্যিদ';
-            else if (avgOther >= 33) g = 'মাকবুল';
-            
-            gradeEl.textContent = g;
-            gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-amber-800';
-        }
-        return;
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // ★★★ অন্যান্য বিভাগ (non_res, hifz, noorani, ৪র্থ) — সাধারণ লজিক ★★★
-    // ═══════════════════════════════════════════════════════════
-    const totalMarks = marksArray.reduce((a, b) => a + b, 0);
-    const calc = calculateGradeAndDivision(dept, marksArray, currentClass);
-
-    totalEl.textContent = totalMarks;
+    totalEl.textContent = calc.total;
     avgEl.textContent   = calc.avg;
     gradeEl.textContent = calc.grade;
 
-    if (calc.grade === 'রাসিব' || calc.grade === 'F' || calc.grade === 'অনুপস্থিত') {
+    if (calc.grade === 'রাসিব' || calc.grade === 'F' || calc.grade === 'অনুপস্থিত' || calc.grade === 'অসম্পূর্ণ') {
         gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-red-600';
     } else {
         gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-amber-800';
@@ -42210,36 +42048,45 @@ function calcClassResultStats(dept, className) {
     let mumtaz = 0, jj = 0, j = 0, maqbul = 0, rasib = 0, absent = 0, incomplete = 0, passed = 0;
 
     students.forEach(s => {
-        // ★★★ এই ছাত্রের নির্দিষ্ট টার্মের মার্কস ★★★
-        const termMarks = getStudentTermMarks(s, academicYear, examType);
+        // ★ টার্ম কনটেক্সট ★
+        const selectedYear = window._marksContext?.academicYear || getCurrentYear();
+        const currentExam = window._marksContext?.examType || 'term2';
+
+        const termMarks = getStudentTermMarks(s, selectedYear, currentExam);
 
         let marksArr = [];
+        let columnMeta = []; // ★★★ নতুন যোগ করুন ★★★
         let entries = 0;
 
+        // ★★★ এখান থেকে আপনার নতুন ব্লক শুরু ★★★
         orderedCols.forEach(col => {
             let v = null;
             if (col.type === 'default') {
                 if (termMarks.resultMarksObj && termMarks.resultMarksObj[col.key] !== undefined) v = termMarks.resultMarksObj[col.key];
-                else if (s.resultMarks && s.resultMarks[col.index] !== undefined) v = s.resultMarks[col.index]; // fallback
+                else if (s.resultMarks && s.resultMarks[col.index] !== undefined) v = s.resultMarks[col.index];
             } else {
                 if (termMarks.customMarks && termMarks.customMarks[col.key] !== undefined) v = termMarks.customMarks[col.key];
             }
-
+            
             if (v !== null && v !== '' && !isNaN(v)) {
                 marksArr.push(Number(v));
                 entries++;
             } else {
-                marksArr.push(0);
+                marksArr.push(null);
             }
+
+            // ★★★ কলামের মেটা যোগ করুন ★★★
+            columnMeta.push({ key: col.key, type: col.type, label: col.label });
         });
 
         if (entries === 0 || entries < requiredCols) {
             incomplete++;
-            details.push({ student: s, grade: 'অসম্পূর্ণ', total: marksArr.reduce((a,b)=>a+b,0), marksArr, entries });
+            details.push({ student: s, grade: 'অসম্পূর্ণ', total: marksArr.reduce((a,b)=> a + (b||0), 0), marksArr, entries });
             return;
         }
 
-        const calc = calculateGradeAndDivision(dept, marksArr, className);
+        // ★★★ কলাম মেটা সহ ফাংশন কল ★★★
+        const calc = calculateGradeAndDivision(dept, marksArr, className, columnMeta);
         const grade = calc.grade;
 
         if (grade === 'অনুপস্থিত') absent++;
@@ -57399,6 +57246,7 @@ async function loadTpMarksEntryTable() {
             cellsHTML += `<td class="p-0 border text-center">
                 <input type="text" inputmode="numeric" 
                     data-row="${rIdx}" data-student-id="${s.id}" data-col-key="${col.key}" data-col-type="${col.type}" 
+                    data-col-label="${col.label || col.name || ''}"
                     value="${val !== null ? val : ''}" 
                     class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm tp-mark-input outline-none bg-transparent"
                     onkeydown="handleTpSpreadsheetKeydown(event)"
@@ -57444,6 +57292,7 @@ async function loadTpMarksEntryTable() {
 window.updateTpRowLiveStats = function(rIdx, dept, className) {
     const inputs = document.querySelectorAll(`.tp-mark-input[data-row="${rIdx}"]`);
     let marksArray = [];
+    let columnMeta = [];
     inputs.forEach(inp => {
         const val = inp.value.trim();
         marksArray.push(val === '' ? 0 : Number(val));
@@ -57460,7 +57309,7 @@ window.updateTpRowLiveStats = function(rIdx, dept, className) {
         return;
     }
 
-    const calc = calculateGradeAndDivision(dept, marksArray, className);
+    const calc = calculateGradeAndDivision(dept, marksArray, className, columnMeta);
     
     totalEl.textContent = marksArray.reduce((a, b) => a + b, 0);
     avgEl.textContent = calc.avg;
@@ -57715,7 +57564,7 @@ window.onTpClassViewChange = async function(val) {
             });
         }
 
-        let currentDeptData = [];
+let currentDeptData = [];
         if (realStudents.length === 0) {
             wrap.innerHTML = `<div class="bg-white rounded-xl shadow-md p-10 text-center"><i class="fa-solid fa-user-slash text-5xl text-slate-300 mb-3"></i><h3 class="text-lg font-bold text-slate-700">এই জামাতে কোনো ছাত্র পাওয়া যায়নি!</h3></div>`;
             return;
@@ -57725,6 +57574,7 @@ window.onTpClassViewChange = async function(val) {
 
         realStudents.forEach(student => {
             let marks = [];
+            let columnMeta = []; // ★★★ নতুন যোগ করুন ★★★
 
             // ★★★ getStudentTermMarks ব্যবহার — এটাই মূল ফিক্স ★★★
             const termMarks = getStudentTermMarks(student, selectedYear, currentExam);
@@ -57745,10 +57595,16 @@ window.onTpClassViewChange = async function(val) {
                         val = termMarks.customMarks[colItem.key];
                     }
                 }
-                marks.push(val !== null && val !== undefined && val !== '' ? Number(val) : 0);
+                
+                // ★★★ খালি ঘর হলে null, নাহলে Number ★★★
+                marks.push(val !== null && val !== undefined && val !== '' ? Number(val) : null);
+                
+                // ★★★ কলামের মেটা যোগ করুন ★★★
+                columnMeta.push({ key: colItem.key, type: colItem.type, label: colItem.label });
             });
 
-            let calc = calculateGradeAndDivision(dept, marks, currentClass);
+            // ★★★ columnMeta সহ কল করুন ★★★
+            let calc = calculateGradeAndDivision(dept, marks, currentClass, columnMeta);
 
             currentDeptData.push({
                 id: student.studentId || 'N/A',
@@ -58039,6 +57895,8 @@ window.onTpDeptResultClassChange = async function(val) {
         // ✅ নতুন কোড — টার্ম-স্পেসিফিক মার্কস
         realStudents.forEach(student => {
             let marks = [];
+            let columnMeta = []; // ★★★ নতুন যোগ করুন ★★★
+
             // ★ getStudentTermMarks দিয়ে টার্ম-স্পেসিফিক ডাটা
             const termMarks = getStudentTermMarks(student, selectedYear, currentExam);
 
@@ -58053,10 +57911,16 @@ window.onTpDeptResultClassChange = async function(val) {
                         val = termMarks.customMarks[colItem.key];
                     }
                 }
-                marks.push(val !== null && val !== undefined && val !== '' ? Number(val) : 0);
+                
+                // ★★★ খালি ঘর হলে null, নাহলে Number ★★★
+                marks.push(val !== null && val !== undefined && val !== '' ? Number(val) : null);
+                
+                // ★★★ কলামের মেটা যোগ করুন ★★★
+                columnMeta.push({ key: colItem.key, type: colItem.type, label: colItem.label });
             });
 
-            let calc = calculateGradeAndDivision(dept, marks, currentClass);
+            // ★★★ columnMeta সহ কল করুন ★★★
+            let calc = calculateGradeAndDivision(dept, marks, currentClass, columnMeta);
 
             currentDeptData.push({
                 id: student.studentId || 'N/A', 
@@ -61597,7 +61461,7 @@ function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
         }
     });
 
-    // ★ সেভ করা অর্ডার অনুযায়ী সাজাই
+// ★ সেভ করা অর্ডার অনুযায়ী সাজাই
     const savedOrder = _marksColumnOrder[className] || [];
     let orderedCols = [];
     savedOrder.forEach(key => {
@@ -61614,6 +61478,7 @@ function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
     let currentDeptData = [];
     classmates.forEach(s => {
         let marksArr = [];
+        let columnMeta = []; // ★★★ নতুন যোগ করুন ★★★
         let entries = 0;
 
         orderedCols.forEach(col => {
@@ -61629,8 +61494,10 @@ function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
                 marksArr.push(Number(v));
                 entries++;
             } else {
-                marksArr.push(0);
+                marksArr.push(null);
             }
+            // ★★★ কলামের মেটা যোগ করুন ★★★
+            columnMeta.push({ key: col.key, type: col.type, label: col.label });
         });
 
         const isIncomplete = (entries < requiredCols || entries === 0);
@@ -61638,7 +61505,8 @@ function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
 
         if (!isIncomplete) {
             try {
-                calc = calculateGradeAndDivision(dept, marksArr, className);
+                // ★★★ columnMeta সহ কল করুন ★★★
+                calc = calculateGradeAndDivision(dept, marksArr, className, columnMeta);
             } catch (e) {
                 calc = { grade: '—', total: 0, avg: '0.00' };
             }
@@ -61651,7 +61519,8 @@ function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
             dept: dept,
             className: className,
             marks: marksArr,
-            total: calc.total || marksArr.reduce((a, b) => a + b, 0),
+            // ★★★ null থাকলে সেটা 0 ধরে যোগ করুন, যাতে NaN না আসে ★★★
+            total: calc.total || marksArr.reduce((a, b) => a + (b || 0), 0),
             avg: Number(calc.avg) || 0,
             grade: calc.grade,
             rank: 0,
