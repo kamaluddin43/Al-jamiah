@@ -4551,15 +4551,53 @@ header button {
 
 <!-- ═══════════════════ TAB: CLASS ROUTINE ═══════════════════ -->
 <section id="tab-routine" class="tab-content hidden space-y-4">
-    <!-- ★ হোম বাটন (sticky) -->
-    <div class="sticky top-16 md:top-20 z-30 flex justify-start">
+    <!-- ★ উপরের হোম ও রুটিন মেনু বাটন (sticky) -->
+    <div class="sticky top-16 md:top-20 z-30 flex justify-start gap-2 flex-wrap mb-3 no-print">
         <button onclick="switchTab('home')" class="flex items-center gap-2 px-4 py-2 bg-white hover:bg-emerald-50 border-2 border-emerald-600 text-emerald-800 hover:text-emerald-900 rounded-lg shadow-md hover:shadow-lg transition-all font-bold text-sm">
             <i class="fa-solid fa-house"></i>
             <span>হোম</span>
         </button>
+        
+        <button onclick="backToRoutineMenu()" id="routine-top-back-btn" class="hidden items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 border-2 border-slate-500 text-slate-800 rounded-lg shadow-md transition-all font-bold text-sm">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>রুটিন মেনু</span>
+        </button>
     </div>
-    <!-- ★ টপ: শিক্ষাবর্ষ + বিভাগ + ভাষা -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 no-print">
+
+    <!-- ★★★ রুটিন মূল মেনু (৪টি সাব-বাটন) ★★★ -->
+    <div id="routine-main-menu" class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
+        <div class="flex items-center justify-center gap-2 mb-6">
+            <div class="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm">
+                <i class="fa-solid fa-calendar-week"></i>
+            </div>
+            <h2 class="text-xl md:text-2xl font-bold text-teal-900 leading-none">ক্লাস রুটিন</h2>
+        </div>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 max-w-5xl mx-auto">
+            <button onclick="openRoutinePage('entry')" class="group bg-white border border-slate-200 rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                <i class="fa-solid fa-pen-to-square text-white bg-amber-500 rounded-xl w-12 h-12 flex items-center justify-center text-3xl md:text-4xl group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm md:text-base font-bold text-slate-800 leading-tight text-center">ডাটা এন্ট্রি</span>
+            </button>
+
+            <button onclick="openRoutinePage('teacher')" class="group bg-white border border-slate-200 rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                <i class="fa-solid fa-user-tie text-white bg-blue-500 rounded-xl w-12 h-12 flex items-center justify-center text-3xl md:text-4xl group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm md:text-base font-bold text-slate-800 leading-tight text-center">শিক্ষক ভিত্তিক</span>
+            </button>
+
+            <button onclick="openRoutinePage('jamat')" class="group bg-white border border-slate-200 rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                <i class="fa-solid fa-graduation-cap text-white bg-emerald-500 rounded-xl w-12 h-12 flex items-center justify-center text-3xl md:text-4xl group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm md:text-base font-bold text-slate-800 leading-tight text-center">জামাত ভিত্তিক</span>
+            </button>
+
+            <button onclick="openRoutinePage('matrix')" class="group bg-white border border-slate-200 rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[130px] md:min-h-[160px]">
+                <i class="fa-solid fa-table-cells-large text-white bg-purple-500 rounded-xl w-12 h-12 flex items-center justify-center text-3xl md:text-4xl group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm md:text-base font-bold text-slate-800 leading-tight text-center">ম্যাট্রিক্স ভিউ</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ★ টপ: শিক্ষাবর্ষ + বিভাগ + ভাষা (সাব-পেজ খোলার পর দেখাবে) -->
+    <div id="routine-top-bar" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 no-print hidden">
         <div class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 items-end">
             <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1">
@@ -4588,7 +4626,7 @@ header button {
         </div>
     </div>
 
-    <!-- ★ মৌসুম ট্যাব -->
+    <!-- ★ মৌসুম ট্যাব (সাব-পেজ খোলার পর দেখাবে) -->
     <div id="routine-season-wrapper" class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 no-print hidden">
         <div class="flex flex-wrap gap-2">
             <button onclick="switchRoutineSeason('winter')" id="routine-season-winter" class="routine-season-btn flex-1 md:flex-none px-5 py-3 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 bg-emerald-700 text-white shadow-md">
@@ -4602,42 +4640,16 @@ header button {
         </div>
     </div>
 
-    <!-- ★ সাব-বাটন -->
-    <div id="routine-subnav-wrapper" class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 no-print hidden">
-        <div class="flex flex-wrap gap-2">
-            <button onclick="switchRoutineSub('entry')" id="routine-sub-entry" class="routine-sub-btn flex-1 md:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 bg-amber-600 text-white shadow-md">
-                <i class="fa-solid fa-pen-to-square"></i>
-                <span>📝 ডাটা এন্ট্রি</span>
-            </button>
-            <button onclick="switchRoutineSub('teacher')" id="routine-sub-teacher" class="routine-sub-btn flex-1 md:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100 border border-slate-200">
-                <i class="fa-solid fa-user-tie"></i>
-                <span>👨‍🏫 শিক্ষক ভিত্তিক</span>
-            </button>
-            <button onclick="switchRoutineSub('jamat')" id="routine-sub-jamat" class="routine-sub-btn flex-1 md:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100 border border-slate-200">
-                <i class="fa-solid fa-graduation-cap"></i>
-                <span>🏫 জামাত ভিত্তিক</span>
-            </button>
-            <button onclick="switchRoutineSub('matrix')" id="routine-sub-matrix" class="routine-sub-btn flex-1 md:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100 border border-slate-200">
-                <i class="fa-solid fa-table-cells-large"></i>
-                <span>📊 ম্যাট্রিক্স ভিউ</span>
-            </button>
-        </div>
-        <p id="routine-sub-hint" class="text-[11px] text-slate-500 mt-2 flex items-center gap-2">
-            <i class="fa-solid fa-info-circle text-emerald-600"></i>
-            <span id="routine-sub-hint-text">শিক্ষাবর্ষ ও বিভাগ নির্বাচন করুন।</span>
-        </p>
-    </div>
-
-    <!-- ★ প্লেসহোল্ডার -->
-    <div id="routine-placeholder" class="bg-white rounded-xl shadow-md border border-slate-200 p-12 text-center">
+    <!-- ★ প্লেসহোল্ডার (মেনু পেজে দেখাবে না) -->
+    <div id="routine-placeholder" class="hidden bg-white rounded-xl shadow-md border border-slate-200 p-12 text-center">
         <i class="fa-solid fa-calendar-week text-emerald-300 text-5xl mb-4"></i>
         <h3 class="text-lg font-bold text-slate-700 mb-2">ক্লাস রুটিন</h3>
-        <p class="text-sm text-slate-500">শুরু করতে উপরে <strong>শিক্ষাবর্ষ</strong> ও <strong>বিভাগ</strong> নির্বাচন করুন।</p>
-        <p class="text-xs text-slate-400 mt-3">শরীয়াহ → আরবি রুটিন | নূরানী-নাযেরা ও অনাবাসিক → বাংলা রুটিন</p>
+        <p class="text-sm text-slate-500">উপরে থেকে একটি বিষয় নির্বাচন করুন।</p>
     </div>
 
     <!-- ★ সাব-ভিউ এলাকা -->
     <div id="routine-content" class="hidden">
+
         <div id="routine-view-entry" class="routine-view hidden"></div>
         <div id="routine-view-teacher" class="routine-view hidden"></div>
         <div id="routine-view-jamat" class="routine-view hidden"></div>
@@ -6422,20 +6434,36 @@ header button {
                             </div>
                         </div>
                     </div>
-                                        <!-- ৭. পাশের শর্ত (Pass Criteria) -->
+
+                    <!-- ৭. পাশের শর্ত (Pass Criteria) -->
                     <div class="bg-rose-50 border border-rose-200 rounded-xl p-4">
                         <h4 class="text-sm font-bold text-rose-900 mb-3 flex items-center gap-2">
                             <i class="fa-solid fa-shield-halved"></i> পাশের শর্ত (Pass Criteria)
                         </h4>
                         <div class="space-y-3">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="setting-require-subject-pass" class="w-4 h-4 rounded text-rose-600">
-                                <span class="text-sm font-semibold text-slate-700">গড়ে পাশের পাশাপাশি নির্দিষ্ট বিষয়ে পাশ করা বাধ্যতামূলক</span>
+                            <!-- অপশন ১ -->
+                            <label class="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-rose-100">
+                                <input type="radio" name="setting_pass_rule" value="all_subjects" class="w-4 h-4 text-rose-600 focus:ring-rose-500" onchange="toggleMandatorySubjectsUI()">
+                                <span class="text-sm font-semibold text-slate-700">সব বিষয়ে আলাদাভাবে পাশ নম্বর পেতে হবে (বর্তমান নিয়ম)</span>
                             </label>
-                            <div id="mandatory-subjects-wrap" class="hidden bg-white p-3 rounded border border-rose-200">
-                                <label class="text-xs font-semibold text-slate-700 block mb-1">বাধ্যতামূলক বিষয়সমূহ (কমা দিয়ে লিখুন):</label>
-                                <input type="text" id="setting-mandatory-subjects" placeholder="যেমন: কুরআন কারীম, আরবি ১ম" class="w-full rounded-lg border-slate-300 border p-2 text-sm">
-                                <p class="text-[10px] text-slate-500 mt-1">এই বিষয়গুলোতে ফেল করলে ছাত্রকে ফেল ধরা হবে।</p>
+                            
+                            <!-- অপশন ২ -->
+                            <label class="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-rose-100">
+                                <input type="radio" name="setting_pass_rule" value="total_only" class="w-4 h-4 text-rose-600 focus:ring-rose-500" onchange="toggleMandatorySubjectsUI()">
+                                <span class="text-sm font-semibold text-slate-700">শুধু মোট নম্বর বা গড়ে পাশ করলেই হবে (কোনো বিষয়ে ফেল নাই)</span>
+                            </label>
+
+                            <!-- অপশন ৩ -->
+                            <label class="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-rose-100">
+                                <input type="radio" name="setting_pass_rule" value="total_with_mandatory" class="w-4 h-4 text-rose-600 focus:ring-rose-500" onchange="toggleMandatorySubjectsUI()">
+                                <span class="text-sm font-semibold text-slate-700">মোট নম্বরে পাশ + নির্দিষ্ট (মিয়ারী) বিষয়ে পাশ বাধ্যতামূলক</span>
+                            </label>
+
+                            <!-- বাধ্যতামূলক বিষয়ের ইনপুট (শুধু অপশন ৩ সিলেক্ট করলে দেখাবে) -->
+                            <div id="mandatory-subjects-wrap" class="hidden bg-white p-3 rounded border border-rose-200 mt-2">
+                                <label class="text-xs font-semibold text-slate-700 block mb-1">মিয়ারী/বাধ্যতামূলক বিষয়সমূহ (কমা দিয়ে লিখুন):</label>
+                                <input type="text" id="setting-mandatory-subjects" placeholder="যেমন: নাহবেমীর, নাহবে মুয়াস্সার, কুরআন কারীম" class="w-full rounded-lg border-slate-300 border p-2 text-sm">
+                                <p class="text-[10px] text-slate-500 mt-1">এই বিষয়গুলোতে ফেল করলে ছাত্রকে ফেল ধরা হবে (যদিও মোট নম্বরে সে পাশ)।</p>
                             </div>
                         </div>
                     </div>
@@ -10248,23 +10276,10 @@ function getRoutineDeptInfo(dept, season) {
 }
 
 function checkRoutineReadiness() {
-    const ready = routineState.academicYear && routineState.dept;
-    const placeholder = document.getElementById('routine-placeholder');
-    const content = document.getElementById('routine-content');
-    const seasonWrap = document.getElementById('routine-season-wrapper');
-    const subWrap = document.getElementById('routine-subnav-wrapper');
-    
-    if (ready) {
-        placeholder.classList.add('hidden');
-        content.classList.remove('hidden');
-        seasonWrap.classList.remove('hidden');
-        subWrap.classList.remove('hidden');
+    if (routineState.subView && routineState.academicYear && routineState.dept) {
+        document.getElementById('routine-top-bar')?.classList.remove('hidden');
+        document.getElementById('routine-season-wrapper')?.classList.remove('hidden');
         renderRoutineSub();
-    } else {
-        placeholder.classList.remove('hidden');
-        content.classList.add('hidden');
-        seasonWrap.classList.add('hidden');
-        subWrap.classList.add('hidden');
     }
 }
 
@@ -10282,41 +10297,6 @@ window.switchRoutineSeason = function(season) {
     }
     
     onRoutineDeptChange();
-};
-
-window.switchRoutineSub = function(sub) {
-    // entry শুধু এডমিন
-    if (sub === 'entry' && currentUserData?.role !== 'admin') {
-        showToast('⚠️ ডাটা এন্ট্রি শুধু এডমিন করতে পারবেন', 'warn');
-        sub = 'teacher';
-    }
-    
-    routineState.subView = sub;
-    
-    document.querySelectorAll('.routine-sub-btn').forEach(b => {
-        b.classList.remove('bg-amber-600', 'text-white', 'shadow-md');
-        b.classList.add('text-slate-600', 'hover:bg-slate-100', 'border', 'border-slate-200');
-    });
-    const btn = document.getElementById('routine-sub-' + sub);
-    if (btn) {
-        btn.classList.add('bg-amber-600', 'text-white', 'shadow-md');
-        btn.classList.remove('text-slate-600', 'hover:bg-slate-100', 'border', 'border-slate-200');
-    }
-    
-    const hintEl = document.getElementById('routine-sub-hint-text');
-    const hints = {
-        entry:   'প্রতিটি শিক্ষকের জন্য আলাদাভাবে ঘণ্টা-ভিত্তিক কিতাব বন্টন করুন। কনফ্লিক্ট থাকলে সতর্কতা দেখানো হবে।',
-        teacher: 'শিক্ষকভিত্তিক রুটিন — সব শিক্ষক এক পেইজে বা আলাদা আলাদা পেইজে।',
-        jamat:   'জামাতভিত্তিক রুটিন — প্রতি জামাতের জন্য ঘণ্টা, কিতাব ও শিক্ষক একসাথে।',
-        matrix:  'ম্যাট্রিক্স ভিউ — সারিতে জামাত, কলামে ঘণ্টা, সেলে কিতাব। এক নজরে পুরো সপ্তাহ।'
-    };
-    if (hintEl) hintEl.textContent = hints[sub] || '';
-    
-    document.querySelectorAll('.routine-view').forEach(v => v.classList.add('hidden'));
-    const view = document.getElementById('routine-view-' + sub);
-    if (view) view.classList.remove('hidden');
-    
-    renderRoutineSub();
 };
 
 function renderRoutineSub() {
@@ -11841,10 +11821,6 @@ function buildTeacherOverviewHTML(teachers, info, routines, dept, season, year) 
                 let realClassName = validClasses.find(c => c.includes(fixedR.className) || fixedR.className.includes(c.split(' ')[0])) || fixedR.className;
                 fixedR.className = realClassName;
 
-                const validBooks = (configData?.books || {})[realClassName] || [];
-                let realBookName = validBooks.find(b => b.includes(fixedR.bookName) || fixedR.bookName.includes(b.split(' ')[0])) || fixedR.bookName;
-                fixedR.bookName = realBookName;
-
                 return fixedR;
             });
             if (entries.length === 0) {
@@ -11913,11 +11889,6 @@ function buildTeacherIndividualHTML(teacher, info, routines, dept, season, year)
         // ১. জামাতের নাম ফিক্স
         let realClassName = validClasses.find(c => c.includes(fixedR.className) || fixedR.className.includes(c.split(' ')[0])) || fixedR.className;
         fixedR.className = realClassName;
-
-        // ২. কিতাবের নাম ফিক্স
-        const validBooks = (configData?.books || {})[realClassName] || [];
-        let realBookName = validBooks.find(b => b.includes(fixedR.bookName) || fixedR.bookName.includes(b.split(' ')[0])) || fixedR.bookName;
-        fixedR.bookName = realBookName;
 
         return fixedR;
     });
@@ -30476,25 +30447,21 @@ function switchTab(tabId) {
     if (tabId === 'routine') {
         populateRoutineYearDropdown();
         populateRoutineDeptDropdown();
-        
-        if (routineState.subView === 'entry' && currentUserData?.role !== 'admin') {
-            routineState.subView = 'teacher';
-        }
-        
-        // ★★★ ফিক্স: ডিফল্ট মান স্টেটে সিঙ্ক করি এবং readiness চেক করি ★★★
+
+        // মেনু দেখাও, ভেতরের সব লুকাও
+        document.getElementById('routine-main-menu')?.classList.remove('hidden');
+        document.getElementById('routine-content')?.classList.add('hidden');
+        document.getElementById('routine-top-bar')?.classList.add('hidden');
+        document.getElementById('routine-season-wrapper')?.classList.add('hidden');
+        document.getElementById('routine-placeholder')?.classList.add('hidden');
+        routineState.subView = '';
+
+        // ডিফল্ট বছর ও বিভাগ স্টেটে বসাও
         setTimeout(() => {
             const yearSel = document.getElementById('routine-academic-year');
             const deptSel = document.getElementById('routine-dept');
-            
             routineState.academicYear = yearSel?.value || '';
             routineState.dept = deptSel?.value || '';
-            
-            // department display update
-            if (routineState.dept && typeof onRoutineDeptChange === 'function') {
-                onRoutineDeptChange();
-            } else {
-                checkRoutineReadiness();
-            }
         }, 100);
     }
     if (tabId === 'calendar') {
@@ -30585,6 +30552,66 @@ function switchTab(tabId) {
         }, 200);
     }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ক্লাস রুটিন — নতুন সাব-পেজ ডিসপ্যাচার ★★★
+// ═══════════════════════════════════════════════════════════════
+window.openRoutinePage = async function(sub) {
+    // entry শুধু এডমিন
+    if (sub === 'entry' && currentUserData?.role !== 'admin') {
+        showToast('⚠️ ডাটা এন্ট্রি শুধু এডমিন করতে পারবেন', 'warn');
+        sub = 'teacher';
+    }
+
+    routineState.subView = sub;
+
+    // মেনু লুকাও, টপ বার + সিজন বার + কনটেন্ট দেখাও
+    document.getElementById('routine-main-menu')?.classList.add('hidden');
+    // ★ রুটিন মেনু বাটন দেখাও
+    const topBackBtn = document.getElementById('routine-top-back-btn');
+    if (topBackBtn) {
+        topBackBtn.classList.remove('hidden');
+        topBackBtn.classList.add('flex');
+    }
+    document.getElementById('routine-placeholder')?.classList.add('hidden');
+    document.getElementById('routine-content')?.classList.remove('hidden');
+    document.getElementById('routine-top-bar')?.classList.remove('hidden');
+    document.getElementById('routine-season-wrapper')?.classList.remove('hidden');
+
+    // ডিফল্ট বছর ও বিভাগ
+    const yearSel = document.getElementById('routine-academic-year');
+    const deptSel = document.getElementById('routine-dept');
+    if (yearSel && !routineState.academicYear) routineState.academicYear = yearSel.value || '';
+    if (deptSel && !routineState.dept) routineState.dept = deptSel.value || '';
+
+    // ভাষা/সেশন ডিসপ্লে আপডেট
+    if (routineState.dept) {
+        onRoutineDeptChange();
+    } else {
+        showToast('⚠️ প্রথমে শিক্ষাবর্ষ ও বিভাগ সিলেক্ট করুন', 'warn');
+    }
+
+    // নির্দিষ্ট ভিউ দেখাও
+    document.querySelectorAll('.routine-view').forEach(v => v.classList.add('hidden'));
+    document.getElementById('routine-view-' + sub)?.classList.remove('hidden');
+
+    renderRoutineSub();
+};
+
+window.backToRoutineMenu = function() {
+    routineState.subView = '';
+    document.getElementById('routine-main-menu')?.classList.remove('hidden');
+    // ★ রুটিন মেনু বাটন লুকাও
+    const topBackBtn = document.getElementById('routine-top-back-btn');
+    if (topBackBtn) {
+        topBackBtn.classList.add('hidden');
+        topBackBtn.classList.remove('flex');
+    }
+    document.getElementById('routine-content')?.classList.add('hidden');
+    document.getElementById('routine-top-bar')?.classList.add('hidden');
+    document.getElementById('routine-season-wrapper')?.classList.add('hidden');
+    document.querySelectorAll('.routine-view').forEach(v => v.classList.add('hidden'));
+};
 
 // ═══════════════════ ক্লাস রুটিন — Year dropdown ═══════════════════
 function populateRoutineYearDropdown() {
@@ -39575,7 +39602,7 @@ window.rejectUser = async function(idx) {
 // ═══════════════════════════════════════════════════════════════
 
 function calculateGradeAndDivision(dept, marksArray, className = '') {
-    // ১. খালি বা ভুল ডাটা থাকলে সেটাকে 0 ধরে নেওয়া (NaN প্রতিরোধ)
+    // ১. খালি বা ভুল ডাটা থাকলে সেটাকে 0 ধরে নেওয়া
     const marks = marksArray.map(m => {
         const num = Number(m);
         return isNaN(num) ? 0 : num;
@@ -39585,89 +39612,114 @@ function calculateGradeAndDivision(dept, marksArray, className = '') {
     const totalMarks = marks.reduce((a, b) => a + b, 0);
     const avgMarks = marks.length > 0 ? totalMarks / marks.length : 0;
 
-    // ★ নতুন: নির্দিষ্ট বিষয়ে পাশ চেক
-    if (typeof _requireSubjectPass !== 'undefined' && _requireSubjectPass && _mandatorySubjects.length > 0) {
-        const books = (configData?.books || {})[className] || [];
-        for (let sub of _mandatorySubjects) {
-            const idx = books.findIndex(b => b.includes(sub));
-            if (idx !== -1 && marks[idx] < _defaultPassMark) {
-                return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
-            }
+    // ৩. নতুন পাশ/ফেল সেটিংস
+    const _passRule = window._passRule || 'all_subjects';
+    const _mandatorySubs = window._mandatorySubjects || [];
+    const _defaultPass = window._defaultPassMark || 33;
+
+    // ═══════════════════════════════════════════════════════════
+    // ★★★ নিখুঁত কলাম ম্যাপিং (marks অ্যারের সাথে orderedSubs মেলানো) ★★★
+    // ═══════════════════════════════════════════════════════════
+    const allBooks = (configData?.books || {})[className] || [];
+    const deletedCols = (_deletedMarksColumns?.[className]) || [];
+    const customCols = (_customMarksColumns?.[className]) || [];
+    const savedOrder = (_marksColumnOrder?.[className]) || [];
+
+    let tempSubs = [];
+    allBooks.forEach((book, idx) => {
+        const colKey = `default_${idx}`;
+        if (!deletedCols.includes(colKey)) {
+            tempSubs.push({ key: colKey, type: 'default', index: idx, label: book });
         }
+    });
+    customCols.forEach(col => {
+        if (!deletedCols.includes(col.key)) {
+            tempSubs.push({ key: col.key, type: 'custom', label: col.label });
+        }
+    });
+
+    let orderedSubs = [];
+    savedOrder.forEach(key => {
+        const found = tempSubs.find(c => c.key === key);
+        if (found) orderedSubs.push(found);
+    });
+    tempSubs.forEach(col => {
+        if (!orderedSubs.find(c => c.key === col.key)) orderedSubs.push(col);
+    });
+
+    // ★★★ বাধ্যতামূলক (মিয়ারী) বিষয় চেক ★★★
+    let mandatoryFail = false;
+    if (_mandatorySubs.length > 0) {
+        orderedSubs.forEach((sub, idx) => {
+            const subName = sub.label || '';
+            // এখানে индекс নিখুঁতভাবে মিলছে
+            if (_mandatorySubs.some(m => subName.includes(m))) {
+                if (marks[idx] < _defaultPass) {
+                    mandatoryFail = true;
+                }
+            }
+        });
     }
-    
-    // ★★★ ডাইনামিক কুরআন কারীম খোঁজার লজিক ★★★
+
+    // ★★★ কুরআন কারীম খোঁজার লজিক ★★★
     let quranIndex = -1;
+    const isQuranKareem = (bookName) => {
+        if (!bookName) return false;
+        if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
+        return bookName.includes('কুরআন কারীম') || 
+            bookName.includes('আল-কুরআন') || 
+            bookName.includes('القرآن') || 
+            bookName.toLowerCase().includes('quran');
+    };
 
-    // ★★★ শরীয়াহ (৪র্থ ছাড়া) — কুরআন কারীম আলাদা লজিক ★★★
     if (dept === 'shariah' && className !== 'صف رابع (৪র্থ শ্রেণী)') {
-        
-        // ─── মার্কস অ্যারের সাথে মিলে যাওয়া orderedSubs পুনর্গঠন ───
-        const allBooks = (configData?.books || {})[className] || [];
-        const deletedCols = (_deletedMarksColumns?.[className]) || [];
-        const customCols  = (_customMarksColumns?.[className]) || [];
-        const savedOrder  = (_marksColumnOrder?.[className]) || [];
-
-        let tempSubs = [];
-        allBooks.forEach((book, idx) => {
-            const colKey = `default_${idx}`;
-            if (!deletedCols.includes(colKey)) {
-                tempSubs.push({ key: colKey, type: 'default', index: idx, label: book });
-            }
-        });
-        customCols.forEach(col => {
-            if (!deletedCols.includes(col.key)) {
-                tempSubs.push({ key: col.key, type: 'custom', label: col.label });
-            }
-        });
-
-        let orderedSubs = [];
-        savedOrder.forEach(key => {
-            const found = tempSubs.find(c => c.key === key);
-            if (found) orderedSubs.push(found);
-        });
-        tempSubs.forEach(col => {
-            if (!orderedSubs.find(c => c.key === col.key)) orderedSubs.push(col);
-        });
-
-        const isQuranKareem = (bookName) => {
-            if (!bookName) return false;
-            if (bookName.includes('তরজমাতুল') || bookName.includes('تفسير') || bookName.includes('ترجمة')) return false;
-            return bookName.includes('কুরআন কারীম') || 
-                bookName.includes('আল-কুরআন') || 
-                bookName.includes('القرآن') || 
-                bookName.toLowerCase().includes('quran');
-        };
-
-        const quranIndex = orderedSubs.findIndex(col => 
+        quranIndex = orderedSubs.findIndex(col => 
             col.type === 'default' && isQuranKareem(col.label)
         );
+    }
 
-        // ─── কুরআন কলাম না থাকলে → সরাসরি সাধারণ শরীয়াহ লজিক ───
+    // ═══════════════════════════════════════════════════════════
+    // ★★★ শরীয়াহ (৪র্থ ছাড়া) — কুরআন লজিক ★★★
+    // ═══════════════════════════════════════════════════════════
+    if (dept === 'shariah' && className !== 'صف رابع (৪র্থ শ্রেণী)') {
+        
+        // ─── কুরআন কলাম না থাকলে ───
         if (quranIndex === -1) {
-            if (marks.some(m => m === 0))  return { grade: 'অনুপস্থিত', total: totalMarks, avg: avgMarks.toFixed(2) };
-            if (marks.some(m => m < 33))   return { grade: 'রাসিব',    total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (marks.some(m => m === 0)) return { grade: 'অনুপস্থিত', total: totalMarks, avg: avgMarks.toFixed(2) };
+            
+            let hasAnyFail = marks.some(m => m < _defaultPass);
+            let isPass = (_passRule === 'all_subjects') ? !hasAnyFail 
+                       : (_passRule === 'total_only') ? (avgMarks >= _defaultPass) 
+                       : (avgMarks >= _defaultPass) && !mandatoryFail;
+
+            if (!isPass) return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
             
             const scale = JSON.parse(localStorage.getItem('madrasa_grade_scale') || '{"mumtaz":80,"jj":65,"jayed":50,"maqbul":33}');
-            if (avgMarks >= scale.mumtaz) return { grade: 'মুমতায',          total: totalMarks, avg: avgMarks.toFixed(2) };
-            if (avgMarks >= scale.jj)     return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
-            if (avgMarks >= scale.jayed)  return { grade: 'জায়্যিদ',          total: totalMarks, avg: avgMarks.toFixed(2) };
-            if (avgMarks >= scale.maqbul) return { grade: 'মাকবুল',            total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= scale.mumtaz) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= scale.jj) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= scale.jayed) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= scale.maqbul) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
             return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
         }
 
-        // ─── কুরআন কলাম আছে → কুরআন বাদ দিয়ে টোটাল/অ্যাভারেজ ───
+        // ─── কুরআন কলাম আছে ───
         const quranMark = marks[quranIndex] || 0;
         const otherMarks = marks.filter((_, i) => i !== quranIndex);
         const totalOther = otherMarks.reduce((a, b) => a + b, 0);
-        const avgOther   = otherMarks.length > 0 ? totalOther / otherMarks.length : 0;
+        const avgOther = otherMarks.length > 0 ? totalOther / otherMarks.length : 0;
 
-        // ★ শুধু ফেল-চেকের জন্য কুরআন ব্যবহৃত; টোটালে কুরআন নেই
-        if (quranMark < 50)              return { grade: 'রাসিব',       total: totalOther, avg: avgOther.toFixed(2) };
-        if (otherMarks.some(m => m === 0)) return { grade: 'অনুপস্থিত',  total: totalOther, avg: avgOther.toFixed(2) };
-        if (otherMarks.some(m => m < 33))  return { grade: 'রাসিব',       total: totalOther, avg: avgOther.toFixed(2) };
+        if (quranMark < 50) return { grade: 'রাসিব', total: totalOther, avg: avgOther.toFixed(2) };
+        if (otherMarks.some(m => m === 0)) return { grade: 'অনুপস্থিত', total: totalOther, avg: avgOther.toFixed(2) };
 
-        // ★ গ্রেড = বাকি বিষয়ের গড়
+        // নতুন পাশ/ফেল (কুরআন বাদে বাকিগুলোর জন্য)
+        let hasAnyFailOther = otherMarks.some(m => m < _defaultPass);
+        let isPass = (_passRule === 'all_subjects') ? !hasAnyFailOther 
+                   : (_passRule === 'total_only') ? (avgOther >= _defaultPass) 
+                   : (avgOther >= _defaultPass) && !mandatoryFail;
+
+        if (!isPass) return { grade: 'রাসিব', total: totalOther, avg: avgOther.toFixed(2) };
+
+        // গ্রেডিং
         let grade = 'রাসিব';
         if (avgOther >= 80) grade = 'মুমতায';
         else if (avgOther >= 65) grade = 'জায়্যিদ জিদ্দান';
@@ -39677,46 +39729,66 @@ function calculateGradeAndDivision(dept, marksArray, className = '') {
         return { grade, total: totalOther, avg: avgOther.toFixed(2) };
     }
 
-    // ★★★ বাকি সব বিভাগ এবং ৪র্থ শ্রেণীর জন্য সাধারণ নিয়ম ★★★
-    if (dept === 'non_res') {
-        if (marks.some(m => m === 0)) return { grade: 'অনুপস্থিত', gpa: '0.00', total: totalMarks, avg: avgMarks.toFixed(2) };
-        if (marks.some(m => m < 33)) return { grade: 'F', gpa: '0.00', total: totalMarks, avg: avgMarks.toFixed(2) };
-        let gpa = (avgMarks >= 80) ? 5.00 : (avgMarks >= 70) ? 4.00 : (avgMarks >= 60) ? 3.50 : (avgMarks >= 50) ? 3.00 : (avgMarks >= 40) ? 2.00 : (avgMarks >= 33) ? 1.00 : 0.00;
-        let grade = (avgMarks >= 80) ? 'A+' : (avgMarks >= 70) ? 'A' : (avgMarks >= 60) ? 'A-' : (avgMarks >= 50) ? 'B' : (avgMarks >= 40) ? 'C' : (avgMarks >= 33) ? 'D' : 'F';
-        return { grade, gpa: gpa.toFixed(2), total: totalMarks, avg: avgMarks.toFixed(2) };
-    }
+    // ═══════════════════════════════════════════════════════════
+    // ★★★ অন্যান্য বিভাগ (নন-রেস, হিফজ, নূরানী) ★★★
+    // ═══════════════════════════════════════════════════════════
     
-    if (dept === 'hifz') {
-        if (marks.some(m => m === 0)) return { grade: 'অনুপস্থিত', total: totalMarks, avg: avgMarks.toFixed(2) };
-        // হিফজের ক্ষেত্রেও ডাইনামিক কুরআন খোঁজা
-        const qIdx = quranIndex !== -1 ? quranIndex : (marks[0] > 0 ? 0 : (marks[1] > 0 ? 1 : 2));
-        let quranMarks = marks[qIdx] || 0;
+    // সাধারণ পাশ/ফেল চেক (নন-রেস, হিফজ, নূরানীর জন্য)
+    if (dept === 'non_res' || dept === 'hifz' || dept === 'noorani') {
+        if (marks.some(m => m === 0)) {
+            return { grade: 'অনুপস্থিত', gpa: dept === 'non_res' ? '0.00' : undefined, total: totalMarks, avg: avgMarks.toFixed(2) };
+        }
         
-        if (marks.some(m => m < 33)) return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
-        if (quranMarks >= 80 && avgMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
-        else if (quranMarks >= 65 && avgMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
-        else if (quranMarks >= 50 && avgMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
-        else if (quranMarks >= 33 && avgMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
-        return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
-    }
-    
-    if (dept === 'noorani') {
-        if (marks.some(m => m === 0)) return { grade: 'অনুপস্থিত', total: totalMarks, avg: avgMarks.toFixed(2) };
-        if (marks.some(m => m < 33)) return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
-        
-        const qIdx = quranIndex !== -1 ? quranIndex : (marks[0] > 0 ? 0 : 5);
-        const quranMarks = marks[qIdx] || 0;
+        let hasAnyFail = marks.some(m => m < _defaultPass);
+        let isPass = (_passRule === 'all_subjects') ? !hasAnyFail 
+                   : (_passRule === 'total_only') ? (avgMarks >= _defaultPass) 
+                   : (avgMarks >= _defaultPass) && !mandatoryFail;
 
-        if (quranMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
-        if (quranMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
-        if (quranMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
-        if (quranMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
-        return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+        if (!isPass) {
+            return { grade: dept === 'non_res' ? 'F' : 'রাসিব', gpa: dept === 'non_res' ? '0.00' : undefined, total: totalMarks, avg: avgMarks.toFixed(2) };
+        }
+
+        // ফেল না হলে তাদের নিজস্ব গ্রেডিং
+        if (dept === 'non_res') {
+            let gpa = (avgMarks >= 80) ? 5.00 : (avgMarks >= 70) ? 4.00 : (avgMarks >= 60) ? 3.50 : (avgMarks >= 50) ? 3.00 : (avgMarks >= 40) ? 2.00 : (avgMarks >= 33) ? 1.00 : 0.00;
+            let grade = (avgMarks >= 80) ? 'A+' : (avgMarks >= 70) ? 'A' : (avgMarks >= 60) ? 'A-' : (avgMarks >= 50) ? 'B' : (avgMarks >= 40) ? 'C' : (avgMarks >= 33) ? 'D' : 'F';
+            return { grade, gpa: gpa.toFixed(2), total: totalMarks, avg: avgMarks.toFixed(2) };
+        }
+        
+        if (dept === 'hifz') {
+            const qIdx = quranIndex !== -1 ? quranIndex : (marks[0] > 0 ? 0 : (marks[1] > 0 ? 1 : 2));
+            let quranMarks = marks[qIdx] || 0;
+            
+            if (quranMarks >= 80 && avgMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
+            else if (quranMarks >= 65 && avgMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
+            else if (quranMarks >= 50 && avgMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
+            else if (quranMarks >= 33 && avgMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
+            return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+        }
+        
+        if (dept === 'noorani') {
+            const qIdx = quranIndex !== -1 ? quranIndex : (marks[0] > 0 ? 0 : 5);
+            const quranMarks = marks[qIdx] || 0;
+
+            if (quranMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (quranMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (quranMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (quranMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
+            return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+        }
     }
     
-    // শরীয়াহ (৪র্থ শ্রেণী) বা অন্যান্য — কুরআনের জন্য আলাদা কোনো ফেল-লজিক নেই, সব সাধারণ হিসাবের মতো
+    // ═══════════════════════════════════════════════════════════
+    // ★★★ শরীয়াহ ৪র্থ শ্রেণী বা অন্যান্য সাধারণ ★★★
+    // ═══════════════════════════════════════════════════════════
     if (marks.some(m => m === 0)) return { grade: 'অনুপস্থিত', total: totalMarks, avg: avgMarks.toFixed(2) };
-    if (marks.some(m => m < 33)) return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+    
+    let hasAnyFail = marks.some(m => m < _defaultPass);
+    let isPass = (_passRule === 'all_subjects') ? !hasAnyFail 
+               : (_passRule === 'total_only') ? (avgMarks >= _defaultPass) 
+               : (avgMarks >= _defaultPass) && !mandatoryFail;
+
+    if (!isPass) return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
     
     const gm = parseInt(localStorage.getItem('madrasa_grade_scale') ? JSON.parse(localStorage.getItem('madrasa_grade_scale')).mumtaz : 80);
     const gjj = parseInt(localStorage.getItem('madrasa_grade_scale') ? JSON.parse(localStorage.getItem('madrasa_grade_scale')).jj : 65);
@@ -40230,6 +40302,7 @@ let _seatSorting = 'roll';
 // ★ নতুন ৩টি সেটিংস
 let _watermarkText = 'মাকাদীরে আসবাক'; // ওয়াটারমার্ক টেক্সট
 let _requireSubjectPass = false;       // নির্দিষ্ট বিষয়ে পাশ বাধ্যতামূলক কি না
+window._passRule = 'all_subjects'; // ডিফল্ট
 let _mandatorySubjects = [];           // কোন কোন বিষয়ে পাশ বাধ্যতামূলক
 
 window.openResultDept = function(dept) {
@@ -43037,6 +43110,7 @@ window.loadExamSettings = async function() {
     _requireSubjectPass = localStorage.getItem('madrasa_req_sub_pass') === 'true';
     _mandatorySubjects = JSON.parse(localStorage.getItem('madrasa_mandatory_subs') || '[]');
     _watermarkText = localStorage.getItem('madrasa_watermark') || 'মাকাদীরে আসবাক';
+    _passRule = localStorage.getItem('madrasa_pass_rule') || 'all_subjects';
     
     // গ্রেড স্কেল (আগে থেকে ছিল, সেটাও লোড)
     const savedGrades = localStorage.getItem('madrasa_grade_scale');
@@ -43154,6 +43228,15 @@ window.populateExamSettingsUI = function() {
     if(document.getElementById('setting-require-subject-pass')) document.getElementById('setting-require-subject-pass').checked = _requireSubjectPass;
     if(document.getElementById('setting-mandatory-subjects')) document.getElementById('setting-mandatory-subjects').value = _mandatorySubjects.join(', ');
     if(document.getElementById('setting-watermark-text')) document.getElementById('setting-watermark-text').value = _watermarkText;
+
+    const radioBtns = document.querySelectorAll('input[name="setting_pass_rule"]');
+    radioBtns.forEach(radio => {
+        radio.checked = (radio.value === _passRule);
+    });
+    if(document.getElementById('setting-mandatory-subjects')) {
+        document.getElementById('setting-mandatory-subjects').value = _mandatorySubjects.join(', ');
+    }
+    toggleMandatorySubjectsUI();
     
     // গ্রেড স্কেল সেটিংস লোড
     const savedGrades = localStorage.getItem('madrasa_grade_scale');
@@ -43188,6 +43271,10 @@ window.saveExamSettings = function() {
     if (t1 + t2 + an !== 100) { showToast('⚠️ সাময়িক ওজনের মোট যোগফল ১০০ হতে হবে!', 'warn'); return; }
     _termWeights = { term1: t1, term2: t2, annual: an };
     localStorage.setItem('madrasa_term_weights', JSON.stringify(_termWeights));
+
+    const selectedRule = document.querySelector('input[name="setting_pass_rule"]:checked')?.value || 'all_subjects';
+    _passRule = selectedRule;
+    localStorage.setItem('madrasa_pass_rule', _passRule);
 
     // ★ নতুন সেভ
     const reqPass = document.getElementById('setting-require-subject-pass');
@@ -43266,13 +43353,14 @@ async function saveExamSettingsToFirestore() {
 }
 
 window.toggleMandatorySubjectsUI = function() {
-    const cb = document.getElementById('setting-require-subject-pass');
+    const selectedRule = document.querySelector('input[name="setting_pass_rule"]:checked')?.value;
     const wrap = document.getElementById('mandatory-subjects-wrap');
-    if (cb && wrap) {
-        if (cb.checked) wrap.classList.remove('hidden');
+    if (wrap) {
+        if (selectedRule === 'total_with_mandatory') wrap.classList.remove('hidden');
         else wrap.classList.add('hidden');
     }
 };
+
 document.getElementById('setting-require-subject-pass')?.addEventListener('change', toggleMandatorySubjectsUI);
 
 // ★ যেখানে switchExamSub ফাংশন আছে সেখানে এটি কল করতে হবে
@@ -73574,44 +73662,82 @@ async function getGpStudentAttendance(studentDbId, options = {}) {
     const { fromDate = '', toDate = '', type = '' } = options;
 
     try {
-        const { collection, getDocs } = window.fbFuncs;
-        const snap = await getDocs(collection(window.fbDB, 'attendance'));
-
+        const { collection, getDocs, query, where } = window.fbFuncs;
         const records = [];
+
+        // ★★★ ১. প্রথমে নতুন studentAttendance কালেকশন থেকে চেষ্টা করি ★★★
+        const q = query(
+            collection(window.fbDB, 'studentAttendance'),
+            where('studentDbId', '==', String(studentDbId))
+        );
+        const snap = await getDocs(q);
+        
         snap.forEach(d => {
-            const rec = { id: d.id, ...d.data() };
-
-            // ★ গার্ডিয়ান-visibility চেক
-            if (rec.guardianVisible === false) return;
-
-            // ★ ধরন ফিল্টার
-            if (type && rec.attendanceType !== type) return;
-
+            const r = d.data();
+            
             // ★ তারিখ ফিল্টার
+            if (fromDate && r.date < fromDate) return;
+            if (toDate && r.date > toDate) return;
+            
+            // ★ ধরন ফিল্টার
+            if (type && r.sessionType !== type) return;
+            
+            // ★ একই ছাত্র, তারিখ, সেশন, ঘণ্টা একবারই (ডুপ্লিকেট বাদ)
+            const key = `${r.date}::${r.sessionType}::${r.periodKey || ''}`;
+            if (records.find(x => x._dedupeKey === key)) return;
+            
+            records.push({
+                _dedupeKey: key,
+                attendanceId: d.id,
+                attendanceType: r.sessionType || 'daily',
+                date: r.date,
+                className: r.className || '',
+                classHour: r.periodKey || '',
+                timeSlot: '',
+                holidayName: '',
+                status: r.status,
+                remark: '',
+                markedBy: r.takenByName || '',
+                guardianVisible: true
+            });
+        });
+
+        // ★★★ ২. পুরনো attendance কালেকশন থেকেও ডাটা মিলাই (ব্যাকওয়ার্ড কম্প্যাটিবিলিটি) ★★★
+        const oldQ = query(
+            collection(window.fbDB, 'attendance'),
+            where('guardianVisible', '==', true)
+        );
+        const oldSnap = await getDocs(oldQ);
+        oldSnap.forEach(d => {
+            const rec = d.data();
             if (fromDate && rec.date < fromDate) return;
             if (toDate && rec.date > toDate) return;
-
-            // ★ এই ছাত্র এই হাজিরায় আছে কি না
-            const entry = (rec.students || []).find(s =>
-                String(s.studentDbId) === String(studentDbId)
-            );
-
-            if (entry) {
-                records.push({
-                    attendanceId: rec.id,
-                    attendanceType: rec.attendanceType,
-                    date: rec.date,
-                    className: rec.className || entry.className || '',
-                    classHour: rec.classHour || '',
-                    timeSlot: rec.timeSlot || '',
-                    holidayName: rec.holidayName || '',
-                    status: entry.status,
-                    remark: entry.remark || '',
-                    markedBy: rec.markedBy || '',
-                    guardianVisible: rec.guardianVisible !== false
-                });
-            }
+            if (type && rec.attendanceType !== type) return;
+            
+            const entry = (rec.students || []).find(s => String(s.studentDbId) === String(studentDbId));
+            if (!entry) return;
+            
+            const key = `${rec.date}::${rec.attendanceType}::${rec.classHour || ''}`;
+            if (records.find(x => x._dedupeKey === key)) return;
+            
+            records.push({
+                _dedupeKey: key,
+                attendanceId: d.id,
+                attendanceType: rec.attendanceType,
+                date: rec.date,
+                className: rec.className || entry.className || '',
+                classHour: rec.classHour || '',
+                timeSlot: rec.timeSlot || '',
+                holidayName: rec.holidayName || '',
+                status: entry.status,
+                remark: entry.remark || '',
+                markedBy: rec.markedBy || '',
+                guardianVisible: rec.guardianVisible !== false
+            });
         });
+
+        // ★ তারিখ অনুযায়ী সাজাই (নতুন আগে)
+        records.sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
         return records;
 
@@ -73728,28 +73854,52 @@ async function updateLiveAttendanceStats() {
         const { collection, getDocs, query, where } = window.fbFuncs;
         const todayStr = new Date().toISOString().split('T')[0];
 
+        // ★★★ ১. আজকের সব studentAttendance লোড ★★★
         const q = query(
             collection(window.fbDB, 'studentAttendance'),
             where('date', '==', todayStr)
         );
         const snap = await getDocs(q);
         
-        const studentStatusMap = {};
+        // ★★★ ২. প্রতিটি ছাত্রের জন্য দিনের স্ট্যাটাস বের করি ★★★
+        //    লজিক: 
+        //    - দৈনিক/সাপ্তাহিক/ছুটি হাজিরায় absent → সেই দিন "অনুপস্থিত"
+        //    - ক্লাস হাজিরায় absent → শুধু হিস্টোরিতে যাবে, দিনের গণনায় আসবে না
+        //    - ডুপ্লিকেট (একই ছাত্র + একই সেশন + একই ঘণ্টা) একবারই
+        const studentStatusMap = {}; 
+        // { studentDbId: { hasDailyAbsent: bool, hasClassAbsent: bool } }
+        
+        const seenSessions = new Set(); // ডুপ্লিকেট বাদ দেওয়ার জন্য
         
         snap.forEach(d => {
             const r = d.data();
-            // ★★★ ফিক্স: ক্লাস হাজিরা বাদ দাও ★★★
-            if (r.sessionType === 'class') return;
-
             const sid = String(r.studentDbId);
+            
+            // ডুপ্লিকেট চেক (একই ছাত্র + তারিখ + সেশন + ঘণ্টা)
+            const dedupeKey = `${sid}::${r.date}::${r.sessionType}::${r.periodKey || ''}`;
+            if (seenSessions.has(dedupeKey)) return;
+            seenSessions.add(dedupeKey);
+
             if (!studentStatusMap[sid]) {
-                studentStatusMap[sid] = { hasAbsent: false, hasLeave: false, hasSick: false };
+                studentStatusMap[sid] = { hasDailyAbsent: false, hasClassAbsent: false };
             }
-            if (r.status === 'absent') studentStatusMap[sid].hasAbsent = true;
-            if (r.status === 'leave')  studentStatusMap[sid].hasLeave = true;
-            if (r.status === 'sick')   studentStatusMap[sid].hasSick = true;
+
+            // দৈনিক/সাপ্তাহিক/ছুটি পরবর্তী → দিনের গণনায় আসবে
+            if (r.sessionType === 'daily' || r.sessionType === 'weekly' || r.sessionType === 'post-holiday') {
+                if (r.status === 'absent' || r.status === 'leave' || r.status === 'sick') {
+                    studentStatusMap[sid].hasDailyAbsent = true;
+                }
+            }
+            
+            // ক্লাস হাজিরা → শুধু হিস্টোরির জন্য, দিনের গণনায় আসবে না
+            if (r.sessionType === 'class') {
+                if (r.status === 'absent' || r.status === 'leave' || r.status === 'sick') {
+                    studentStatusMap[sid].hasClassAbsent = true;
+                }
+            }
         });
 
+        // ★★★ ৩. সক্রিয় ছাত্র ★★★
         const allowedClasses = typeof getTeacherAllowedClasses === 'function' ? getTeacherAllowedClasses() : [];
         const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
         
@@ -73761,17 +73911,27 @@ async function updateLiveAttendanceStats() {
             return true;
         });
 
+        // ★★★ ৪. উপস্থিতি গণনা ★★★
+        //    কেউ অনুপস্থিত = (hasDailyAbsent === true) 
+        //    (ক্লাস হাজিরার অনুপস্থিতি দিনের গণনায় আসবে না)
         let presentCount = 0;
+        let absentCount = 0;
+
         activeStudents.forEach(s => {
             const st = studentStatusMap[String(s.id)];
-            // কোন দৈনিক/সাপ্তাহিক/ছুটি হাজিরাতেও absent/leave/sick না থাকলে → উপস্থিত
-            if (!st || (!st.hasAbsent && !st.hasLeave && !st.hasSick)) {
+            
+            // দৈনিক/সাপ্তাহিক/ছুটি হাজিরায় অনুপস্থিত থাকলেই "অনুপস্থিত দিন"
+            if (st && st.hasDailyAbsent) {
+                absentCount++;
+            } else {
                 presentCount++;
             }
+            // ক্লাস হাজিরার অনুপস্থিতি এখানে গোনা হবে না
         });
 
         const totalCount = activeStudents.length;
 
+        // ★★★ ৫. UI আপডেট ★★★
         const statPresentMain = document.getElementById('stat-present');
         if (statPresentMain) {
             statPresentMain.textContent = toBanglaNumber(presentCount) + ' জন';
@@ -73782,7 +73942,7 @@ async function updateLiveAttendanceStats() {
             statPresentTp.textContent = toBanglaNumber(presentCount);
         }
         
-        console.log(`✅ Attendance Stats: ${presentCount} present / ${totalCount} total (class attendance ignored)`);
+        console.log(`✅ Attendance Stats: ${presentCount} উপস্থিত / ${absentCount} অনুপস্থিত / ${totalCount} মোট`);
 
     } catch (error) {
         console.error("❌ updateLiveAttendanceStats Error:", error);
