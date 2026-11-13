@@ -6468,6 +6468,64 @@ header button {
                         </div>
                     </div>
 
+                    <!-- ★★★ হিফয বিভাগ পাশের শর্ত (নতুন) ★★★ -->
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mt-4">
+                        <h4 class="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-shield-halved"></i> হিফয বিভাগ পাশের শর্ত (Pass Criteria)
+                        </h4>
+                        <div class="space-y-3">
+                            <label class="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-indigo-100">
+                                <input type="radio" name="setting_hifz_pass_rule" value="all_subjects" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500" onchange="toggleMandatorySubjectsUI()">
+                                <span class="text-sm font-semibold text-slate-700">সব বিষয়ে আলাদাভাবে পাশ নম্বর পেতে হবে (বর্তমান নিয়ম)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-indigo-100">
+                                <input type="radio" name="setting_hifz_pass_rule" value="total_only" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500" onchange="toggleMandatorySubjectsUI()">
+                                <span class="text-sm font-semibold text-slate-700">শুধু মোট নম্বর বা গড়ে পাশ করলেই হবে (কোনো বিষয়ে ফেল নাই)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-indigo-100">
+                                <input type="radio" name="setting_hifz_pass_rule" value="total_with_mandatory" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500" onchange="toggleMandatorySubjectsUI()">
+                                <span class="text-sm font-semibold text-slate-700">মোট নম্বরে পাশ + নির্দিষ্ট (মিয়ারী) বিষয়ে পাশ বাধ্যতামূলক</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- হিফযের জন্য নতুন অপশন -->
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mt-2 mb-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="setting-hifz-ignore-quran" onchange="window._ignoreQuranConditionHifz = this.checked" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 rounded">
+                            <span class="text-sm font-semibold text-slate-700">হিফয বিভাগে শুধু মোট নম্বর বা গড়ে পাশ করলেই হবে (কুরআনে আলাদা পাশ নম্বর লাগবে না)</span>
+                        </label>
+                    </div>
+
+                    <!-- ★★★ মক্তব বিভাগ পাশের শর্ত (নতুন) ★★★ -->
+                    <div class="bg-teal-50 border border-teal-200 rounded-xl p-4 mt-4">
+                        <h4 class="text-sm font-bold text-teal-900 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-shield-halved"></i> মক্তব বিভাগ পাশের শর্ত (Pass Criteria)
+                        </h4>
+                        <div class="space-y-3">
+                            <label class="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-teal-100">
+                                <input type="radio" name="setting_maktab_pass_rule" value="all_subjects" class="w-4 h-4 text-teal-600 focus:ring-teal-500" onchange="toggleMandatorySubjectsUI()">
+                                <span class="text-sm font-semibold text-slate-700">সব বিষয়ে আলাদাভাবে পাশ নম্বর পেতে হবে (বর্তমান নিয়ম)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-teal-100">
+                                <input type="radio" name="setting_maktab_pass_rule" value="total_only" class="w-4 h-4 text-teal-600 focus:ring-teal-500" onchange="toggleMandatorySubjectsUI()">
+                                <span class="text-sm font-semibold text-slate-700">শুধু মোট নম্বর বা গড়ে পাশ করলেই হবে (কোনো বিষয়ে ফেল নাই)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-teal-100">
+                                <input type="radio" name="setting_maktab_pass_rule" value="total_with_mandatory" class="w-4 h-4 text-teal-600 focus:ring-teal-500" onchange="toggleMandatorySubjectsUI()">
+                                <span class="text-sm font-semibold text-slate-700">মোট নম্বরে পাশ + নির্দিষ্ট (মিয়ারী) বিষয়ে পাশ বাধ্যতামূলক</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- মক্তবের জন্য নতুন অপশন -->
+                    <div class="bg-teal-50 border border-teal-200 rounded-xl p-4 mt-2 mb-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="setting-maktab-ignore-quran" onchange="window._ignoreQuranConditionMaktab = this.checked" class="w-4 h-4 text-teal-600 focus:ring-teal-500 rounded">
+                            <span class="text-sm font-semibold text-slate-700">মক্তব বিভাগে শুধু মোট নম্বর বা গড়ে পাশ করলেই হবে (আরবিতে আলাদা পাশ নম্বর লাগবে না)</span>
+                        </label>
+                    </div>
+
                     <!-- ৮. গ্রেডিং স্কেল এডিটর (Grading Scale) -->
                     <div class="bg-cyan-50 border border-cyan-200 rounded-xl p-4">
                         <h4 class="text-sm font-bold text-cyan-900 mb-3 flex items-center gap-2">
@@ -39620,6 +39678,10 @@ function calculateGradeAndDivision(dept, marksArray, className = '', columnMeta 
 
     // ২. নতুন পাশ/ফেল সেটিংস
     const _passRule = window._passRule || 'all_subjects';
+    // ★ নতুন যোগ করা হলো: বিভাগ অনুযায়ী আলাদা পাশের শর্ত
+    let activePassRule = _passRule;
+    if (dept === 'hifz') activePassRule = window._hifzPassRule || 'all_subjects';
+    else if (dept === 'maktab' || dept === 'noorani') activePassRule = window._maktabPassRule || 'all_subjects';
     const _mandatorySubs = window._mandatorySubjects || [];
     const _defaultPass = window._defaultPassMark || 33;
 
@@ -39667,8 +39729,8 @@ function calculateGradeAndDivision(dept, marksArray, className = '', columnMeta 
         if (otherMarks.length === 0) return { grade: 'অসম্পূর্ণ', total: 0, avg: '0.00' };
 
         let hasAnyFail = otherMarks.some(m => m < _defaultPass);
-        let isPass = (_passRule === 'all_subjects') ? !hasAnyFail 
-                   : (_passRule === 'total_only') ? (avgOther >= _defaultPass) 
+        let isPass = (activePassRule === 'all_subjects') ? !hasAnyFail 
+                   : (activePassRule === 'total_only') ? (avgOther >= _defaultPass) 
                    : (avgOther >= _defaultPass) && !mandatoryFail;
 
         if (!isPass) return { grade: 'রাসিব', total: totalOther, avg: avgOther.toFixed(2) };
@@ -39685,8 +39747,8 @@ function calculateGradeAndDivision(dept, marksArray, className = '', columnMeta 
     if (marks.some(m => m === null)) return { grade: 'অসম্পূর্ণ', total: totalMarks, avg: avgMarks.toFixed(2) };
     
     let hasAnyFail = marks.some(m => m < _defaultPass);
-    let isPass = (_passRule === 'all_subjects') ? !hasAnyFail 
-               : (_passRule === 'total_only') ? (avgMarks >= _defaultPass) 
+    let isPass = (activePassRule === 'all_subjects') ? !hasAnyFail 
+               : (activePassRule === 'total_only') ? (avgMarks >= _defaultPass) 
                : (avgMarks >= _defaultPass) && !mandatoryFail;
 
     if (!isPass) {
@@ -39701,22 +39763,46 @@ function calculateGradeAndDivision(dept, marksArray, className = '', columnMeta 
         return { grade, gpa: gpa.toFixed(2), total: totalMarks, avg: avgMarks.toFixed(2) };
     }
     
+    // ★★★ হিফয লজিক ★★★
     if (dept === 'hifz') {
-        let quranMarks = quranIndex !== -1 ? marks[quranIndex] : (marks[0] || 0);
-        if (quranMarks >= 80 && avgMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
-        else if (quranMarks >= 65 && avgMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
-        else if (quranMarks >= 50 && avgMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
-        else if (quranMarks >= 33 && avgMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
-        return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+        // যদি সেটিংসে কন্ডিশন বাদ দেওয়া থাকে, তবে সরাসরি গড় চেক করবে
+        if (window._ignoreQuranConditionHifz) {
+            if (avgMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
+            return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+        } 
+        // নাহলে আগের লজিক (কুরআন + গড় দুটোই চেক)
+        else {
+            let quranMarks = quranIndex !== -1 ? marks[quranIndex] : (marks[0] || 0);
+            if (quranMarks >= 80 && avgMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
+            else if (quranMarks >= 65 && avgMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
+            else if (quranMarks >= 50 && avgMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
+            else if (quranMarks >= 33 && avgMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
+            return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+        }
     }
     
-    if (dept === 'noorani') {
-        const quranMarks = quranIndex !== -1 ? marks[quranIndex] : (marks[0] || 0);
-        if (quranMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
-        if (quranMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
-        if (quranMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
-        if (quranMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
-        return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+    // ★★★ মক্তব/নূরানী লজিক ★★★
+    if (dept === 'noorani' || dept === 'maktab') {
+        // যদি সেটিংসে কন্ডিশন বাদ দেওয়া থাকে
+        if (window._ignoreQuranConditionMaktab) {
+            if (avgMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (avgMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
+            return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+        }
+        // নাহলে আগের লজিক
+        else {
+            const quranMarks = quranIndex !== -1 ? marks[quranIndex] : (marks[0] || 0);
+            if (quranMarks >= 80) return { grade: 'মুমতায', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (quranMarks >= 65) return { grade: 'জায়্যিদ জিদ্দান', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (quranMarks >= 50) return { grade: 'জায়্যিদ', total: totalMarks, avg: avgMarks.toFixed(2) };
+            if (quranMarks >= 33) return { grade: 'মাকবুল', total: totalMarks, avg: avgMarks.toFixed(2) };
+            return { grade: 'রাসিব', total: totalMarks, avg: avgMarks.toFixed(2) };
+        }
     }
     
     const gm = parseInt(localStorage.getItem('madrasa_grade_scale') ? JSON.parse(localStorage.getItem('madrasa_grade_scale')).mumtaz : 80);
@@ -40232,6 +40318,11 @@ let _seatSorting = 'roll';
 let _watermarkText = 'মাকাদীরে আসবাক'; // ওয়াটারমার্ক টেক্সট
 let _requireSubjectPass = false;       // নির্দিষ্ট বিষয়ে পাশ বাধ্যতামূলক কি না
 window._passRule = 'all_subjects'; // ডিফল্ট
+window._hifzPassRule = 'all_subjects'; 
+window._maktabPassRule = 'all_subjects';
+// নতুন যোগ করা হলো: কুরআন/আরবি কন্ডিশন বাদ দেওয়ার জন্য
+window._ignoreQuranConditionHifz = false;
+window._ignoreQuranConditionMaktab = false;
 let _mandatorySubjects = [];           // কোন কোন বিষয়ে পাশ বাধ্যতামূলক
 
 window.openResultDept = function(dept) {
@@ -42958,6 +43049,12 @@ window.loadExamSettings = async function() {
     _mandatorySubjects = JSON.parse(localStorage.getItem('madrasa_mandatory_subs') || '[]');
     _watermarkText = localStorage.getItem('madrasa_watermark') || 'মাকাদীরে আসবাক';
     _passRule = localStorage.getItem('madrasa_pass_rule') || 'all_subjects';
+
+    window._hifzPassRule = localStorage.getItem('madrasa_hifz_pass_rule') || 'all_subjects';
+    window._maktabPassRule = localStorage.getItem('madrasa_maktab_pass_rule') || 'all_subjects';
+
+    window._ignoreQuranConditionHifz = localStorage.getItem('madrasa_hifz_ignore_quran') === 'true';
+    window._ignoreQuranConditionMaktab = localStorage.getItem('madrasa_maktab_ignore_quran') === 'true';
     
     // গ্রেড স্কেল (আগে থেকে ছিল, সেটাও লোড)
     const savedGrades = localStorage.getItem('madrasa_grade_scale');
@@ -43080,6 +43177,19 @@ window.populateExamSettingsUI = function() {
     radioBtns.forEach(radio => {
         radio.checked = (radio.value === _passRule);
     });
+    
+    const hifzRadios = document.querySelectorAll('input[name="setting_hifz_pass_rule"]');
+    hifzRadios.forEach(radio => { radio.checked = (radio.value === window._hifzPassRule); });
+
+    const maktabRadios = document.querySelectorAll('input[name="setting_maktab_pass_rule"]');
+    maktabRadios.forEach(radio => { radio.checked = (radio.value === window._maktabPassRule); });
+
+    const chkHifz = document.getElementById('setting-hifz-ignore-quran');
+    if (chkHifz) chkHifz.checked = window._ignoreQuranConditionHifz;
+
+    const chkMaktab = document.getElementById('setting-maktab-ignore-quran');
+    if (chkMaktab) chkMaktab.checked = window._ignoreQuranConditionMaktab;
+
     if(document.getElementById('setting-mandatory-subjects')) {
         document.getElementById('setting-mandatory-subjects').value = _mandatorySubjects.join(', ');
     }
@@ -43122,6 +43232,20 @@ window.saveExamSettings = function() {
     const selectedRule = document.querySelector('input[name="setting_pass_rule"]:checked')?.value || 'all_subjects';
     _passRule = selectedRule;
     localStorage.setItem('madrasa_pass_rule', _passRule);
+
+    const selectedHifzRule = document.querySelector('input[name="setting_hifz_pass_rule"]:checked')?.value || 'all_subjects';
+    window._hifzPassRule = selectedHifzRule;
+    localStorage.setItem('madrasa_hifz_pass_rule', window._hifzPassRule);
+
+    const selectedMaktabRule = document.querySelector('input[name="setting_maktab_pass_rule"]:checked')?.value || 'all_subjects';
+    window._maktabPassRule = selectedMaktabRule;
+    localStorage.setItem('madrasa_maktab_pass_rule', window._maktabPassRule);
+
+    window._ignoreQuranConditionHifz = document.getElementById('setting-hifz-ignore-quran')?.checked || false;
+    localStorage.setItem('madrasa_hifz_ignore_quran', window._ignoreQuranConditionHifz);
+
+    window._ignoreQuranConditionMaktab = document.getElementById('setting-maktab-ignore-quran')?.checked || false;
+    localStorage.setItem('madrasa_maktab_ignore_quran', window._ignoreQuranConditionMaktab);
 
     // ★ নতুন সেভ
     const reqPass = document.getElementById('setting-require-subject-pass');
@@ -54471,6 +54595,33 @@ window.showTeacherPortal = function() {
 
 }; 
 
+window.renderAttTakenBanner = function(container, takenBy, takenAt) {
+    const oldBanner = document.getElementById('att-taken-banner');
+    if (oldBanner) oldBanner.remove();
+
+    if (!takenBy) return;
+
+    const timeStr = takenAt ? takenAt.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }) : '';
+    
+    const banner = document.createElement('div');
+    banner.id = 'att-taken-banner';
+    banner.className = 'bg-amber-50 border-l-4 border-amber-500 text-amber-900 p-3 rounded-r-lg mb-3 flex items-start gap-3 text-sm shadow-sm';
+    banner.innerHTML = `
+        <i class="fa-solid fa-circle-exclamation text-amber-500 text-lg mt-0.5"></i>
+        <div>
+            <strong class="block text-amber-800">এই হাজিরা ইতিমধ্যে সম্পন্ন হয়েছে!</strong>
+            <span class="text-xs text-amber-700">
+                সর্বশেষ আপডেট করেছেন: <strong>${takenBy}</strong> 
+                ${timeStr ? `(সময়: ${timeStr})` : ''}। 
+                নিচে দেখানো স্ট্যাটাসগুলো সেই অনুযায়ী আপডেট করা হয়েছে। প্রয়োজনে আপনি পরিবর্তন করে আবার সেভ করতে পারেন।
+            </span>
+        </div>
+    `;
+    
+    // কন্টেইনারের একদম উপরে বসাই
+    container.insertBefore(banner, container.firstChild);
+};
+
 async function loadTpProfileStats() {
     try {
         console.log("⏳ loadTpProfileStats চলছে...");
@@ -54543,27 +54694,52 @@ async function loadTpProfileStats() {
 
         try {
             const todayStr = new Date().toISOString().split('T')[0];
-            const myName = window.currentUserData?.teacherName || window.currentUserData?.name || '';
-            
-            // ফায়ারবেস থেকে আজকের হাজিরা চেক করি (শিক্ষকের নিজের নেওয়া)
             const { collection, getDocs, query, where } = window.fbFuncs;
-            const q = query(
-                collection(window.fbDB, 'attendance'),
-                where('markedBy', '==', myName),
-                where('date', '==', todayStr)
-            );
-            const snap = await getDocs(q);
             
-            // যাদের "অনুপস্থিত" বা "ছুটি" দেওয়া হয়েছে, তাদের সেটে রাখি
+            // ★ ফিক্স ১: myName ডিক্লেয়ার
+            const myName = currentUserData?.teacherName || currentUserData?.name || '';
+
+            // যাদের "অনুপস্থিত" বা "ছুটি" দেওয়া হয়েছে, তাদের সেটে রাখি
             const absentOrLeaveSet = new Set();
-            snap.forEach(d => {
-                const rec = d.data();
-                (rec.students || []).forEach(st => {
-                    if (st.status === 'absent' || st.status === 'leave') {
-                        absentOrLeaveSet.add(String(st.studentDbId));
+            
+            // ★ ১. attendance থেকে (শিক্ষক পোর্টালের নতুন হাজিরা — array)
+            try {
+                const q = query(
+                    collection(window.fbDB, 'attendance'),
+                    where('markedBy', '==', myName),
+                    where('date', '==', todayStr)
+                );
+                const snap = await getDocs(q);
+                snap.forEach(d => {
+                    const rec = d.data();
+                    (rec.students || []).forEach(st => {
+                        if (st.status === 'absent' || st.status === 'leave' || st.status === 'sick') {
+                            absentOrLeaveSet.add(String(st.studentDbId));
+                        }
+                    });
+                });
+            } catch (e1) { console.warn('⚠️ attendance load:', e1); }
+
+            // ★ ২. studentAttendance থেকে (এডমিন বা টিচার যেভাবে দিয়েছে)
+            try {
+                const q2 = query(
+                    collection(window.fbDB, 'studentAttendance'),
+                    where('date', '==', todayStr)
+                );
+                const snap2 = await getDocs(q2);
+                snap2.forEach(d => {
+                    const r = d.data();
+                    if (r.sessionType === 'daily' || r.sessionType === 'weekly' || r.sessionType === 'post-holiday') {
+                        if (r.status === 'absent' || r.status === 'leave' || r.status === 'sick') {
+                            const key = (r.dept || '') + '::' + (r.className || '');
+                            // ★ ফিক্স ২: allowedClasses → allowed
+                            if (allowed.includes(key)) {
+                                absentOrLeaveSet.add(String(r.studentDbId));
+                            }
+                        }
                     }
                 });
-            });
+            } catch (e2) { console.warn('⚠️ studentAttendance load:', e2); }
 
             // উপস্থিতি হিসাব: (মোট ছাত্র - অনুপস্থিত/ছুটি)
             presentCount = activeStudents.filter(s => !absentOrLeaveSet.has(String(s.id))).length;
@@ -60858,7 +61034,7 @@ async function renderGpResults(container) {
     // ★★★ পাবলিশ চেক ★★★
     // ★★★ নতুন: শিক্ষাবর্ষ ও পরীক্ষার কনটেক্সট ★★★
     const ctxYear = window._marksContext?.academicYear || getCurrentYear();
-    const ctxExam = window._marksContext?.examType || 'term2';
+    const ctxExam = window._marksContext?.examType ?? 'term2';
     
     // পাবলিশ চেক (শুধু চলতি পরীক্ষার জন্য, আগেরগুলো সবসময় দেখা যাবে)
     const isCurrentExam = (ctxExam === 'term2'); // আপনার চলতি পরীক্ষা যদি term2 হয়
@@ -70119,30 +70295,60 @@ async function loadTpClassStudents() {
             return;
         }
 
-        // ★ আগের হাজিরা লোড (ঐ তারিখ + ক্লাস + শিক্ষক)
+        // ★ আগের হাজিরা লোড (ঐ তারিখ + ক্লাস) - উভয় কালেকশন থেকে
         let existingStatuses = {};
+        let alreadyTakenBy = null;
+        let alreadyTakenAt = null;
+
         try {
             const { collection, getDocs, query, where } = window.fbFuncs;
-            const myName = currentUserData?.teacherName || currentUserData?.name || '';
-            const q = query(
+            const existing = {};
+            const timeTracker = {}; 
+
+            // ১. attendance থেকে (শিক্ষকের সেভ করা ডাটা)
+            const q1 = query(
                 collection(window.fbDB, 'attendance'),
                 where('attendanceType', '==', 'class'),
                 where('date', '==', state.date),
-                where('className', '==', className),
-                where('markedBy', '==', myName)
+                where('className', '==', className)
             );
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-                const existing = snap.docs[0].data();
-                (existing.students || []).forEach(st => {
-                    existingStatuses[st.studentDbId] = st.status;
+            const snap1 = await getDocs(q1);
+            snap1.forEach(d => {
+                const r = d.data();
+                // ফায়ারবেসের টাইমস্ট্যাম্প থেকে মিলিসেকেন্ড বের করি
+                const rTime = r.markedAt?.toMillis ? r.markedAt.toMillis() : 0; 
+                
+                (r.students || []).forEach(st => {
+                    if (!timeTracker[st.studentDbId] || rTime >= timeTracker[st.studentDbId]) {
+                        timeTracker[st.studentDbId] = rTime;
+                        existing[st.studentDbId] = st.status;
+                    }
                 });
-            }
+            });
+
+            // ২. studentAttendance থেকে (এডমিনের সেভ করা ডাটা)
+            const q2 = query(
+                collection(window.fbDB, 'studentAttendance'),
+                where('sessionType', '==', 'class'),
+                where('date', '==', state.date),
+                where('className', '==', className)
+            );
+            const snap2 = await getDocs(q2);
+            snap2.forEach(d => {
+                const r = d.data();
+                const rTime = r.takenAt?.toMillis ? r.takenAt.toMillis() : 0;
+                
+                if (!timeTracker[r.studentDbId] || rTime >= timeTracker[r.studentDbId]) {
+                    timeTracker[r.studentDbId] = rTime;
+                    existing[r.studentDbId] = r.status;
+                }
+            });
+
+            state.statuses = existing;
+
         } catch (err) {
             console.warn('⚠️ Previous class attendance load:', err);
         }
-
-        state.statuses = { ...existingStatuses };
 
         // ★ ছাত্র লিস্ট রেন্ডার
         const rowsHTML = myStudents.map((s, i) => {
@@ -70334,6 +70540,8 @@ window.saveTpClassAttendance = async function() {
     const sampleStudent = studentsData[0];
     const dept = sampleStudent?.dept || '';
 
+    const myName = currentUserData?.teacherName || currentUserData?.name || '';
+    
     const payload = {
         attendanceType: 'class',
         date: state.date,
@@ -70357,7 +70565,8 @@ window.saveTpClassAttendance = async function() {
         markedBy: currentUserData?.teacherName || currentUserData?.name || '',
         markedByUid: currentUser?.uid || '',
         markedAt: new Date(),
-        lastEditedAt: new Date()
+        lastEditedAt: new Date(),
+        updatedAt: Date.now()
     };
 
     // ★ বাটন লোডিং
@@ -70398,6 +70607,14 @@ window.saveTpClassAttendance = async function() {
             });
             showToast(`✅ "${className}" নতুন হাজিরা — ${summary.present}/${summary.total} উপস্থিত`, 'success');
         }
+        try {
+            await syncTeacherAttToAdmin({
+                date: state.date, className, dept,
+                attendanceType: 'class',
+                classHour: state.selectedPeriodKey || state.classHour,
+                students: studentsData, markedBy: payload.markedBy
+            });
+        } catch (e) { console.warn(e); }
 
     } catch (err) {
         console.error('❌ saveTpClassAttendance:', err);
@@ -70717,26 +70934,12 @@ async function loadTpDailyStudents() {
             byClass[s.className].push(s);
         });
 
-        // ★ আগের হাজিরা লোড
+        // ★ আগের হাজিরা লোড (সিঙ্ক হেল্পার দিয়ে)
         let existingStatuses = {};
         try {
-            const { collection, getDocs, query, where } = window.fbFuncs;
-            const myName = currentUserData?.teacherName || currentUserData?.name || '';
-            const q = query(
-                collection(window.fbDB, 'attendance'),
-                where('attendanceType', '==', 'daily'),
-                where('date', '==', window._tpDailyState.date),
-                where('markedBy', '==', myName)
-            );
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-                const existing = snap.docs[0].data();
-                (existing.students || []).forEach(st => {
-                    existingStatuses[st.studentDbId] = st.status;
-                });
-            }
-        } catch (err) {
-            console.warn('⚠️ Previous daily attendance load:', err);
+            existingStatuses = await loadTeacherAttStatuses('daily', window._tpDailyState.date);
+        } catch (err) { 
+            console.warn('⚠️ Daily attendance load:', err); 
         }
 
         window._tpDailyState.statuses = { ...existingStatuses };
@@ -71004,6 +71207,15 @@ window.saveTpDailyAttendance = async function() {
             attendanceId = ref.id;
             showToast(`✅ নতুন হাজিরা সেভ — ${summary.present}/${summary.total} উপস্থিত`, 'success');
         }
+
+        try {
+            await syncTeacherAttToAdmin({
+                date: state.date, className: '', dept: '',
+                attendanceType: 'daily',
+                classHour: '', timeSlot: state.timeSlot,
+                students: studentsData, markedBy: payload.markedBy
+            });
+        } catch (e) { console.warn(e); }
 
         // ★★★ গার্ডিয়ান নোটিফিকেশন (বিকল্প) ★★★
         if (absentStudentIds.length > 0) {
@@ -71359,26 +71571,12 @@ async function loadTpWeeklyStudents() {
             byClass[s.className].push(s);
         });
 
-        // ★ আগের হাজিরা লোড করি (ঐ তারিখ + শুক্রবার/শনিবার + এই শিক্ষক)
+        // ★ আগের হাজিরা লোড করি (সিঙ্ক হেল্পার দিয়ে)
         let existingStudents = {};
         try {
-            const { collection, getDocs, query, where } = window.fbFuncs;
-            const myName = currentUserData?.teacherName || currentUserData?.name || '';
-            const q = query(
-                collection(window.fbDB, 'attendance'),
-                where('attendanceType', '==', 'weekly'),
-                where('date', '==', window._tpWeeklyState.date),
-                where('markedBy', '==', myName)
-            );
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-                const existing = snap.docs[0].data();
-                (existing.students || []).forEach(st => {
-                    existingStudents[st.studentDbId] = st.status;
-                });
-            }
-        } catch (err) {
-            console.warn('⚠️ Previous weekly attendance load:', err);
+            existingStudents = await loadTeacherAttStatuses('weekly', window._tpWeeklyState.date);
+        } catch (err) { 
+            console.warn('⚠️ Weekly attendance load:', err); 
         }
 
         // ★ স্টেট রিসেট করি (আগের স্টেট মুছে নতুনটা সেট করি)
@@ -71662,6 +71860,15 @@ window.saveTpWeeklyAttendance = async function() {
                 'success'
             );
         }
+
+        try {
+            await syncTeacherAttToAdmin({
+                date: state.date, className: '', dept: '',
+                attendanceType: 'weekly',
+                classHour: '', timeSlot: state.timeSlot,
+                students: studentsData, markedBy: payload.markedBy
+            });
+        } catch (e) { console.warn(e); }
 
     } catch (err) {
         console.error('❌ saveTpWeeklyAttendance:', err);
@@ -71962,23 +72169,9 @@ async function loadTpPostHolidayStudents() {
         // ★ আগের হাজিরা লোড (ঐ তারিখে এই শিক্ষকের ছুটি পরবর্তী হাজিরা)
         let existingStatuses = {};
         try {
-            const { collection, getDocs, query, where } = window.fbFuncs;
-            const myName = currentUserData?.teacherName || currentUserData?.name || '';
-            const q = query(
-                collection(window.fbDB, 'attendance'),
-                where('attendanceType', '==', 'post-holiday'),
-                where('date', '==', window._tpPostHolidayState.date),
-                where('markedBy', '==', myName)
-            );
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-                const existing = snap.docs[0].data();
-                (existing.students || []).forEach(st => {
-                    existingStatuses[st.studentDbId] = st.status;
-                });
-            }
-        } catch (err) {
-            console.warn('⚠️ Previous post-holiday attendance load:', err);
+            existingStatuses = await loadTeacherAttStatuses('post-holiday', window._tpPostHolidayState.date);
+        } catch (err) { 
+            console.warn('⚠️ Post-holiday attendance load:', err); 
         }
 
         window._tpPostHolidayState.statuses = { ...existingStatuses };
@@ -72236,6 +72429,15 @@ window.saveTpPostHolidayAttendance = async function() {
             });
             showToast(`✅ নতুন হাজিরা সেভ — ${summary.present}/${summary.total} উপস্থিত`, 'success');
         }
+
+        try {
+            await syncTeacherAttToAdmin({
+                date: state.date, className: '', dept: '',
+                attendanceType: 'post-holiday',
+                classHour: '', timeSlot: state.timeSlot, holidayName: state.holidayName,
+                students: studentsData, markedBy: payload.markedBy
+            });
+        } catch (e) { console.warn(e); }
     } catch (err) {
         console.error('❌ saveTpPostHolidayAttendance:', err);
         showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
@@ -72483,30 +72685,110 @@ async function loadTpAttendanceHistory() {
     try {
         const { collection, getDocs, query, where } = window.fbFuncs;
 
-        // ★ এই শিক্ষকের হাজিরা
+        // ═══════════════════════════════════════════════════════════
+        // 🆕 দুই কালেকশন থেকে ডাটা লোড করি (studentAttendance + attendance)
+        // ═══════════════════════════════════════════════════════════
+        
+        // এই শিক্ষকের অনুমোদিত ক্লাসগুলো
+        const allowedClasses = typeof getTeacherAllowedClasses === 'function' ? getTeacherAllowedClasses() : [];
+        const myClassKeys = new Set(allowedClasses);
+
+        // ─── ১. studentAttendance থেকে (এডমিনের হাজিরা) ───
+        const snap1 = await getDocs(collection(window.fbDB, 'studentAttendance'));
+        // session-এ group করার ম্যাপ
+        const sessionMap = new Map();
+
+        snap1.forEach(d => {
+            const r = d.data();
+            // এই শিক্ষকের ক্লাসের কি না
+            if (!myClassKeys.has((r.dept || '') + '::' + (r.className || ''))) return;
+            // তারিখ ফিল্টার
+            if (state.fromDate && r.date < state.fromDate) return;
+            if (state.toDate && r.date > state.toDate) return;
+            // ধরন ফিল্টার
+            if (state.type && r.sessionType !== state.type) return;
+            // ক্লাস ফিল্টার
+            if (state.className && r.className !== state.className) return;
+
+            const key = `${r.date}::${r.sessionType}::${r.periodKey || ''}::${r.className}::${r.takenByName || ''}`;
+            if (!sessionMap.has(key)) {
+                sessionMap.set(key, {
+                    date: r.date,
+                    attendanceType: r.sessionType,
+                    className: r.className || '',
+                    classHour: r.periodKey || '',
+                    timeSlot: r.timeSlot || '',
+                    holidayName: r.holidayName || '',
+                    markedBy: r.takenByName || '',
+                    takenByRole: r.takenByRole || '',
+                    students: [],
+                    summary: { total: 0, present: 0, absent: 0, late: 0, leave: 0, sick: 0 }
+                });
+            }
+            const s = sessionMap.get(key);
+            s.students.push({
+                studentDbId: r.studentDbId,
+                name: r.studentName,
+                studentId: r.studentId,
+                className: r.className,
+                dept: r.dept,
+                status: r.status
+            });
+            s.summary.total++;
+            if (s.summary[r.status] !== undefined) s.summary[r.status]++;
+        });
+
+        // ─── ২. attendance থেকে (নিজের পুরনো হাজিরা — array format) ───
         const q = query(
             collection(window.fbDB, 'attendance'),
             where('markedBy', '==', myName)
         );
-        const snap = await getDocs(q);
+        const snap2 = await getDocs(q);
 
-        let records = [];
-        snap.forEach(d => records.push({ id: d.id, ...d.data() }));
+        snap2.forEach(d => {
+            const r = d.data();
+            if (!Array.isArray(r.students)) return;
+            if (state.fromDate && r.date < state.fromDate) return;
+            if (state.toDate && r.date > state.toDate) return;
+            if (state.type && r.attendanceType !== state.type) return;
+            if (state.className && r.className !== state.className) return;
 
-        // ★ ফিল্টার: তারিখ
-        if (state.fromDate) records = records.filter(r => r.date >= state.fromDate);
-        if (state.toDate) records = records.filter(r => r.date <= state.toDate);
+            const key = `${r.date}::${r.attendanceType}::${r.classHour || ''}::${r.className}::${r.markedBy}`;
+            if (!sessionMap.has(key)) {
+                sessionMap.set(key, {
+                    date: r.date,
+                    attendanceType: r.attendanceType,
+                    className: r.className || '',
+                    classHour: r.classHour || '',
+                    timeSlot: r.timeSlot || '',
+                    holidayName: r.holidayName || '',
+                    markedBy: r.markedBy || '',
+                    takenByRole: 'teacher',
+                    students: [],
+                    summary: { total: 0, present: 0, absent: 0, late: 0, leave: 0, sick: 0 }
+                });
+            }
+            const s = sessionMap.get(key);
+            r.students.forEach(st => {
+                s.students.push({
+                    studentDbId: st.studentDbId,
+                    name: st.name,
+                    studentId: st.studentId,
+                    className: st.className,
+                    dept: st.dept,
+                    status: st.status
+                });
+                s.summary.total++;
+                if (s.summary[st.status] !== undefined) s.summary[st.status]++;
+            });
+        });
 
-        // ★ ফিল্টার: ধরন
-        if (state.type) records = records.filter(r => r.attendanceType === state.type);
-
-        // ★ ফিল্টার: ক্লাস
-        if (state.className) records = records.filter(r => r.className === state.className);
-
-        // ★ Sort: নতুন আগে
+        // ─── ৩. Sort করি (নতুন আগে) ───
+        let records = Array.from(sessionMap.values());
         records.sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
         state.records = records;
+        // ★★★★★★ নতুন ব্লক শেষ ★★★★★★
 
         // ★ সারসংক্ষেপ আপডেট
         updateAttHistSummary(records);
@@ -72581,7 +72863,7 @@ async function loadTpAttendanceHistory() {
                         </div>
                     </td>
                     <td class="p-2 text-center">
-                        <button onclick="viewTpAttendanceDetail('${r.id}')" 
+                        <button onclick="viewTpAttendanceDetail(${i})" 
                                 class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-[10px] font-bold rounded transition"
                                 title="বিস্তারিত দেখুন">
                             <i class="fa-solid fa-eye"></i>
@@ -72716,8 +72998,16 @@ window.refreshTpAttendanceHistory = function() {
 // ═══════════════════════════════════════════════════════════════
 // ৫. বিস্তারিত দেখা
 // ═══════════════════════════════════════════════════════════════
-window.viewTpAttendanceDetail = function(attendanceId) {
-    const rec = window._tpAttHistoryState.records.find(r => r.id === attendanceId);
+window.viewTpAttendanceDetail = function(idxOrId) {
+    // ★ নতুন: records array-এ index দিয়ে খুঁজি (কারণ session-object-এ id নেই)
+    const idx = parseInt(idxOrId, 10);
+    let rec = null;
+    if (!isNaN(idx) && window._tpAttHistoryState.records[idx]) {
+        rec = window._tpAttHistoryState.records[idx];
+    } else {
+        // পুরনো id-ভিত্তিক fallback
+        rec = window._tpAttHistoryState.records.find(r => r.id === idxOrId);
+    }
     if (!rec) return showToast('❌ রেকর্ড পাওয়া যায়নি', 'error');
 
     const typeLabels = {
@@ -72831,11 +73121,11 @@ window.viewTpAttendanceDetail = function(attendanceId) {
 
             <!-- ★ ফুটার -->
             <div class="p-3 bg-slate-50 border-t flex justify-end gap-2 flex-shrink-0">
-                <button onclick="printTpAttendanceDetail('${attendanceId}')" 
+                <button onclick="printTpAttendanceDetail('${idxOrId}')" 
                         class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-lg shadow">
                     <i class="fa-solid fa-print"></i> প্রিন্ট
                 </button>
-                <button onclick="shareTpAttendanceDetailPDF('${attendanceId}')" 
+                <button onclick="shareTpAttendanceDetailPDF('${idxOrId}')" 
                         class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg shadow">
                     <i class="fa-solid fa-file-pdf"></i> PDF
                 </button>
@@ -73768,6 +74058,41 @@ async function updateLiveAttendanceStats() {
             }
         });
 
+        // ═══════════════════════════════════════════════════════════
+        // 🆕 শিক্ষক পোর্টালের হাজিরাও পড়ি (attendance কালেকশন)
+        // ═══════════════════════════════════════════════════════════
+        try {
+            const q2 = query(
+                collection(window.fbDB, 'attendance'),
+                where('date', '==', todayStr)
+            );
+            const snap2 = await getDocs(q2);
+
+            snap2.forEach(d => {
+                const rec = d.data();
+                if (!Array.isArray(rec.students)) return;
+                
+                // শুধু daily/weekly/post-holiday এর অনুপস্থিতি দিনের গণনায় আসবে
+                // (class হলে আসবে না — এডমিনের লজিকের সাথেও মিলে)
+                if (rec.attendanceType !== 'daily' 
+                    && rec.attendanceType !== 'weekly' 
+                    && rec.attendanceType !== 'post-holiday') return;
+
+                rec.students.forEach(st => {
+                    const sid = String(st.studentDbId);
+                    if (st.status === 'absent' || st.status === 'leave' || st.status === 'sick') {
+                        if (!studentStatusMap[sid]) {
+                            studentStatusMap[sid] = { hasDailyAbsent: false, hasClassAbsent: false };
+                        }
+                        studentStatusMap[sid].hasDailyAbsent = true;
+                    }
+                });
+            });
+            console.log('✅ attendance collection থেকে শিক্ষকের হাজিরাও গণনায় যোগ হয়েছে');
+        } catch (attErr) {
+            console.warn('⚠️ attendance collection load failed:', attErr);
+        }
+
         // ★★★ ৩. সক্রিয় ছাত্র ★★★
         const allowedClasses = typeof getTeacherAllowedClasses === 'function' ? getTeacherAllowedClasses() : [];
         const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
@@ -73819,6 +74144,145 @@ async function updateLiveAttendanceStats() {
 }
 </script>
 <script>
+// ═══════════════════════════════════════════════════════════════
+// ★★★ হাজিরা সিঙ্ক — শিক্ষক ↔ এডমিন ★★★
+// ═══════════════════════════════════════════════════════════════
+
+async function syncTeacherAttToAdmin(attendanceData) {
+    try {
+        const { collection, getDocs, query, where, addDoc, deleteDoc, doc, serverTimestamp } = window.fbFuncs;
+        const { date, className, dept, attendanceType, classHour, timeSlot, holidayName, students, markedBy } = attendanceData;
+        if (!date || !attendanceType || !Array.isArray(students) || students.length === 0) return;
+
+        const studentIdsInSave = new Set(students.map(s => String(s.studentDbId)));
+
+        // পুরনো studentAttendance ডিলিট (শুধু এই সেভের ছাত্রদের)
+        const oldQ = query(
+            collection(window.fbDB, 'studentAttendance'),
+            where('date', '==', date),
+            where('sessionType', '==', attendanceType)
+        );
+        const oldSnap = await getDocs(oldQ);
+        for (const d of oldSnap.docs) {
+            const r = d.data();
+            if (!studentIdsInSave.has(String(r.studentDbId))) continue;
+            const matchPeriod = attendanceType === 'class'
+                ? String(r.periodKey || '') === String(classHour || '')
+                : true;
+            if (matchPeriod) await deleteDoc(doc(window.fbDB, 'studentAttendance', d.id));
+        }
+
+        // নতুন ডাটা যোগ
+        for (const s of students) {
+            const p = {
+                date, sessionType: attendanceType,
+                studentDbId: s.studentDbId, studentId: s.studentId || '',
+                studentName: s.name || '', className: s.className || className || '',
+                dept: s.dept || dept || '', status: s.status,
+                takenBy: currentUser?.uid || 'system',
+                takenByName: markedBy || 'শিক্ষক',
+                takenByRole: 'teacher',
+                takenAt: serverTimestamp(),
+                updatedAt: Date.now()
+            };
+            if (attendanceType === 'class') p.periodKey = classHour || '';
+            if (timeSlot) p.timeSlot = timeSlot;
+            if (holidayName) p.holidayName = holidayName;
+            await addDoc(collection(window.fbDB, 'studentAttendance'), p);
+        }
+    } catch (err) { console.warn('⚠️ syncTeacherAttToAdmin:', err); }
+}
+
+async function syncAdminAttToTeacher(sessionInfo, entries, studentsMap) {
+    try {
+        const { collection, getDocs, query, where, addDoc, deleteDoc, doc, serverTimestamp } = window.fbFuncs;
+        const { date, className, dept, sessionType, periodKey, timeSlot, holidayName } = sessionInfo;
+        if (!date || !className || !sessionType || entries.length === 0) return;
+
+        // পুরনো attendance ডিলিট (শুধু এই শ্রেণির, এই সেশনের)
+        const oldQ = query(
+            collection(window.fbDB, 'attendance'),
+            where('date', '==', date),
+            where('className', '==', className),
+            where('attendanceType', '==', sessionType)
+        );
+        const oldSnap = await getDocs(oldQ);
+        for (const d of oldSnap.docs) {
+            const r = d.data();
+            const matchPeriod = sessionType === 'class'
+                ? String(r.classHour || '') === String(periodKey || '')
+                : true;
+            if (matchPeriod) await deleteDoc(doc(window.fbDB, 'attendance', d.id));
+        }
+
+        const students = entries.map(e => {
+            const s = studentsMap[e.studentDbId] || {};
+            return {
+                studentDbId: e.studentDbId, studentId: s.studentId || '',
+                name: s.name || '', className: s.className || className,
+                dept: s.dept || dept, status: e.status, remark: '', timeIn: ''
+            };
+        });
+        if (students.length === 0) return;
+
+        const summary = { total: students.length, present: 0, absent: 0, late: 0, leave: 0, sick: 0 };
+        students.forEach(s => { if (summary[s.status] !== undefined) summary[s.status]++; });
+
+        await addDoc(collection(window.fbDB, 'attendance'), {
+            attendanceType: sessionType, date,
+            monthKey: date.slice(0, 7),
+            academicYear: typeof getCurrentYear === 'function' ? getCurrentYear() : '',
+            session: 'শীতকালীন',
+            className, dept, classHour: periodKey || '',
+            timeSlot: timeSlot || '', holidayName: holidayName || '',
+            students, summary,
+            markedBy: 'Admin',
+            markedByUid: currentUser?.uid || '',
+            markedAt: serverTimestamp(),
+            lastEditedAt: new Date()
+        });
+    } catch (err) { console.warn('⚠️ syncAdminAttToTeacher:', err); }
+}
+
+async function loadTeacherAttStatuses(type, date) {
+    const result = {}, timeTracker = {};
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+
+        const q1 = query(
+            collection(window.fbDB, 'attendance'),
+            where('attendanceType', '==', type),
+            where('date', '==', date)
+        );
+        const snap1 = await getDocs(q1);
+        snap1.forEach(d => {
+            const r = d.data();
+            const t = r.markedAt?.toMillis ? r.markedAt.toMillis() : 0;
+            (r.students || []).forEach(st => {
+                if (!timeTracker[st.studentDbId] || t >= timeTracker[st.studentDbId]) {
+                    timeTracker[st.studentDbId] = t;
+                    result[st.studentDbId] = st.status;
+                }
+            });
+        });
+
+        const q2 = query(
+            collection(window.fbDB, 'studentAttendance'),
+            where('sessionType', '==', type),
+            where('date', '==', date)
+        );
+        const snap2 = await getDocs(q2);
+        snap2.forEach(d => {
+            const r = d.data();
+            const t = r.takenAt?.toMillis ? r.takenAt.toMillis() : 0;
+            if (!timeTracker[r.studentDbId] || t >= timeTracker[r.studentDbId]) {
+                timeTracker[r.studentDbId] = t;
+                result[r.studentDbId] = r.status;
+            }
+        });
+    } catch (err) { console.warn('⚠️ loadTeacherAttStatuses:', err); }
+    return result;
+}
 // ═══════════════════════════════════════════════════════════════
 // ★★★ হাজিরা (Attendance) — Admin Module ★★★
 // ═══════════════════════════════════════════════════════════════
@@ -74372,14 +74836,40 @@ async function updateLiveAttendanceStats() {
         
         try {
             const { collection, getDocs, query, where } = window.fbFuncs;
-            const q = query(collection(window.fbDB, 'studentAttendance'), where('date', '==', st.date), where('className', '==', st.className), where('sessionType', '==', st.subTab));
-            const snap = await getDocs(q);
             const existing = {};
-            snap.forEach(d => {
+            const timeTracker = {};
+
+            // ১. studentAttendance থেকে (এডমিনের ডাটা)
+            const q1 = query(collection(window.fbDB, 'studentAttendance'), where('date', '==', st.date), where('className', '==', st.className), where('sessionType', '==', st.subTab));
+            const snap1 = await getDocs(q1);
+            snap1.forEach(d => {
                 const r = d.data();
                 const key = st.subTab === 'class' ? `${r.studentDbId}::${r.periodKey}` : r.studentDbId;
-                if (r.takenByRole === 'admin' || !existing[key]) existing[key] = r.status;
+                // ফায়ারবেসের টাইমস্ট্যাম্প থেকে মিলিসেকেন্ড বের করি
+                const rTime = r.takenAt?.toMillis ? r.takenAt.toMillis() : 0; 
+                
+                if (!timeTracker[key] || rTime >= timeTracker[key]) {
+                    timeTracker[key] = rTime;
+                    existing[key] = r.status;
+                }
             });
+
+            // ২. attendance থেকে (শিক্ষকের ডাটা)
+            const q2 = query(collection(window.fbDB, 'attendance'), where('date', '==', st.date), where('className', '==', st.className), where('attendanceType', '==', st.subTab));
+            const snap2 = await getDocs(q2);
+            snap2.forEach(d => {
+                const r = d.data();
+                const rTime = r.markedAt?.toMillis ? r.markedAt.toMillis() : 0;
+                
+                (r.students || []).forEach(s2 => {
+                    const key = st.subTab === 'class' ? `${s2.studentDbId}::${r.classHour}` : s2.studentDbId;
+                    if (!timeTracker[key] || rTime >= timeTracker[key]) {
+                        timeTracker[key] = rTime;
+                        existing[key] = s2.status;
+                    }
+                });
+            });
+
             st.records = existing;
         } catch (err) { console.warn('load student att:', err); }
         
@@ -74565,12 +75055,36 @@ async function updateLiveAttendanceStats() {
                     studentDbId: s.id, studentId: s.studentId || '', studentName: s.name || '',
                     className: s.className || '', dept: s.dept || '', status: e.status,
                     takenBy: currentUser?.uid || '', takenByName: currentUserData?.name || 'এডমিন',
-                    takenByRole: 'admin', takenAt: serverTimestamp()
+                    takenByRole: 'admin', takenAt: serverTimestamp(),
+                    updatedAt: Date.now() // ★★★ নতুন: টাইমস্ট্যাম্প যোগ করা হলো ★★★
                 };
                 if (e.periodKey) payload.periodKey = e.periodKey;
                 await addDoc(collection(window.fbDB, 'studentAttendance'), payload);
                 n++;
             }
+
+        // ★ নতুন — attendance কালেকশনে সিঙ্ক (শিক্ষকের পোর্টাল আপডেটের জন্য)
+        try {
+            const studentsMap = {};
+            students.forEach(s => { studentsMap[s.id] = s; });
+
+            if (st.subTab === 'class') {
+                const uniquePks = [...new Set(entries.map(e => e.periodKey).filter(Boolean))];
+                for (const pk of uniquePks) {
+                    const pEntries = entries.filter(e => e.periodKey === pk);
+                    await syncAdminAttToTeacher(
+                        { date: st.date, className: st.className, dept: st.dept, sessionType: 'class', periodKey: pk },
+                        pEntries, studentsMap
+                    );
+                }
+            } else {
+                await syncAdminAttToTeacher(
+                    { date: st.date, className: st.className, dept: st.dept, sessionType: st.subTab },
+                    entries, studentsMap
+                );
+            }
+        } catch (e) { console.warn(e); }
+
             showToast(`✅ ${n}টি হাজিরা রেকর্ড সেভ হয়েছে`, 'success');
         } catch (err) { showToast('❌ ' + err.message, 'error'); }
     };
@@ -74637,6 +75151,39 @@ async function updateLiveAttendanceStats() {
                 absents.push(r);
             });
             
+            // ═══════════════════════════════════════════════════════════
+            // 🆕 শিক্ষক পোর্টালের হাজিরাও পড়ি (attendance কালেকশন — array format)
+            // ═══════════════════════════════════════════════════════════
+            try {
+                const snap2 = await getDocs(collection(window.fbDB, 'attendance'));
+                snap2.forEach(d => {
+                    const rec = d.data();
+                    if (!Array.isArray(rec.students)) return;
+                    if (rec.date < start || rec.date > end) return;
+                    if (st.dept && rec.dept !== st.dept) return;
+                    if (st.className && rec.className !== st.className) return;
+
+                    rec.students.forEach(s2 => {
+                        if (s2.status !== 'absent') return;
+                        // attendance array → studentAttendance-এর মতো shape-এ রূপান্তর
+                        absents.push({
+                            studentDbId: s2.studentDbId,
+                            studentName: s2.name,
+                            studentId: s2.studentId,
+                            className: s2.className || rec.className,
+                            dept: s2.dept || rec.dept,
+                            status: 'absent',
+                            date: rec.date,
+                            sessionType: rec.attendanceType,
+                            periodKey: rec.classHour || ''
+                        });
+                    });
+                });
+                console.log('✅ attendance collection থেকেও হিস্টোরি merge হয়েছে');
+            } catch (attErr) {
+                console.warn('⚠️ attendance collection load failed:', attErr);
+            }
+
             // ★ ডুপ্লিকেট বাদ দেওয়া (একই ছাত্র, তারিখ, সেশন, ঘণ্টা একবারই)
             const seen = new Set();
             const deduped = [];
