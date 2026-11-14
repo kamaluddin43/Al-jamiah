@@ -8188,7 +8188,19 @@ function buildMarksheetHTML(student, options = {}) {
     const logo = settings.logo || '';
     const session = settings.year || '';
 
-    const examTypeText = options.examType || (lang === 'ar' ? 'الاختبار' : 'পরীক্ষা');
+    // ★★★ পরীক্ষার নাম ডাইনামিকালি বের করার ফিক্স ★★★
+    let examTypeText = options.examType;
+    if (!examTypeText || examTypeText === 'পরীক্ষা') {
+        const ctxExam = window._marksContext?.examType || 'term2';
+        const examLabels = {
+            term1: lang === 'ar' ? 'الاختبار الأول' : '১ম সাময়িক পরীক্ষা',
+            term2: lang === 'ar' ? 'الاختبار الثاني' : '২য় সাময়িক পরীক্ষা',
+            model: lang === 'ar' ? 'الاختبار النموذجي' : 'মডেল টেস্ট',
+            qurbani: lang === 'ar' ? 'اختبار الأضحية' : 'কুরবানী পরীক্ষা',
+            annual: lang === 'ar' ? 'الاختبار السنوي' : 'বার্ষিক পরীক্ষা'
+        };
+        examTypeText = examLabels[ctxExam] || (lang === 'ar' ? 'الاختبار' : 'পরীক্ষা');
+    }
 
     // ★ ১. শিক্ষার্থী পরিচিতি (২টি কলামের পেয়ার দিয়ে প্রতি সারিতে ৪টি <td> তৈরি)
     const infoPairs = [
@@ -8343,6 +8355,13 @@ function buildMarksheetHTML(student, options = {}) {
                 <h2 class="ms-madrasa-bn">${madrasaBn}</h2>
                 ${addr ? `<p class="ms-address">${addr}</p>` : ''}
             </div>
+        </div>
+
+        <!-- ★★★ নতুন যোগ করা হলো: সেশন ও পরীক্ষার নাম ★★★ -->
+        <div style="text-align: center; margin: 10px 0 12px 0; padding: 6px; background-color: #f8fafc; border: 1px dashed #94a3b8; border-radius: 6px;">
+            <h3 style="margin: 0; font-size: 14px; font-weight: bold; color: #064e3b;">
+                ${examTypeText} — ${session}
+            </h3>
         </div>
 
         <!-- ★ হেডিং ১: শিক্ষার্থী পরিচিতি (৪ কলাম) -->
@@ -40481,7 +40500,6 @@ async function renderResultDeptPage() {
             </div>
         `;
 
-
         // ★★★ নতুন: ড্রপডাউনের জন্য ডাটা তৈরি ★★★
         const currentYear = window._marksContext?.academicYear || getCurrentYear();
         const currentExam = window._marksContext?.examType || 'term2';
@@ -41985,11 +42003,10 @@ window.checkInvalidMark = function(input) {
     }
 };
 
-// ★★★ প্রিন্টের জন্য সম্পূর্ণ আলাদা ও পরিষ্কার উইন্ডো তৈরি করা ★★★
+// ★★★ প্রিন্টের জন্য সম্পূর্ণ আলাদা ও পরিষ্কার উইন্ডো তৈরি করা (লোগো সাইজ ফিক্সসহ) ★★★
 window.printMarksheetClean = function(marksheetHTML) {
     const printWindow = window.open('', '_blank');
     
-    // আপনার মার্কশীটের সব সিএসএস এখানে কপি করে দিন
     const css = `
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap');
@@ -42013,16 +42030,32 @@ window.printMarksheetClean = function(marksheetHTML) {
             .ms-madrasa-bn { margin: 0; font-size: 17px; font-weight: bold; color: #065f46; }
             .ms-address { margin: 0; font-size: 11px; color: #64748b; }
             
+            /* ★★★ লোগো সাইজ ফিক্স — দানব আকার বন্ধ ★★★ */
+            .ms-header img,
+            .ms-logo,
+            .marksheet-page .ms-header img,
+            .marksheet-page .ms-logo {
+                width: 55px !important;
+                height: 55px !important;
+                max-width: 55px !important;
+                max-height: 55px !important;
+                object-fit: contain !important;
+                border: 2px solid #065f46 !important;
+                border-radius: 50% !important;
+                padding: 2px !important;
+                background: white !important;
+                flex-shrink: 0 !important;
+                display: block !important;
+            }
+            
             .ms-section-title { background: #065f46; color: #ffffff; font-size: 13px; font-weight: bold; padding: 6px 12px; border-radius: 4px 4px 0 0; margin: 10px 0 0 0; border: 1px solid #065f46; border-bottom: none; }
             
-            /* ★★★ ছাত্র পরিচিতি ও গ্রেডিং টেবিল (প্রিন্টের জন্য ফিক্সড) ★★★ */
             .ms-info-table-4col, .ms-scale-table-4col { width: 100%; border-collapse: collapse; margin-bottom: 12px; table-layout: fixed; border: 1px solid #000 !important; }
             .ms-info-table-4col td, .ms-scale-table-4col td { border: 1px solid #000 !important; padding: 5px 8px; font-size: 11.5px; vertical-align: middle; }
             .ms-info-label { background-color: #f1f5f9 !important; font-weight: bold; color: #1e293b; -webkit-print-color-adjust: exact; }
             .ms-info-value { background-color: #ffffff !important; font-weight: 600; }
             .ms-scale-table-4col td:nth-child(odd) { background-color: #f1f5f9 !important; font-weight: bold; color: #065f46; -webkit-print-color-adjust: exact; }
             
-            /* ★★★ নম্বর টেবিল ★★★ */
             .ms-marks-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 1px solid #000 !important; }
             .ms-marks-table th { background-color: #065f46 !important; color: white !important; padding: 6px; border: 1px solid #000 !important; font-size: 11px; -webkit-print-color-adjust: exact; }
             .ms-marks-table td { padding: 5px 6px; border: 1px solid #000 !important; font-size: 12px; text-align: center; }
@@ -42031,13 +42064,11 @@ window.printMarksheetClean = function(marksheetHTML) {
             
             .ms-total-row { background-color: #f1f5f9 !important; font-weight: bold; -webkit-print-color-adjust: exact; }
             
-            /* ★★★ সামারি গ্রিড ★★★ */
             .ms-summary-grid { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
             .ms-summary-box { flex: 1; min-width: 13%; border: 1px solid #cbd5e1 !important; padding: 6px; text-align: center; background-color: #f8fafc !important; -webkit-print-color-adjust: exact; }
             .ms-summary-label { font-size: 9px; color: #475569; font-weight: bold; margin-bottom: 4px; }
             .ms-summary-value { font-size: 14px; font-weight: bold; color: #1e293b; }
 
-            /* ★★★ মন্তব্য ও স্বাক্ষর (টেবিল ফরম্যাট) ★★★ */
             .ms-comments-table, .ms-signatures-table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
             .ms-comment-box { border: 1px solid #cbd5e1 !important; padding: 8px; background-color: #f8fafc !important; height: 70px; -webkit-print-color-adjust: exact; }
             .ms-comment-title { font-size: 11px; font-weight: bold; color: #475569; margin-bottom: 25px; }
@@ -42070,12 +42101,12 @@ window.printMarksheetClean = function(marksheetHTML) {
     printWindow.document.close();
     printWindow.focus();
     
-    // ফন্ট লোড হওয়ার জন্য একটু অপেক্ষা করে প্রিন্ট কল করা
     setTimeout(() => {
         printWindow.print();
         printWindow.close();
     }, 800);
 };
+
 // ═══════════════════════════════════════════════════════════════
 // ★★★ এক নজরে ফলাফল — বিভাগভিত্তিক সামারি (Overview) ★★★
 // ═══════════════════════════════════════════════════════════════
@@ -42324,6 +42355,9 @@ function buildOverviewSummaryTable(dept, rankedStats) {
     const addr = settings.address || '';
     const logo = settings.logo || '';
     const year = settings.year || '';
+        // ★★★ নতুন: সেশন ও টার্ম বের করা ★★★
+    const ctxExam = window._marksContext?.examType || 'term2';
+    const examName = { term1: '১ম সাময়িক', term2: '২য় সাময়িক', model: 'মডেল টেস্ট', qurbani: 'কুরবানী', annual: 'বার্ষিক' }[ctxExam] || 'পরীক্ষা';
     const deptName = { shariah: 'শরীয়াহ', hifz: 'হিফযুল কুরআন', noorani: 'নূরানী-নাযেরা', non_res: 'অনাবাসিক' }[dept] || dept;
 
     const today = new Date();
@@ -42390,7 +42424,7 @@ function buildOverviewSummaryTable(dept, rankedStats) {
                         <h3 style="margin:4px 0 0;font-size:16px;font-weight:bold;">${madrasaBn}</h3>
                         ${addr ? `<p style="margin:3px 0 0;font-size:11px;opacity:0.9;">${addr}</p>` : ''}
                         <p style="margin:6px 0 0;font-size:12px;font-weight:bold;background:rgba(252,211,77,0.2);padding:3px 14px;border-radius:999px;display:inline-block;border:1px solid rgba(252,211,77,0.4);">
-                            📊 এক নজরে ফলাফল — ${deptName} বিভাগ | ${year}
+                            📊 এক নজরে ফলাফল — ${deptName} বিভাগ | ${year} | ${examName}
                         </p>
                     </div>
                     <div style="width:60px;height:60px;flex-shrink:0;"></div>
@@ -42483,27 +42517,51 @@ function buildOverviewGradeList(dept, allStats, gradeType) {
     // ★ সব জামাত থেকে এই গ্রেডের ছাত্র সংগ্রহ
     const matchedStudents = [];
     allStats.forEach(c => {
-        // ★ ফিক্স: c.details বা c.orderedCols যেন কখনো undefined না হয়
         (c.details || []).forEach(d => {
             if (targetGrades.includes(d.grade)) {
                 matchedStudents.push({
                     className: c.className,
                     student: d.student,
                     grade: d.grade,
-                    total: d.total,
+                    total: Number(d.total) || 0,
                     avg: d.avg,
-                    marksArr: d.marksArr,
-                    orderedCols: c.orderedCols || [] // ★ || [] যোগ করুন
+                    totalSubjects: (d.marksArr || []).filter(m => m !== null && m !== '').length
                 });
             }
         });
     });
 
-    // ★ নাম অনুযায়ী sort (জামাত তারপর নাম)
+    // ★ জামাত এবং মোট নম্বর অনুযায়ী sort (নতুন র্যাংক হিসাবের জন্য)
     matchedStudents.sort((a, b) => {
         const clsCmp = a.className.localeCompare(b.className, 'bn');
         if (clsCmp !== 0) return clsCmp;
-        return (a.student.name || '').localeCompare(b.student.name || '', 'bn');
+        return b.total - a.total; // মোট নম্বর বেশি হলে আগে থাকবে
+    });
+
+    // ★★★ জামাতভিত্তিক মেধাক্রম (Rank) হিসাব করার লজিক ★★★
+    let currentClass = '';
+    let currentRank = 1;
+    let previousTotal = null;
+    let skipCount = 0;
+
+    matchedStudents.forEach(m => {
+        if (m.className !== currentClass) {
+            // নতুন জামাত শুরু হলে রিসেট
+            currentClass = m.className;
+            currentRank = 1;
+            previousTotal = null;
+            skipCount = 0;
+        } else {
+            if (m.total === previousTotal) {
+                // একই নম্বর হলে একই র‍্যাংক
+                skipCount++;
+            } else {
+                currentRank += 1 + skipCount;
+                skipCount = 0;
+            }
+        }
+        m.calculatedRank = currentRank;
+        previousTotal = m.total;
     });
 
     const madrasaBn = settings.madrasaName || 'জামিয়া ইসলামিয়া';
@@ -42511,6 +42569,9 @@ function buildOverviewGradeList(dept, allStats, gradeType) {
     const logo = settings.logo || '';
     const year = settings.year || '';
     const deptName = { shariah: 'শরীয়াহ', hifz: 'হিফযুল কুরআন', noorani: 'নূরানী-নাযেরা', non_res: 'অনাবাসিক' }[dept] || dept;
+
+    const ctxExam = window._marksContext?.examType || 'term2';
+    const examName = { term1: '১ম সাময়িক', term2: '২য় সাময়িক', model: 'মডেল টেস্ট', qurbani: 'কুরবানী', annual: 'বার্ষিক' }[ctxExam] || 'পরীক্ষা';
 
     const today = new Date();
     const dateStr = `${today.getDate().toString().padStart(2,'0')}-${(today.getMonth()+1).toString().padStart(2,'0')}-${today.getFullYear()}`;
@@ -42526,29 +42587,21 @@ function buildOverviewGradeList(dept, allStats, gradeType) {
         `;
     }
 
-    // ★ প্রতিটি ছাত্রের সারি (মার্কসহ)
+    // ★ প্রতিটি ছাত্রের সারি
     let rowsHTML = '';
     matchedStudents.forEach((m, i) => {
-        // মার্কস সেল
-        let marksCellsHTML = '';
-        m.orderedCols.forEach((col, idx) => {
-            const v = m.marksArr[idx];
-            const displayVal = (v === 0 && m.grade !== 'অনুপস্থিত') ? '—' : v;
-            const cellColor = v < 33 && v > 0 ? 'color:#dc2626;font-weight:bold;' : '';
-            marksCellsHTML += `<td class="p-1 text-center text-[10px]" style="${cellColor}">${displayVal}</td>`;
-        });
-
         rowsHTML += `
-            <tr class="border-b border-slate-200 hover:bg-slate-50">
-                <td class="p-1.5 text-center text-[10px] font-bold">${i + 1}</td>
-                <td class="p-1.5 text-sm font-bold">${m.student.name || '-'}</td>
-                <td class="p-1.5 text-center text-[10px] font-mono">${m.student.studentId || '-'}</td>
-                <td class="p-1.5 text-[10px] font-arabic">${m.className}</td>
-                ${marksCellsHTML}
-                <td class="p-1.5 text-center text-[10px] font-bold" style="background:#dbeafe;color:#1e40af;">${m.total}</td>
-                <td class="p-1.5 text-center text-[10px] font-bold" style="background:#dcfce7;color:#065f46;">${m.avg}</td>
-                <td class="p-1.5 text-center text-[10px] font-bold" style="background:#fef3c7;color:${color};">${m.grade}</td>
-                <td class="p-1.5 text-center">
+            <tr class="border-b border-slate-300 hover:bg-slate-50">
+                <td class="p-2 text-center text-[10px] font-bold border border-slate-300">${i + 1}</td>
+                <td class="p-2 text-sm font-bold border border-slate-300">${m.student.name || '-'}</td>
+                <td class="p-2 text-center text-[10px] font-mono border border-slate-300">${m.student.studentId || '-'}</td>
+                <td class="p-2 text-[10px] font-arabic text-center border border-slate-300">${m.className}</td>
+                <td class="p-2 text-center text-[10px] border border-slate-300">${m.totalSubjects}</td>
+                <td class="p-2 text-center text-[10px] font-bold border border-slate-300" style="background:#dbeafe;color:#1e40af;">${m.total}</td>
+                <td class="p-2 text-center text-[10px] font-bold border border-slate-300" style="background:#dcfce7;color:#065f46;">${m.avg}</td>
+                <td class="p-2 text-center text-[10px] font-bold border border-slate-300" style="background:#fef3c7;color:${color};">${m.grade}</td>
+                <td class="p-2 text-center text-[10px] font-bold border border-slate-300" style="background:#fdf4ff;color:#86198f;">${m.calculatedRank}</td>
+                <td class="p-2 text-center border border-slate-300">
                     <button onclick="viewStudentMarksheet('${m.student.id}')" class="text-blue-600 hover:text-blue-800 text-[10px]" title="মার্কশীট">
                         <i class="fa-solid fa-file-invoice"></i>
                     </button>
@@ -42556,14 +42609,6 @@ function buildOverviewGradeList(dept, allStats, gradeType) {
             </tr>
         `;
     });
-
-    // ★ হেডার colspan হিসাব (প্রথম সব জামাতের কলাম একই ধরে নিচ্ছি)
-    const sampleCols = matchedStudents[0]?.orderedCols || [];
-    const colsHeaderHTML = sampleCols.length > 0 ? sampleCols.map(col => 
-        `<th class="p-1 text-center text-[9px] bg-slate-700 text-white" style="min-width:50px;max-width:80px;">
-            <div class="font-arabic text-[10px] whitespace-normal leading-tight">${col.label}</div>
-        </th>`
-    ).join('') : `<th class="p-1 text-center text-[9px] bg-slate-700 text-white">কোন কলাম নেই</th>`;
 
     return `
         <div id="overview-print-area" class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
@@ -42580,7 +42625,7 @@ function buildOverviewGradeList(dept, allStats, gradeType) {
                         </h2>
                         <h3 style="margin:4px 0 0;font-size:16px;font-weight:bold;">${madrasaBn}</h3>
                         <p style="margin:6px 0 0;font-size:12px;font-weight:bold;background:rgba(252,211,77,0.2);padding:3px 14px;border-radius:999px;display:inline-block;border:1px solid rgba(252,211,77,0.4);">
-                            <i class="fa-solid ${icon}"></i> ${title} — ${deptName} বিভাগ | ${year}
+                            <i class="fa-solid ${icon}"></i> ${title} — ${deptName} বিভাগ | ${year} | ${examName}
                         </p>
                     </div>
                     <div style="width:60px;height:60px;flex-shrink:0;"></div>
@@ -42601,18 +42646,19 @@ function buildOverviewGradeList(dept, allStats, gradeType) {
 
             <!-- ★ টেবিল -->
             <div style="padding:10px;overflow-x:auto;">
-                <table class="w-full border-collapse text-left" style="min-width:900px;">
+                <table class="w-full border-collapse text-left" style="min-width:800px;">
                     <thead>
                         <tr style="background:#065f46;color:white;">
-                            <th class="p-1.5 text-center text-[10px]" style="width:30px;">#</th>
-                            <th class="p-1.5 text-[10px]" style="min-width:130px;">নাম</th>
-                            <th class="p-1.5 text-center text-[10px]" style="width:70px;">আইডি</th>
-                            <th class="p-1.5 text-[10px]" style="min-width:100px;">জামাত</th>
-                            ${colsHeaderHTML}
-                            <th class="p-1.5 text-center text-[10px] bg-blue-700" style="width:50px;">মোট</th>
-                            <th class="p-1.5 text-center text-[10px] bg-emerald-700" style="width:50px;">গড়</th>
-                            <th class="p-1.5 text-center text-[10px] bg-amber-700" style="width:70px;">গ্রেড</th>
-                            <th class="p-1.5 text-center text-[10px] bg-slate-700" style="width:40px;">লিংক</th>
+                            <th class="p-2 text-center text-[10px] border border-slate-600" style="width:30px;">#</th>
+                            <th class="p-2 text-[10px] border border-slate-600" style="min-width:130px;">নাম</th>
+                            <th class="p-2 text-center text-[10px] border border-slate-600" style="width:70px;">আইডি</th>
+                            <th class="p-2 text-[10px] border border-slate-600" style="min-width:100px; text-align:center;">জামাত</th>
+                            <th class="p-2 text-center text-[10px] border border-slate-600" style="width:60px;">মোট বিষয়</th>
+                            <th class="p-2 text-center text-[10px] border border-slate-600 bg-blue-700" style="width:60px;">মোট</th>
+                            <th class="p-2 text-center text-[10px] border border-slate-600 bg-emerald-700" style="width:60px;">গড়</th>
+                            <th class="p-2 text-center text-[10px] border border-slate-600 bg-amber-700" style="width:80px;">গ্রেড</th>
+                            <th class="p-2 text-center text-[10px] border border-slate-600 bg-fuchsia-700" style="width:70px;">মেধাক্রম</th>
+                            <th class="p-2 text-center text-[10px] border border-slate-600 bg-slate-700" style="width:40px;">লিংক</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -42847,6 +42893,9 @@ window.buildMeritListHTML = function(dept) {
     const madrasaAr = settings.madrasaNameAr || '';
     const logo = settings.logo || '';
     const year = settings.year || '';
+    // ★★★ নতুন: সেশন ও টার্ম বের করা ★★★
+    const ctxExam = window._marksContext?.examType || 'term2';
+    const examName = { term1: '১ম সাময়িক', term2: '২য় সাময়িক', model: 'মডেল টেস্ট', qurbani: 'কুরবানী', annual: 'বার্ষিক' }[ctxExam] || 'পরীক্ষা';
     const deptName = { shariah: 'শরীয়াহ', hifz: 'হিফযুল কুরআন', noorani: 'নূরানী-নাযেরা', non_res: 'অনাবাসিক' }[dept] || dept;
 
     return `
@@ -42868,7 +42917,7 @@ window.buildMeritListHTML = function(dept) {
                         <h2 style="margin:0;font-size:20px;color:#fcd34d;font-family:'Amiri',serif;line-height:1.3;" dir="rtl">${madrasaAr}</h2>
                         <h3 style="margin:4px 0 0;font-size:16px;font-weight:bold;">${madrasaBn}</h3>
                         <p style="margin:6px 0 0;font-size:12px;font-weight:bold;background:rgba(252,211,77,0.2);padding:3px 14px;border-radius:999px;display:inline-block;border:1px solid rgba(252,211,77,0.4);">
-                            🏆 শীর্ষ মেধাবী — ${deptName} বিভাগ | ${year}
+                            🏆 শীর্ষ মেধাবী — ${deptName} বিভাগ | ${year} | ${examName}
                         </p>
                     </div>
                     <div style="width:60px;height:60px;flex-shrink:0;"></div>
@@ -42983,6 +43032,9 @@ window.buildAwardListHTML = function(dept) {
     const madrasaAr = settings.madrasaNameAr || '';
     const logo = settings.logo || '';
     const year = settings.year || '';
+    // ★★★ নতুন: সেশন ও টার্ম বের করা ★★★
+    const ctxExam = window._marksContext?.examType || 'term2';
+    const examName = { term1: '১ম সাময়িক', term2: '২য় সাময়িক', model: 'মডেল টেস্ট', qurbani: 'কুরবানী', annual: 'বার্ষিক' }[ctxExam] || 'পরীক্ষা';
     const deptName = { shariah: 'শরীয়াহ', hifz: 'হিফযুল কুরআন', noorani: 'নূরানী-নাযেরা', non_res: 'অনাবাসিক' }[dept] || dept;
 
     return `
@@ -43004,7 +43056,7 @@ window.buildAwardListHTML = function(dept) {
                         <h2 style="margin:0;font-size:20px;color:#fcd34d;font-family:'Amiri',serif;line-height:1.3;" dir="rtl">${madrasaAr}</h2>
                         <h3 style="margin:4px 0 0;font-size:16px;font-weight:bold;">${madrasaBn}</h3>
                         <p style="margin:6px 0 0;font-size:12px;font-weight:bold;background:rgba(252,211,77,0.2);padding:3px 14px;border-radius:999px;display:inline-block;border:1px solid rgba(252,211,77,0.4);">
-                            🎖️ পুরস্কার প্রাপ্ত — ${deptName} বিভাগ | ${year}
+                            🎖️ পুরস্কার প্রাপ্ত — ${deptName} বিভাগ | ${year} | ${examName}
                         </p>
                     </div>
                     <div style="width:60px;height:60px;flex-shrink:0;"></div>
@@ -61012,10 +61064,10 @@ function stopStudentsRealtimeListener() {
 }
 
 console.log('✅ Real-time listener মডিউল লোড হয়েছে');
+
 // ═══════════════════════════════════════════════════════════════
 // ★★★ গার্ডিয়ান পোর্টাল — রেজাল্ট মডিউল (সম্পূর্ণ নতুন) ★★★
 // ═══════════════════════════════════════════════════════════════
-
 async function renderGpResults(container) {
     try {
         const { doc, getDoc } = window.fbFuncs;
@@ -61115,9 +61167,12 @@ async function renderGpResults(container) {
                     dob: fd.dob || student.dob,
                     mobile1: fd.mobile1 || student.mobile1,
                     photo: fd.studentPhoto || student.photo || '',
-                    // ★★★ মার্কস ★★★
-                    resultMarksObj: form.data?.examMarks || form.examMarks || form.data?.resultMarksObj || {},
+                    // ★★★ মার্কস — সব ফরম্যাট ★★★
+                    resultMarksObj: fd.examMarks || form.data?.examMarks || form.examMarks || form.data?.resultMarksObj || {},
                     customMarks: form.data?.customMarks || form.customMarks || {},
+                    marksByTerm: fd.marksByTerm || {},
+                    customMarksByTerm: fd.customMarksByTerm || {},
+                    examResults: form.data?.examResults || form.examResults || {},
                     source: 'admission'
                 };
             });
@@ -61126,77 +61181,38 @@ async function renderGpResults(container) {
         // ৪. মার্জ করা ছাত্র অবজেক্ট (গার্ডিয়ানের সেশন সহ)
         const marksKey = buildMarksKey(ctxYear, ctxExam);
         
-        // ★★★ ফিক্স: শুধুমাত্র নির্দিষ্ট টার্মের ডাটা নিশ্চিত করা ★★★
-        let finalMarksForThisTerm = {};
-        let finalCustomMarksForThisTerm = {};
-
-        // ১. স্টুডেন্ট অবজেক্টে যদি নতুন ফরম্যাটে (marksByTerm) ডাটা থাকে, সেটাই প্রাধান্য পাবে
-        if (freshStudent?.marksByTerm && freshStudent.marksByTerm[marksKey]) {
-            finalMarksForThisTerm = freshStudent.marksByTerm[marksKey];
-        } 
-        else if (student?.marksByTerm && student.marksByTerm[marksKey]) {
-            finalMarksForThisTerm = student.marksByTerm[marksKey];
-        }
-        // ২. যদি নতুন ফরম্যাটে ডাটা না থাকে, তবে ফ্ল্যাট ডাটাকে কনভার্ট করি (পুরনো ডাটার জন্য)
-        else if (freshStudent?.resultMarksObj || student.resultMarksObj) {
-            finalMarksForThisTerm = {
-                ...(student.resultMarksObj || {}),
-                ...(freshStudent?.resultMarksObj || {})
-            };
-        }
-
-        // কাস্টম মার্কসের জন্যও একই লজিক
-        if (freshStudent?.customMarksByTerm && freshStudent.customMarksByTerm[marksKey]) {
-            finalCustomMarksForThisTerm = freshStudent.customMarksByTerm[marksKey];
-        }
-        else if (student?.customMarksByTerm && student.customMarksByTerm[marksKey]) {
-            finalCustomMarksForThisTerm = student.customMarksByTerm[marksKey];
-        }
-        else if (freshStudent?.customMarks || student.customMarks) {
-            finalCustomMarksForThisTerm = {
-                ...(student.customMarks || {}),
-                ...(freshStudent?.customMarks || {})
-            };
-        }
+        // ★★★ FIX: getStudentTermMarks ব্যবহার করে ডাটা বের করি (সব ফরম্যাট সাপোর্ট করে) ★★★
+        const termMarksForMerged = typeof getStudentTermMarks === 'function' 
+            ? getStudentTermMarks(freshStudent || student, ctxYear, ctxExam) 
+            : { resultMarksObj: {}, customMarks: {} };
 
         const mergedStudent = {
             ...student,
             ...(freshStudent || {}),
-            // পুরনো ফিল্ড
-            resultMarksObj: { 
-                ...(student.resultMarksObj || {}), 
-                ...(freshStudent?.resultMarksObj || {}) 
-            },
-            customMarks: { 
-                ...(student.customMarks || {}), 
-                ...(freshStudent?.customMarks || {}) 
-            },
             
-            // ★★★ ফিক্স: marksByTerm-এ শুধু এই টার্মের ডাটা রাখা হচ্ছে ★★★
+            // পুরনো ফ্ল্যাট ফিল্ড ক্লিয়ার
+            examMarks: {},
+            resultMarks: [],
+
+            // শুধু বর্তমান টার্মের ডাটা সেট করি
+            resultMarksObj: termMarksForMerged.resultMarksObj || {},
+            customMarks: termMarksForMerged.customMarks || {},
+            
             marksByTerm: {
                 ...(student.marksByTerm || {}),
                 ...(freshStudent?.marksByTerm || {}),
-                [marksKey]: finalMarksForThisTerm // শুধু এই টার্মের ডাটা
+                [marksKey]: termMarksForMerged.resultMarksObj || {}
             },
             customMarksByTerm: {
                 ...(student.customMarksByTerm || {}),
                 ...(freshStudent?.customMarksByTerm || {}),
-                [marksKey]: finalCustomMarksForThisTerm
+                [marksKey]: termMarksForMerged.customMarks || {}
             },
             
             section: freshStudent?.section || student.section || 'নাই'
         };
 
-        // ★★★ ডিবাগ লগ ★★★
-        console.log('📊 mergedStudent মার্কস:', {
-            name: mergedStudent.name,
-            className: mergedStudent.className,
-            marksCount: Object.keys(mergedStudent.resultMarksObj).length,
-            marksObj: mergedStudent.resultMarksObj,
-            customCount: Object.keys(mergedStudent.customMarks).length
-        });
-
-        // ✅ ক্যাশে mergedStudent দিয়ে আপডেট (marksByTerm সহ)
+        // ✅ ক্যাশে mergedStudent দিয়ে আপডেট
         if (Array.isArray(studentsCache)) {
             const idx = studentsCache.findIndex(s => 
                 s.id === mergedStudent.id 
@@ -61206,33 +61222,19 @@ async function renderGpResults(container) {
             else studentsCache.push(mergedStudent);
         }
 
-        // ★★★ নতুন: সমস্ত classmates studentsCache-এ লোড করি (শিক্ষক পোর্টালের মতো) ★★★
+        // ★★★ সমস্ত classmates studentsCache-এ লোড করি (কোনো ম্যানুয়াল কনভার্শন ছাড়া) ★★★
         try {
             const existingIds = new Set((studentsCache || []).map(s => String(s.id)));
-            const cMarksKey = buildMarksKey(ctxYear, ctxExam); // কারেন্ট কনটেক্সট কি (যেমন: 2026-2027__term2)
 
-            // (ক) students কালেকশন
             const clSnap = await getDocs(collection(window.fbDB, 'students'));
             clSnap.forEach(d => {
                 const s = { id: d.id, ...d.data() };
                 if (!existingIds.has(String(s.id))) {
-                    
-                    // ★ ফিক্স: classmates এর ডাটাও marksByTerm এ কনভার্ট করি
-                    if (!s.marksByTerm) s.marksByTerm = {};
-                    if (!s.marksByTerm[cMarksKey]) {
-                        s.marksByTerm[cMarksKey] = s.resultMarksObj || {};
-                    }
-                    if (!s.customMarksByTerm) s.customMarksByTerm = {};
-                    if (!s.customMarksByTerm[cMarksKey]) {
-                        s.customMarksByTerm[cMarksKey] = s.customMarks || {};
-                    }
-
                     studentsCache.push(s);
                     existingIds.add(String(s.id));
                 }
             });
 
-            // (খ) admissionForms (approved)
             const fSnap2 = await getDocs(collection(window.fbDB, 'admissionForms'));
             fSnap2.forEach(d => {
                 const form = { id: d.id, ...d.data() };
@@ -61249,11 +61251,6 @@ async function renderGpResults(container) {
                     ? flattenAdmFormData(form) : null;
                 if (!fd) return;
 
-                // ফ্ল্যাট মার্কসগুলো বের করি
-                const flatMarks = fd.examMarks || form.data?.examMarks || {};
-                const flatCustom = form.data?.customMarks || {};
-
-                // ★ ফিক্স: admissionForm এর ডাটাও marksByTerm এ কনভার্ট করি
                 const studentObj = {
                     id: admId,
                     name: fd.name,
@@ -61265,28 +61262,16 @@ async function renderGpResults(container) {
                     remark: null,
                     source: 'admission',
                     admissionFormId: form.id,
-                    resultMarksObj: flatMarks,
-                    customMarks: flatCustom,
+                    resultMarksObj: fd.examMarks || form.data?.examMarks || {},
+                    customMarks: form.data?.customMarks || {},
                     marksByTerm: form.data?.examMarksByTerm || {},
                     customMarksByTerm: form.data?.customMarksByTerm || {}
                 };
 
-                // যদি ডাটাবেসে আগে থেকেই marksByTerm না থাকে, তবে ফ্ল্যাট ডাটা থেকে তৈরি করে নিই
-                if (!studentObj.marksByTerm[cMarksKey]) {
-                    studentObj.marksByTerm[cMarksKey] = flatMarks;
-                }
-                if (!studentObj.customMarksByTerm[cMarksKey]) {
-                    studentObj.customMarksByTerm[cMarksKey] = flatCustom;
-                }
-
                 studentsCache.push(studentObj);
                 existingIds.add(admId);
             });
-
-            console.log('✅ Classmates loaded with marksByTerm:', studentsCache.length);
-        } catch (clErr) {
-            console.warn('⚠️ Classmates load failed:', clErr);
-        }
+        } catch (clErr) { console.warn('⚠️ Classmates load failed:', clErr); }
 
         // ★ সেশনেও আপডেট (পরের বার ব্যবহারের জন্য)
         _guardianSession = { ..._guardianSession, ...mergedStudent };
@@ -61355,7 +61340,7 @@ async function renderGpResults(container) {
             container.innerHTML = contextSelectorHTML + tabsHTML + buildGpFullMarksheetPreview(mergedStudent);
         } else {
             // ═══════════════════════════════════════════════════════
-            // 🪄 FIXED: students + admissionForms দুটোই লোড
+            // 🪄 FIXED: studentsCache + getStudentTermMarks ব্যবহার
             // ═══════════════════════════════════════════════════════
             try {
                 container.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-slate-400"></i><p class="text-xs mt-2">শ্রেণির ফলাফল লোড হচ্ছে...</p></div>`;
@@ -61369,93 +61354,21 @@ async function renderGpResults(container) {
                 const myDept = cleanStr(mergedStudent.dept);
                 const myClass = cleanStr(mergedStudent.className);
 
-                // ★★★ দুটো কালেকশন parallel-এ লোড ★★★
-                const [studentsSnap, formsSnap] = await Promise.all([
-                    getDocs(collection(window.fbDB, 'students')),
-                    getDocs(collection(window.fbDB, 'admissionForms'))
-                ]);
+                // ★★★ FIX: studentsCache থেকে ফিল্টার করি ★★★
+                const classStudents = (studentsCache || []).filter(s => 
+                    cleanStr(s.dept) === myDept && cleanStr(s.className) === myClass
+                );
 
-                const classStudents = [];
-                const seen = new Set();
-
-                // ─── ১. students কালেকশন থেকে (ম্যানুয়াল ছাত্র) ───
-                studentsSnap.forEach(d => {
-                    const s = { id: d.id, ...d.data() };
-                    if (cleanStr(s.dept) === myDept && cleanStr(s.className) === myClass) {
-                        const key = String(s.studentId || s.id).trim();
-                        if (!seen.has(key)) {
-                            seen.add(key);
-                            classStudents.push(s);
-                        }
-                    }
-                });
-
-                // ─── ২. admissionForms থেকে (approved) ★★★ এটাই আসল ফিক্স ★★★ ───
-                formsSnap.forEach(d => {
-                    const form = { id: d.id, ...d.data() };
-
-                    // approved চেক
-                    const isApproved = form.status === 'approved'
-                        || form.currentStep === 'COMPLETED'
-                        || form.currentStep === 12
-                        || (form.savedSteps && form.savedSteps.includes(11));
-                    if (!isApproved) return;
-
-                    // flatten helper (আপনার সিস্টেমে আছে)
-                    let fd;
-                    try {
-                        fd = (typeof flattenAdmFormData === 'function')
-                            ? flattenAdmFormData(form)
-                            : {
-                                name: form.data?.personal?.name || '',
-                                guardianName: form.data?.guardian?.guardianName || '',
-                                studentId: form.studentId || form.data?.primary?.studentId || '',
-                                dob: form.data?.personal?.dob || '',
-                                mobile1: form.data?.guardian?.mobile1 || '',
-                                mobile2: form.data?.guardian?.mobile2 || '',
-                                currentAddress: form.data?.personal?.currentAddress || '',
-                                dept: form.dept || form.data?.primary?.dept || '',
-                                nextClass: form.data?.personal?.nextClass || '',
-                                studentPhoto: form.data?.primary?.studentPhoto || '',
-                                examMarks: form.data?.examMarks || form.examMarks || {}
-                            };
-                    } catch (e) { return; }
-
-                    // dept + class match
-                    if (cleanStr(fd.dept) !== myDept) return;
-                    if (cleanStr(fd.nextClass) !== myClass) return;
-
-                    // ডুপ্লিকেট চেক
-                    const key = String(fd.studentId || form.id).trim();
-                    if (seen.has(key)) return;
-                    seen.add(key);
-
-                    classStudents.push({
-                        id: 'admission_' + form.id,
-                        name: fd.name || form.data?.personal?.name || '',
-                        guardian: fd.guardianName || form.data?.personal?.fatherName || '',
-                        studentId: fd.studentId || form.studentId || '',
-                        dob: fd.dob || '',
-                        mobile1: fd.mobile1 || '',
-                        mobile2: fd.mobile2 || '',
-                        address: fd.currentAddress || '',
-                        dept: fd.dept || form.dept || '',
-                        className: fd.nextClass || form.data?.personal?.nextClass || '',
-                        section: 'নাই',
-                        remark: null,
-                        photo: fd.studentPhoto || '',
-                        source: 'admission',
-                        admissionFormId: form.id,
-                        resultMarksObj: fd.examMarks || form.data?.examMarks || form.examMarks || {},
-                        customMarks: form.data?.customMarks || form.customMarks || {}
-                    });
-                });
-
-                console.log('🎯 Class students loaded:', {
-                    total: classStudents.length,
-                    fromForms: formsSnap.size,
-                    fromStudents: studentsSnap.size,
-                    sample: classStudents.slice(0, 3).map(c => c.name)
+                // ★★★ FIX: প্রত্যেক ক্লাসমেটের ডাটা getStudentTermMarks দিয়ে নিখুঁতভাবে বের করি ★★★
+                classStudents.forEach(s => {
+                    const termMarks = typeof getStudentTermMarks === 'function' 
+                        ? getStudentTermMarks(s, ctxYear, ctxExam) 
+                        : { resultMarksObj: {}, customMarks: {} };
+                        
+                    s.examMarks = {};
+                    s.resultMarks = [];
+                    s.resultMarksObj = termMarks.resultMarksObj || {};
+                    s.customMarks = termMarks.customMarks || {};
                 });
 
                 container.innerHTML = contextSelectorHTML + tabsHTML + buildGpClassResultPreview(mergedStudent, classStudents);
@@ -61494,12 +61407,28 @@ window.onGpResultContextChange = function() {
 // 【 ট্যাব ১: "আমার সন্তানের" — হুবহু মার্কশীট (একই ফরম্যাট) 】
 // ═══════════════════════════════════════════════════════════════
 function buildGpFullMarksheetPreview(student) {
+    // ★★★ FIX: মার্কশীট তৈরির আগে গার্ডিয়ানের সন্তানের ডাটা ফোর্স আপডেট ★★★
+    if (window._guardianSession) {
+        const ctxYear = window._marksContext?.academicYear || getCurrentYear();
+        const ctxExam = window._marksContext?.examType || 'term2';
+        const marksKey = buildMarksKey(ctxYear, ctxExam);
+
+        student.resultMarksObj = window._guardianSession.resultMarksObj || 
+            (window._guardianSession.marksByTerm && window._guardianSession.marksByTerm[marksKey]) || {};
+            
+        student.customMarks = window._guardianSession.customMarks || 
+            (window._guardianSession.customMarksByTerm && window._guardianSession.customMarksByTerm[marksKey]) || {};
+            
+        student.examMarks = {};
+        student.resultMarks = [];
+    }
     if (typeof configData === 'undefined' || !configData || !configData.books) {
         return `<div class="p-6 text-center text-red-500 font-bold bg-white rounded-xl shadow-md">
             <i class="fa-solid fa-triangle-exclamation text-3xl mb-2"></i><br>
             ডাটাবেস থেকে কনফিগ লোড হয়নি। পেজটি একবার রিফ্রেশ করুন।
         </div>`;
     }
+
     // ★★★ কিতাব লোড করার আগে configData চেক ও অটো-ম্যাচিং ★★★
     const allBooks = (configData?.books || {});
     let matchedBooks = allBooks[student.className] || [];
@@ -61650,20 +61579,50 @@ function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
 
     const requiredCols = orderedCols.length;
 
-    // ★ ৩. প্রতিটি ছাত্রের নম্বর ও গ্রেড হিসাব (হুবহু renderResultDeptPage এর মতো)
+    // ★ ৩. প্রতিটি ছাত্রের নম্বর ও গ্রেড হিসাব
     let currentDeptData = [];
+    const marksKey = buildMarksKey(window._marksContext?.academicYear || getCurrentYear(), window._marksContext?.examType || 'term2');
+
     classmates.forEach(s => {
         let marksArr = [];
-        let columnMeta = []; // ★★★ নতুন যোগ করুন ★★★
+        let columnMeta = [];
         let entries = 0;
+
+        // ★★★ FIX: এই ছাত্রটিই কি গার্ডিয়ানের সন্তান? ★★★
+        const isMyChild = (window._guardianSession && (
+            String(s.studentId) === String(window._guardianSession.studentId) || 
+            String(s.id) === String(window._guardianSession.id) ||
+            s.name === window._guardianSession.name
+        ));
 
         orderedCols.forEach(col => {
             let v = null;
-            if (col.type === 'default') {
-                if (s.resultMarksObj && s.resultMarksObj[col.key] !== undefined) v = s.resultMarksObj[col.key];
-                else if (s.resultMarks && s.resultMarks[col.index] !== undefined) v = s.resultMarks[col.index];
+
+            if (isMyChild && window._guardianSession) {
+                // সন্তানের নিজের ডাটা
+                if (col.type === 'default') {
+                    if (window._guardianSession.resultMarksObj && window._guardianSession.resultMarksObj[col.key] !== undefined) {
+                        v = window._guardianSession.resultMarksObj[col.key];
+                    } else if (window._guardianSession.marksByTerm && window._guardianSession.marksByTerm[marksKey] && window._guardianSession.marksByTerm[marksKey][col.key] !== undefined) {
+                        v = window._guardianSession.marksByTerm[marksKey][col.key];
+                    } else if (window._guardianSession.resultMarks && window._guardianSession.resultMarks[col.index] !== undefined) {
+                        v = window._guardianSession.resultMarks[col.index];
+                    }
+                } else {
+                    if (window._guardianSession.customMarks && window._guardianSession.customMarks[col.key] !== undefined) {
+                        v = window._guardianSession.customMarks[col.key];
+                    } else if (window._guardianSession.customMarksByTerm && window._guardianSession.customMarksByTerm[marksKey] && window._guardianSession.customMarksByTerm[marksKey][col.key] !== undefined) {
+                        v = window._guardianSession.customMarksByTerm[marksKey][col.key];
+                    }
+                }
             } else {
-                if (s.customMarks && s.customMarks[col.key] !== undefined) v = s.customMarks[col.key];
+                // বাকি ক্লাসমেটদের ডাটা
+                if (col.type === 'default') {
+                    if (s.resultMarksObj && s.resultMarksObj[col.key] !== undefined) v = s.resultMarksObj[col.key];
+                    else if (s.resultMarks && s.resultMarks[col.index] !== undefined) v = s.resultMarks[col.index];
+                } else {
+                    if (s.customMarks && s.customMarks[col.key] !== undefined) v = s.customMarks[col.key];
+                }
             }
 
             if (v !== null && v !== '' && !isNaN(v)) {
@@ -61672,7 +61631,6 @@ function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
             } else {
                 marksArr.push(null);
             }
-            // ★★★ কলামের মেটা যোগ করুন ★★★
             columnMeta.push({ key: col.key, type: col.type, label: col.label });
         });
 
@@ -61681,7 +61639,6 @@ function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
 
         if (!isIncomplete) {
             try {
-                // ★★★ columnMeta সহ কল করুন ★★★
                 calc = calculateGradeAndDivision(dept, marksArr, className, columnMeta);
             } catch (e) {
                 calc = { grade: '—', total: 0, avg: '0.00' };
@@ -61695,7 +61652,6 @@ function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
             dept: dept,
             className: className,
             marks: marksArr,
-            // ★★★ null থাকলে সেটা 0 ধরে যোগ করুন, যাতে NaN না আসে ★★★
             total: calc.total || marksArr.reduce((a, b) => a + (b || 0), 0),
             avg: Number(calc.avg) || 0,
             grade: calc.grade,
@@ -61865,7 +61821,7 @@ function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 【 মার্কশীট প্রিন্ট — হুবহু একই (printSingleMarksheet এর মতো) 】
+// 【 মার্কশীট প্রিন্ট — FIXED: printMarksheetClean ব্যবহার করে 】
 // ═══════════════════════════════════════════════════════════════
 window.gpPrintMarksheetExact = function(studentDbId) {
     const s = (studentsCache || []).find(x => x.id === studentDbId) || _guardianSession;
@@ -61873,16 +61829,23 @@ window.gpPrintMarksheetExact = function(studentDbId) {
 
     const lang = typeof getDefaultMarksheetLang === 'function' ? getDefaultMarksheetLang(s.dept) : 'bn';
 
-    // ★★★ হুবহু printSingleMarksheet কল — এটাই রেজাল্ট সেকশনের প্রিন্টার ★★★
-    if (typeof printSingleMarksheet === 'function') {
-        printSingleMarksheet(s, lang);
-    } else {
-        showToast('❌ প্রিন্ট ফাংশন পাওয়া যায়নি', 'error');
+    try {
+        const marksheetHTML = buildMarksheetHTML(s, { lang: lang });
+        if (typeof printMarksheetClean === 'function') {
+            printMarksheetClean(marksheetHTML);
+        } else if (typeof printSingleMarksheet === 'function') {
+            printSingleMarksheet(s, lang);
+        } else {
+            showToast('❌ প্রিন্ট ফাংশন পাওয়া যায়নি', 'error');
+        }
+    } catch (err) {
+        console.error('❌ gpPrintMarksheetExact:', err);
+        showToast('❌ প্রিন্ট ব্যর্থ: ' + err.message, 'error');
     }
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 【 মার্কশীট PDF — হুবহু একই (shareMarksheetPDF এর মতো) 】
+// 【 মার্কশীট PDF — FIXED: printMarksheetClean ব্যবহার করে 】
 // ═══════════════════════════════════════════════════════════════
 window.gpShareMarksheetPDFExact = function(studentDbId) {
     const s = (studentsCache || []).find(x => x.id === studentDbId) || _guardianSession;
@@ -61890,11 +61853,19 @@ window.gpShareMarksheetPDFExact = function(studentDbId) {
 
     const lang = typeof getDefaultMarksheetLang === 'function' ? getDefaultMarksheetLang(s.dept) : 'bn';
 
-    // ★★★ হুবহু shareMarksheetPDF কল ★★★
-    if (typeof shareMarksheetPDF === 'function') {
-        shareMarksheetPDF(s, lang);
-    } else {
-        showToast('❌ PDF ফাংশন পাওয়া যায়নি', 'error');
+    try {
+        const marksheetHTML = buildMarksheetHTML(s, { lang: lang });
+        if (typeof printMarksheetClean === 'function') {
+            showToast('📄 PDF উইন্ডো খুলছে — "Save as PDF" বেছে নিন', 'info');
+            printMarksheetClean(marksheetHTML);
+        } else if (typeof shareMarksheetPDF === 'function') {
+            shareMarksheetPDF(s, lang);
+        } else {
+            showToast('❌ PDF ফাংশন পাওয়া যায়নি', 'error');
+        }
+    } catch (err) {
+        console.error('❌ gpShareMarksheetPDFExact:', err);
+        showToast('❌ PDF ব্যর্থ: ' + err.message, 'error');
     }
 };
 
@@ -61916,7 +61887,7 @@ window.gpShareMarksheetWhatsAppExact = function(studentDbId) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 【 ক্লাস রেজাল্ট প্রিন্ট — হুবহু (A4 ল্যান্ডস্কেপ) 】
+// 【 ক্লাস রেজাল্ট প্রিন্ট — সম্পূর্ণ ফিক্সড ও ফাইনাল ডিজাইন 】
 // ═══════════════════════════════════════════════════════════════
 window.gpPrintClassResultExact = function() {
     const el = document.getElementById('gp-class-result-wrap');
@@ -61927,10 +61898,13 @@ window.gpPrintClassResultExact = function() {
     const printWin = window.open('', '_blank');
     if (!printWin) { showToast('⚠️ Popup ব্লক হয়েছে', 'warn'); return; }
 
-    const madrasaBn = settings.madrasaName || 'জামিয়া ইসলামিয়া';
-    const madrasaAr = settings.madrasaNameAr || '';
-    const addr = settings.address || '';
+    // ★ ১. স্ক্রিন থেকে ডাটা ক্লোন করি এবং অপ্রয়োজনীয় বাটন/নোট মুছি
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll('button').forEach(x => x.remove());
+    clone.querySelectorAll('.bg-yellow-50.border-t').forEach(x => x.remove());
+    clone.querySelectorAll('.no-print').forEach(x => x.remove());
 
+    // ★ ২. প্রিন্ট HTML তৈরি
     printWin.document.write(`
         <!DOCTYPE html>
         <html lang="bn">
@@ -61938,47 +61912,143 @@ window.gpPrintClassResultExact = function() {
             <meta charset="UTF-8">
             <title>শ্রেণির রেজাল্ট</title>
             <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
             <style>
                 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
-                html, body { margin: 0; padding: 0; background: white; font-family: 'Hind Siliguri', 'Amiri', sans-serif; }
-                body { padding: 10mm 8mm; }
-                .print-head { text-align: center; border-bottom: 2px solid #065f46; padding-bottom: 10px; margin-bottom: 12px; }
-                .print-head h1 { margin: 0; font-size: 22px; color: #064e3b; font-family: 'Amiri', serif; }
-                .print-head h2 { margin: 4px 0 0; font-size: 16px; color: #065f46; }
-                .print-head p { margin: 3px 0 0; font-size: 11px; color: #64748b; }
-                .print-head .title { margin-top: 6px; font-size: 13px; font-weight: bold; color: #1e293b; }
-                table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
-                th, td { border: 1px solid #000 !important; padding: 4px 6px; }
-                th { background: #065f46 !important; color: white !important; text-align: center; font-size: 8.5pt; }
-                td { text-align: center; }
-                td.text-right { text-align: right; }
-                .bg-yellow-100 { background: #fef9c3 !important; }
-                .bg-yellow-50 { background: #fefce8 !important; }
-                .text-emerald-600, .text-emerald-700 { color: #059669 !important; }
-                .text-red-600, .text-red-700 { color: #dc2626 !important; }
-                .text-amber-700 { color: #b45309 !important; }
-                .text-fuchsia-700 { color: #a21caf !important; }
-                .text-blue-700 { color: #1d4ed8 !important; }
-                .text-slate-500, .text-slate-300 { color: #94a3b8 !important; }
-                @page { size: A4 landscape; margin: 8mm; }
-                .no-print, button { display: none !important; }
+                html, body { margin: 0; padding: 0; background: white; font-family: 'Hind Siliguri', 'Amiri', sans-serif; color: #1e293b; }
+                body { padding: 8mm 6mm; }
+
+                /* ★★★ ৩-কলাম গ্রিড লেআউট ফিক্স (বামে রিপোর্ট, মাঝে লোগো, ডানে গ্রেডিং) ★★★ */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 {
+                    display: flex !important; flex-direction: row !important; justify-content: space-between !important; gap: 12px !important;
+                    padding: 10px !important; border: none !important; border-bottom: 2px solid #065f46 !important;
+                    background: #f8fafc !important; margin-bottom: 12px !important; border-radius: 6px !important;
+                }
+                
+                /* তিনটি বক্সের সাইজ */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div {
+                    flex: 1 !important; width: 33.33% !important; border: 1px solid #cbd5e1 !important; border-radius: 6px !important;
+                    padding: 0 !important; background: white !important; box-sizing: border-box !important; overflow: hidden;
+                }
+                
+                /* মাঝের কলাম (লোগো ও নাম) */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(2) {
+                    border: none !important; background: transparent !important; text-align: center !important;
+                    display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; padding: 8px !important;
+                }
+                
+                /* ★★★ মাঝের লোগো সাইজ ফিক্স (৬০ পিক্সেল) ★★★ */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(2) img {
+                    width: 60px !important; height: 60px !important; max-width: 60px !important; max-height: 60px !important;
+                    object-fit: contain !important; margin: 0 auto 6px auto !important; display: block !important;
+                }
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(2) h3 { font-size: 15px !important; font-weight: bold !important; margin: 4px 0 !important; color: #1e293b !important; }
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(2) p { font-size: 11px !important; margin: 2px 0 !important; color: #475569 !important; }
+
+                /* ★★★ সংক্ষিপ্ত রিপোর্ট ও গ্রেডিং টেবিলের কমন ডিজাইন (পাকা ফিক্স) ★★★ */
+                /* ১. বক্সের হেডার */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(1) > div.bg-slate-100,
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(3) > div.bg-slate-100 {
+                    background: #f1f5f9 !important; 
+                    font-weight: bold !important; 
+                    padding: 5px 8px !important; 
+                    text-align: center !important; 
+                    border-bottom: 1px solid #cbd5e1 !important; 
+                    font-size: 12px !important;
+                    color: #1e293b !important;
+                }
+
+                /* ২. সংক্ষিপ্ত রিপোর্টের ভেতরের লাইন */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(1) > div {
+                    display: table !important; /* টেবিল লেআউট */
+                    width: 100% !important;
+                    padding: 5px 8px !important;
+                    border-bottom: 1px solid #cbd5e1 !important; 
+                    font-size: 11px !important;
+                    box-sizing: border-box !important;
+                }
+                /* বামের লেখা */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(1) > div > span:first-child {
+                    display: table-cell !important;
+                    text-align: left !important;
+                    font-weight: bold !important;
+                    color: #475569 !important;
+                    width: 60% !important;
+                }
+                /* ডানের সংখ্যা */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(1) > div > span:last-child {
+                    display: table-cell !important;
+                    text-align: right !important;
+                    font-weight: bold !important;
+                    color: #1e293b !important;
+                    width: 40% !important;
+                }
+                
+                /* শেষ লাইনে বর্ডার থাকবে না */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(1) > div:last-child {
+                    border-bottom: none !important;
+                }
+
+                /* ৩. গ্রেডিং টেবিলের ভেতরের সেল ফিক্স */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(3) table {
+                    width: 100% !important;
+                    border-collapse: collapse !important;
+                }
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(3) table tr td {
+                    padding: 5px 8px !important; 
+                    border-bottom: 1px solid #cbd5e1 !important; 
+                    font-size: 11px !important;
+                    vertical-align: middle !important;
+                    width: 50% !important; /* সমান দুই কলাম */
+                }
+                /* গ্রেডিং টেবিলের ডানের অংশ বোল্ড করা */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(3) table tr td:last-child {
+                    font-weight: bold !important;
+                    text-align: center !important;
+                }
+                /* গ্রেডিং টেবিলের শেষ লাইনে বর্ডার থাকবে না */
+                .gp-class-result-wrap > div.p-4.bg-slate-50 > div:nth-child(3) table tr:last-child td {
+                    border-bottom: none !important;
+                }
+
+                /* ★★★ মেইন রেজাল্ট টেবিল ★★★ */
+                .gp-class-result-wrap > div.overflow-x-auto { padding: 0 !important; }
+                .gp-class-result-wrap > div.overflow-x-auto table { width: 100% !important; border-collapse: collapse !important; border: 2px solid #065f46 !important; }
+                
+                .gp-class-result-wrap > div.overflow-x-auto th {
+                    background: #065f46 !important; color: white !important; border: 1px solid #065f46 !important;
+                    padding: 6px 4px !important; font-size: 10px !important; text-align: center !important;
+                    white-space: normal !important; word-break: break-word !important; vertical-align: middle !important;
+                }
+                .gp-class-result-wrap > div.overflow-x-auto th span {
+                    display: inline-block; white-space: normal !important; word-break: break-word !important; min-width: 50px;
+                    font-family: 'Amiri', serif !important; line-height: 1.4 !important;
+                }
+                
+                .gp-class-result-wrap > div.overflow-x-auto td {
+                    border: 1px solid #cbd5e1 !important; padding: 5px 4px !important; text-align: center !important;
+                    font-size: 10px !important; white-space: nowrap !important; vertical-align: middle !important;
+                }
+                
+                /* সন্তানের সারি হাইলাইট (হলুদ) */
+                .gp-class-result-wrap tr.bg-yellow-100 { background-color: #fef9c3 !important; font-weight: bold !important; }
+                .gp-class-result-wrap tr.bg-yellow-100 td { border-top: 2px solid #eab308 !important; border-bottom: 2px solid #eab308 !important; }
+
+                @page { size: A4 landscape; margin: 6mm; }
+                @media print { body { padding: 0 !important; } button { display: none !important; } }
             </style>
         </head>
         <body>
-            <div class="print-head">
-                ${madrasaAr ? `<h1 dir="rtl">${madrasaAr}</h1>` : ''}
-                <h2>${madrasaBn}</h2>
-                ${addr ? `<p>${addr}</p>` : ''}
-                <p class="title">শ্রেণির রেজাল্ট — <span class="font-arabic">${_guardianSession?.className || ''}</span></p>
+            <!-- ★★★ শুধু স্ক্রিন থেকে ক্লোন করা টেবিল (আলাদা হেডার নেই) ★★★ -->
+            <div class="gp-class-result-wrap">
+                ${clone.innerHTML}
             </div>
-            ${el.innerHTML}
-            <p style="margin-top:14px;font-size:9px;text-align:center;color:#475569;">
+
+            <p style="margin-top:12px;font-size:9px;text-align:center;color:#475569;border-top:1px solid #065f46;padding-top:6px;">
                 প্রিন্ট: ${new Date().toLocaleString('bn-BD')} | আল-জামিয়াহ সিস্টেম
             </p>
             <script>
                 window.addEventListener('load', function() {
-                    setTimeout(function() { window.print(); window.close(); }, 700);
+                    setTimeout(function() { window.print(); window.close(); }, 800);
                 });
             <\/script>
         </body>
