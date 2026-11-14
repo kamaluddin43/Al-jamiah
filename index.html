@@ -45821,9 +45821,7 @@ async function renderGuardianPageContent() {
     if (!studentsLoaded || (typeof studentsCache !== 'undefined' && studentsCache.length === 0)) {
         await loadStudentsFromFirestore();
     }
-    await loadFeeStructure();
-    await loadFeePayments();
-    
+   
     // ★ পেইজ অনুযায়ী render
     if (_currentGuardianPage === 'login-info') {
         renderGuardianLoginInfoPage(container);
@@ -45839,110 +45837,6 @@ async function renderGuardianPageContent() {
     if (_currentGuardianPage === 'leave-management') {
         return renderGuardianLeaveManagement(container);
     }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// ডাটা লোড হেল্পার
-// ═══════════════════════════════════════════════════════════════
-
-let _feeStructureCache = {};
-let _feePaymentsCache = [];
-
-async function loadFeeStructure() {
-    if (window._isFeeStructureLoading) return;
-    window._isFeeStructureLoading = true;
-    
-    if (!currentUser) { window._isFeeStructureLoading = false; return; }
-    
-    const CACHE_KEY = 'madrasa_fee_structure_cache';
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-        try { _feeStructureCache = JSON.parse(cached); } catch(e) {}
-    }
-
-    // ★★★ এখানে পরিবর্তন করেছেন ★★★
-    if (!navigator.onLine) { 
-        window._isFeeStructureLoading = false; 
-        return; 
-    }
-
-    try {
-        const { doc, getDoc } = window.fbFuncs;
-        const snap = await getDoc(doc(window.fbDB, 'config', 'feeStructure'));
-        _feeStructureCache = snap.exists() ? (snap.data().structure || {}) : {};
-        
-        localStorage.setItem(CACHE_KEY, JSON.stringify(_feeStructureCache));
-    } catch (err) {
-        console.error('❌ loadFeeStructure:', err);
-    }
-    
-    window._isFeeStructureLoading = false;
-}
-
-async function saveFeeStructure() {
-    try {
-        const { doc, setDoc, serverTimestamp, getDoc } = window.fbFuncs;
-        await setDoc(doc(window.fbDB, 'config', 'feeStructure'), {
-            structure: _feeStructureCache,
-            updatedAt: serverTimestamp(),
-            updatedBy: currentUser?.uid || 'unknown'
-        });
-        return true;
-    } catch (err) {
-        console.error('❌ saveFeeStructure:', err);
-        return false;
-    }
-}
-
-function getClassFeeStructure(dept, className) {
-    const key = dept + '::' + className;
-    return _feeStructureCache[key] || {
-        admissionFee: 0, sessionFee: 0, monthlyFee: 0,
-        monthlyFood: 0, firstMonthFood: 0, hostelFee: 0
-    };
-}
-
-async function loadFeePayments() {
-    // ★★★ ১. লক বসানো হলো ★★★
-    if (window._isFeePaymentsLoading) return;
-    window._isFeePaymentsLoading = true;
-
-    if (!currentUser) { 
-        window._isFeePaymentsLoading = false; 
-        return; 
-    }
-    
-    const CACHE_KEY = 'madrasa_fee_payments_cache';
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-        try { _feePaymentsCache = JSON.parse(cached); } catch(e) {}
-    }
-
-    // ★★★ ২. অফলাইন চেক ★★★
-    if (!navigator.onLine) { 
-        window._isFeePaymentsLoading = false; 
-        return; 
-    }
-
-    try {
-        const { collection, getDocs } = window.fbFuncs;
-        const snap = await getDocs(collection(window.fbDB, 'feePayments'));
-        _feePaymentsCache = [];
-        snap.forEach(d => _feePaymentsCache.push({ id: d.id, ...d.data() }));
-        
-        localStorage.setItem(CACHE_KEY, JSON.stringify(_feePaymentsCache));
-    } catch (err) {
-        console.error('❌ loadFeePayments:', err);
-    }
-    
-    // ★★★ ৩. কাজ শেষে লক খোলা হলো ★★★
-    window._isFeePaymentsLoading = false;
-}
-
-function getStudentTotalPaid(studentDbId) {
-    return _feePaymentsCache
-        .filter(p => p.studentDbId === studentDbId)
-        .reduce((a, p) => a + (Number(p.amount) || 0), 0);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -54596,6 +54490,32 @@ window.showTeacherPortal = function() {
         }
     }, 300);
 
+        // ইনিশিয়ালি ডাটা লোড করার জন্য
+    setTimeout(async () => {
+        if (typeof loadStudentsFromFirestore === 'function') {
+            await loadStudentsFromFirestore();
+        }
+        
+        // ★★★ নতুন যোগ করুন: শিক্ষক পোর্টালে ঢোকার সময় ফায়ারবেস থেকে রুটিন লোড করা ★★★
+        try {
+            const { collection, getDocs } = window.fbFuncs;
+            const rSnap = await getDocs(collection(window.fbDB, 'routines'));
+            window.routinesCache = [];
+            rSnap.forEach(d => window.routinesCache.push({ id: d.id, ...d.data() }));
+            console.log('✅ রুটিন সফলভাবে লোড হয়েছে:', window.routinesCache.length);
+        } catch(e) {
+            console.error('রুটিন লোড ব্যর্থ:', e);
+        }
+        
+        // ★ ফিক্স: studentsCache লোড হওয়ার পর নিশ্চিত রিফ্রেশ
+        if (window.studentsCache && window.studentsCache.length > 0) {
+            loadTpProfileStats();
+        } else {
+            // ক্যাশ থেকে রিট্রাই
+            setTimeout(() => loadTpProfileStats(), 300);
+        }
+    }, 300);
+
     // ★★★ নতুন যোগ করুন: লাইভ আপডেট লিসেনার (রিয়েল-টাইম) ★★★
     setTimeout(() => {
         if (typeof startStudentsRealtimeListener === 'function') {
@@ -56902,22 +56822,56 @@ window.switchTpExamSub = async function(sub) {
 
     // ১. ফলাফল এন্ট্রি
     if (sub === 'entry') {
-        const allowed = getTeacherAllowedClasses();
-        if (!allowed || allowed.length === 0) {
-            wrap.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500">আপনার কোনো জামাত assigned নেই।</div>`;
+        wrap.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-teal-600"></i><p>রুটিন লোড হচ্ছে...</p></div>`;
+
+        // ★★★ ফিক্স ১: রিলোড দিলে রুটিন অটো লোড করি (যদি খালি থাকে) ★★★
+        if (!window.routinesCache || window.routinesCache.length === 0) {
+            try {
+                const { collection, getDocs, query, where } = window.fbFuncs;
+                const year = (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
+                // ফায়ারবেস থেকে রুটিন আনছি
+                const rSnap = await getDocs(collection(window.fbDB, 'routines'));
+                window.routinesCache = [];
+                rSnap.forEach(d => window.routinesCache.push({ id: d.id, ...d.data() }));
+            } catch (e) { 
+                console.warn('Routine load err:', e); 
+            }
+        }
+
+        const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
+        
+        // ★★★ ফিক্স ২: নামের স্পেস বা ছোটখাটো ভুল উপেক্ষা করে রুটিন খোঁজা ★★★
+        const cleanName = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, '');
+        
+        const myRoutines = (window.routinesCache || []).filter(r => {
+            const rName = cleanName(r.teacherName);
+            const tName = cleanName(teacherName);
+            return rName === tName || rName.includes(tName) || tName.includes(rName);
+        });
+        
+        // ইউনিক জামাতের নাম বের করি
+        const myUniqueClasses = [...new Set(myRoutines.map(r => r.className))];
+
+        if (myUniqueClasses.length === 0) {
+            wrap.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500 font-bold">
+                আপনার নামে রুটিনে কোনো জামাত বরাদ্দ নেই।<br>
+                <span class="text-xs text-slate-400 mt-2 block">খোঁজা হয়েছে: "${teacherName}" নামে। এডমিনের সাথে যোগাযোগ করুন।</span>
+            </div>`;
             return;
         }
 
-        const classOptions = allowed.map(k => {
-            const [d, c] = k.split('::');
-            return `<option value="${d}::${c}" ${window._tpExamState.entryClass === c ? 'selected' : ''}>${c}</option>`;
+        // ড্রপডাউনের অপশন তৈরি
+        const classOptions = myUniqueClasses.map(c => {
+            const routineItem = myRoutines.find(r => r.className === c);
+            const deptKey = routineItem ? routineItem.dept : '';
+            return `<option value="${deptKey}::${c}" ${window._tpExamState.entryClass === c ? 'selected' : ''}>${c}</option>`;
         }).join('');
 
         wrap.innerHTML = `
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3">
                 <div class="flex flex-wrap gap-2 items-end">
                     <div class="flex-1 min-w-[150px]">
-                        <label class="block text-xs font-bold text-slate-700 mb-1">জামাত নির্বাচন করুন</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">আপনার জামাত নির্বাচন করুন</label>
                         <select onchange="onTpEntryClassChange(this.value)" class="w-full rounded-lg border-slate-300 border p-2 text-sm">
                             <option value="">-- জামাত --</option>
                             ${classOptions}
@@ -56930,11 +56884,11 @@ window.switchTpExamSub = async function(sub) {
             </div>
         `;
         
+        // আগে থেকে কোনো ক্লাস সিলেক্ট করা থাকলে টেবিল লোড করি
         if (window._tpExamState.entryClass) {
             loadTpMarksEntryTable();
         }
-
-    } 
+    }
     // ২. আমার শ্রেণি ভিউ
     else if (sub === 'class-view') {
         const allowed = getTeacherAllowedClasses();
@@ -57391,9 +57345,11 @@ async function loadTpMarksEntryTable() {
 
     const dept = window._tpExamState.entryDept;
     const className = window._tpExamState.entryClass;
-    const teacherName = window._tpExamState.teacherName;
+    const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
+    const currentExam = window._marksContext?.examType || 'term2';
+    const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
 
-    // কলাম সেটিংস লোড করি
+    // কলাম সেটিংস লোড
     try {
         const { doc, getDoc } = window.fbFuncs;
         const configRef = doc(window.fbDB, 'config', 'marksColumnsConfig');
@@ -57406,38 +57362,22 @@ async function loadTpMarksEntryTable() {
         }
     } catch (e) { console.warn('Column config:', e); }
 
-    // ★★★ ফিল্টার লজিক: শুধু শিক্ষকের পড়ানো বিষয়গুলো ★★★
-    const allBooks = (configData?.books || {})[className] || [];
-    const deletedCols = _deletedMarksColumns[className] || [];
-    const customCols = _customMarksColumns[className] || [];
+    // রুটিন ফিল্টার
+    const clean = (str) => String(str || '').trim().toLowerCase().replace(/\s+/g, '');
+    const teacherRoutines = (window.routinesCache || []).filter(r => 
+        clean(r.teacherName) === clean(teacherName) && clean(r.className) === clean(className)
+    );
     
-    // রুটিন থেকে এই শিক্ষকের পড়ানো কিতাবগুলো বের করি
-    const teacherRoutines = (routinesCache || []).filter(r => r.teacherName === teacherName && r.className === className);
-    const teacherBooks = new Set(teacherRoutines.map(r => r.bookName));
+    const uniqueBooks = [...new Set(teacherRoutines.map(r => r.bookName))];
 
-    // যে কিতাবগুলো এই শিক্ষক পড়ান, সেগুলোই কলাম হিসেবে দেখাব
-    let teacherCols = [];
-    allBooks.forEach((book, idx) => {
-        const colKey = `default_${idx}`;
-        if (!deletedCols.includes(colKey) && teacherBooks.has(book)) {
-            teacherCols.push({ type: 'default', key: colKey, index: idx, label: book });
-        }
-    });
-    // কাস্টম কলামও চেক করি (যদি সেটা এই শিক্ষকের হয়)
-    customCols.forEach(col => {
-        if (!deletedCols.includes(col.key) && teacherBooks.has(col.label)) {
-            teacherCols.push({ type: 'custom', key: col.key, label: col.label });
-        }
-    });
-
-    if (teacherCols.length === 0) {
-        wrap.innerHTML = `<div class="text-center py-10 text-amber-600 font-bold">এই জামাতে আপনার কোনো বিষয় বরাদ্দ নেই।</div>`;
+    if (uniqueBooks.length === 0) {
+        wrap.innerHTML = `<div class="text-center py-10 text-amber-600 font-bold">এই জামাতে আপনার কোনো কিতাব বরাদ্দ নেই।</div>`;
         return;
     }
 
     // শিক্ষার্থী ফিল্টার
     const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
-    const students = (studentsCache || []).filter(s => 
+    const students = (window.studentsCache || []).filter(s => 
         s.dept === dept && s.className === className && 
         !excludedRemarks.includes((s.remark?.type || '').trim())
     );
@@ -57447,15 +57387,15 @@ async function loadTpMarksEntryTable() {
         return;
     }
 
-    // টেবিল তৈরি (এক্সেল স্টাইল)
     let headHTML = `<tr>
         <th class="p-1 border bg-slate-100 sticky top-0 z-10 w-10 text-center text-xs">#</th>
         <th class="p-1 border bg-slate-100 sticky top-0 z-10 min-w-[130px] text-xs">নাম</th>
         <th class="p-1 border bg-slate-100 sticky top-0 z-10 min-w-[90px] text-xs">আইডি</th>`;
     
-    teacherCols.forEach(col => {
+    uniqueBooks.forEach((bookName) => {
+        const uniqueKey = `tpbook_${bookName}`.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '');
         headHTML += `<th class="p-1 border bg-slate-100 sticky top-0 z-10 min-w-[80px] max-w-[110px] text-center text-xs">
-            <span class="font-arabic font-bold">${col.label}</span>
+            <span class="font-arabic font-bold block">${bookName}</span>
         </th>`;
     });
 
@@ -57466,21 +57406,42 @@ async function loadTpMarksEntryTable() {
     let rowsHTML = '';
     students.forEach((s, rIdx) => {
         let cellsHTML = '';
-        teacherCols.forEach(col => {
+        
+        uniqueBooks.forEach(bookName => {
+            const uniqueKey = `tpbook_${bookName}`.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '');
+            
+            // ★★★ আপনার মেইন সেকশনের হুবহু ডাটা রিডিং লজিক ★★★
             let val = '';
-            if (col.type === 'default') val = s.resultMarksObj?.[col.key] !== undefined ? s.resultMarksObj[col.key] : (s.resultMarks?.[col.index] || '');
-            else val = s.customMarks?.[col.key] || '';
+            
+            // ১. মেইন সেকশনের টার্ম মার্কস চেক
+            if (typeof getStudentTermMarks === 'function') {
+                const termMarks = getStudentTermMarks(s, academicYear, currentExam);
+                if (termMarks.resultMarksObj && termMarks.resultMarksObj[uniqueKey] !== undefined) {
+                    val = termMarks.resultMarksObj[uniqueKey];
+                } else if (termMarks.customMarks && termMarks.customMarks[uniqueKey] !== undefined) {
+                    val = termMarks.customMarks[uniqueKey];
+                }
+            }
 
-            cellsHTML += `<td class="p-0 border text-center">
+            // ২. যদি না পাওয়া যায়, সরাসরি স্টুডেন্ট অবজেক্ট চেক
+            if (val === '') {
+                if (s.resultMarksObj && s.resultMarksObj[uniqueKey] !== undefined) {
+                    val = s.resultMarksObj[uniqueKey];
+                } else if (s.customMarks && s.customMarks[uniqueKey] !== undefined) {
+                    val = s.customMarks[uniqueKey];
+                }
+            }
+
+            cellsHTML += `<td class="p-0 border text-center relative group">
                 <input type="text" inputmode="numeric" 
-                    data-row="${rIdx}" data-student-id="${s.id}" data-col-key="${col.key}" data-col-type="${col.type}" 
-                    data-col-label="${col.label || col.name || ''}"
-                    value="${val !== null ? val : ''}" 
+                    data-row="${rIdx}" data-student-id="${s.id}" 
+                    data-col-key="${uniqueKey}" data-col-type="custom" 
+                    data-col-label="${bookName}"
+                    value="${val !== null && val !== '' ? val : ''}" 
                     class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm tp-mark-input outline-none bg-transparent"
                     onkeydown="handleTpSpreadsheetKeydown(event)"
-                    onmousedown="startCellSelection(event, this)"
-                    onmouseenter="dragCellSelection(this)"
                     onfocus="this.select()">
+                ${val !== '' ? `<span class="absolute top-0 right-0 text-[8px] bg-blue-100 text-blue-700 px-1 rounded-bl opacity-70">এন্ট্রি হয়েছে</span>` : ''}
             </td>`;
         });
 
@@ -57498,7 +57459,7 @@ async function loadTpMarksEntryTable() {
 
     wrap.innerHTML = `
         <div class="flex justify-between items-center mb-2">
-            <p class="text-[10px] text-slate-500"><i class="fa-solid fa-info-circle"></i> শুধু আপনার পড়ানো বিষয়গুলো দেখানো হচ্ছে।</p>
+            <p class="text-[10px] text-slate-500"><i class="fa-solid fa-info-circle"></i> আগের নাম্বার থাকলে নীল রঙে লেখা থাকবে।</p>
             <button onclick="saveTpMarks()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow flex items-center gap-2">
                 <i class="fa-solid fa-floppy-disk"></i> সেভ করুন
             </button>
@@ -57511,7 +57472,6 @@ async function loadTpMarksEntryTable() {
         </div>
     `;
 
-    // লাইভ ক্যালকুলেশন আপডেট
     setTimeout(() => {
         students.forEach((_, rIdx) => window.updateTpRowLiveStats(rIdx, dept, className));
     }, 50);
@@ -57578,11 +57538,12 @@ window.saveTpMarks = async function() {
     const dept = window._tpExamState.entryDept;
     const className = window._tpExamState.entryClass;
     const inputs = document.querySelectorAll('.tp-mark-input');
-    
-    // বর্তমান পরীক্ষা নিন
-    const currentExam = window._marksContext?.examType || 'term1';
+    const currentExam = window._marksContext?.examType || 'term2';
+    const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
     
     const dataToSave = {};
+    let hasOverwrite = false;
+
     inputs.forEach(inp => {
         const sId = inp.dataset.studentId;
         if (!sId) return;
@@ -57592,10 +57553,36 @@ window.saveTpMarks = async function() {
         let safeVal = rawVal === '' ? null : parseInt(rawVal);
         if (rawVal !== '' && isNaN(safeVal)) safeVal = 0;
 
-        if (!dataToSave[sId]) dataToSave[sId] = { resultMarksObj: {}, customMarks: {} };
-        if (type === 'default') dataToSave[sId].resultMarksObj[colKey] = safeVal;
-        else dataToSave[sId].customMarks[colKey] = safeVal;
+        if (!dataToSave[sId]) dataToSave[sId] = { customMarks: {} };
+        dataToSave[sId].customMarks[colKey] = safeVal;
+
+        // চেক করা আগে ডাটা ছিল কি না
+        const s = studentsCache.find(x => x.id === sId);
+        if (s && safeVal !== null) {
+            let oldVal = '';
+            if (typeof getStudentTermMarks === 'function') {
+                const termMarks = getStudentTermMarks(s, academicYear, currentExam);
+                oldVal = termMarks.resultMarksObj?.[colKey] ?? termMarks.customMarks?.[colKey] ?? '';
+            }
+            if (oldVal === '') oldVal = s.resultMarksObj?.[colKey] ?? s.customMarks?.[colKey] ?? '';
+
+            if (oldVal !== '' && oldVal !== null && oldVal !== safeVal) {
+                hasOverwrite = true;
+            }
+        }
     });
+
+    if (hasOverwrite) {
+        const proceed = confirm(
+            "⚠️ সতর্কতা!\n\n" +
+            "কিছু কিতাবে আগে থেকেই নাম্বার এন্ট্রি করা আছে। আপনি সেগুলো পরিবর্তন করতে যাচ্ছেন।\n\n" +
+            "আপনি কি নিশ্চিত যে আপনি পুরনো নাম্বার মুছে নতুন নাম্বার সেভ করতে চান?"
+        );
+        if (!proceed) {
+            showToast('❌ সেভ বাতিল করা হয়েছে।', 'info');
+            return;
+        }
+    }
 
     showToast('💾 সেভ হচ্ছে...', 'info');
     try {
@@ -57607,12 +57594,8 @@ window.saveTpMarks = async function() {
             let isSaved = false;
 
             const updateDataForStudent = {};
-            
-            // ★ শুধুমাত্র নির্দিষ্ট পরীক্ষার ভেতরে ডেটা সেভ হবে (পুরনো ফ্ল্যাট ডেটা আর ওভাররাইট হবে না) ★
-            if (Object.keys(data.resultMarksObj).length > 0) {
-                updateDataForStudent[`examResults.${currentExam}.resultMarksObj`] = data.resultMarksObj;
-            }
             if (Object.keys(data.customMarks).length > 0) {
+                // ★★★ মেইন সেকশনের হুবহু সেভিং স্ট্রাকচার ★★★
                 updateDataForStudent[`examResults.${currentExam}.customMarks`] = data.customMarks;
             }
 
@@ -57627,8 +57610,8 @@ window.saveTpMarks = async function() {
 
             if (!isSaved) {
                 const updateDataForAdmission = {};
-                if (Object.keys(data.resultMarksObj).length > 0) updateDataForAdmission[`data.examResults.${currentExam}.resultMarksObj`] = data.resultMarksObj;
                 if (Object.keys(data.customMarks).length > 0) updateDataForAdmission[`data.examResults.${currentExam}.customMarks`] = data.customMarks;
+                
                 if (Object.keys(updateDataForAdmission).length > 0) {
                     await updateDoc(doc(window.fbDB, 'admissionForms', rawDocId), updateDataForAdmission);
                     isSaved = true;
@@ -57636,22 +57619,23 @@ window.saveTpMarks = async function() {
             }
 
             if (isSaved) {
-                // লোকাল ক্যাশ আপডেট করুন
                 const s = studentsCache.find(x => x.id === sId);
                 if (s) {
                     if (!s.examResults) s.examResults = {};
                     if (!s.examResults[currentExam]) s.examResults[currentExam] = {};
-                    if (data.resultMarksObj) s.examResults[currentExam].resultMarksObj = { ...(s.examResults[currentExam].resultMarksObj || {}), ...data.resultMarksObj };
                     if (data.customMarks) s.examResults[currentExam].customMarks = { ...(s.examResults[currentExam].customMarks || {}), ...data.customMarks };
+                    if (!s.customMarks) s.customMarks = {};
+                    Object.assign(s.customMarks, data.customMarks);
                 }
                 count++;
             }
         }
-        // ফায়ারবেস থেকে রিফ্রেশ
+        
         if (typeof loadStudentsFromFirestore === 'function') {
             await loadStudentsFromFirestore();
         }
         showToast(`✅ ${count} জন ছাত্রের মার্কস সেভ হয়েছে`, 'success');
+        loadTpMarksEntryTable(); 
     } catch (err) {
         console.error('❌ saveTpMarks Error:', err);
         showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
@@ -59151,126 +59135,1059 @@ function renderGpDashboard(container) {
     `;
 }
 
-// ═══════════════════ ২. ফি ট্যাব (জমা বাকি) ═══════════════════
+// ═══════════════════════════════════════════════════════════════
+// ★★★ গার্ডিয়ান পোর্টাল — ফি ও পেমেন্ট (সম্পূর্ণ নতুন) ★★★
+// ═══════════════════════════════════════════════════════════════
+
+window._gpFeesState = window._gpFeesState || {
+    activeTab: 'monthly',      // 'monthly' | 'onetime' | 'partial'
+    selectedYear: '',          // '2026' (এককালীন ট্যাবে)
+    selectedMonth: '',         // '2026-11' (মাসিক/খন্ডকালীন ট্যাবে)
+    data: null
+};
+
 async function renderGpFees(container) {
     const student = _guardianSession;
-    container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>`;
+    if (!student) {
+        container.innerHTML = `<p class="text-center text-red-500 py-6">সেশন এক্সপায়ার — আবার লগইন করুন</p>`;
+        return;
+    }
+
+    const now = new Date();
+
+    // ★ ডিফল্ট: মাসিক ট্যাবে গত মাস সিলেক্ট
+    if (!window._gpFeesState.selectedMonth) {
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        window._gpFeesState.selectedMonth = lastMonth.toISOString().slice(0, 7);
+    }
+    if (!window._gpFeesState.selectedYear) {
+        window._gpFeesState.selectedYear = String(now.getFullYear());
+    }
+
+    // ★ কনফিগ ও ছাত্র ডাটা লোড
+    if (typeof loadStudentDuesConfig === 'function') {
+        await loadStudentDuesConfig();
+    }
+    if (!studentsCache || studentsCache.length === 0) {
+        if (typeof loadStudentsFromFirestore === 'function') await loadStudentsFromFirestore();
+    }
+
+    // ★ স্কেলেটন UI
+    container.innerHTML = `
+        <div class="space-y-3 pb-10">
+
+            <!-- ★ ৩টি বার (মাসিক তথ্য) ★ -->
+            <div id="gp-fees-bars" class="grid grid-cols-3 gap-2">
+                <div class="bg-slate-100 border border-slate-200 rounded-xl p-3 text-center animate-pulse">
+                    <div class="h-2 bg-slate-300 rounded w-2/3 mx-auto mb-2"></div>
+                    <div class="h-5 bg-slate-300 rounded w-1/2 mx-auto"></div>
+                </div>
+                <div class="bg-slate-100 border border-slate-200 rounded-xl p-3 text-center animate-pulse">
+                    <div class="h-2 bg-slate-300 rounded w-2/3 mx-auto mb-2"></div>
+                    <div class="h-5 bg-slate-300 rounded w-1/2 mx-auto"></div>
+                </div>
+                <div class="bg-slate-100 border border-slate-200 rounded-xl p-3 text-center animate-pulse">
+                    <div class="h-2 bg-slate-300 rounded w-2/3 mx-auto mb-2"></div>
+                    <div class="h-5 bg-slate-300 rounded w-1/2 mx-auto"></div>
+                </div>
+            </div>
+
+            <!-- ★ স্মার্ট মেসেজ ★ -->
+            <div id="gp-fees-message"></div>
+
+            <!-- ★ মাস/বছর সিলেক্টর ★ -->
+            <div id="gp-fees-selector" class="bg-white rounded-xl shadow-sm border border-slate-200 p-3">
+                <div class="text-center text-slate-400 text-xs py-2">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i> লোড হচ্ছে...
+                </div>
+            </div>
+
+            <!-- ★ ট্যাব ★ -->
+            <div id="gp-fees-tabs" class="bg-slate-50 rounded-xl p-2 flex gap-1.5 shadow-sm border border-slate-200"></div>
+
+            <!-- ★ ট্যাব কনটেন্ট ★ -->
+            <div id="gp-fees-content" class="min-h-[250px]">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center text-slate-400">
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-2"></i>
+                    <p class="text-xs">ডাটা লোড হচ্ছে...</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // ★ ডাটা লোড করে UI আপডেট
+    await loadGpFeesData();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★ ডাটা লোডার
+// ═══════════════════════════════════════════════════════════════
+async function loadGpFeesData() {
+    const student = _guardianSession;
+    const state = window._gpFeesState;
 
     try {
-        if (typeof loadFeeStructure === 'function') await loadFeeStructure();
-        if (typeof loadFeePayments === 'function') await loadFeePayments();
-        
-        const fee = typeof getClassFeeStructure === 'function' ? getClassFeeStructure(student.dept, student.className) : {};
-        const monthlyTotal = (Number(fee.monthlyFee)||0) + (Number(fee.monthlyFood)||0) + (Number(fee.hostelFee)||0);
-        
-        const paidTotal = typeof getStudentTotalPaid === 'function' ? getStudentTotalPaid(student.id) : 0;
-        
-        // এই মাসের পেমেন্ট বের করা
-        const curMonth = new Date().getMonth() + 1;
-        const curYear = new Date().getFullYear();
-        const paidThisMonth = (_feePaymentsCache || []).filter(p => 
-            p.studentDbId === student.id && p.month === curMonth && p.year === curYear
-        ).reduce((a, p) => a + Number(p.amount||0), 0);
-        
-        const dueThisMonth = Math.max(0, monthlyTotal - paidThisMonth);
+        const { collection, getDocs, query, where } = window.fbFuncs;
 
-        // ★★★ নতুন যোগ করা হলো: ছাত্রপ্রদেয় বার্তা লোড ★★★
-        let duesMessagesHTML = '';
-        try {
-            const { collection, getDocs } = window.fbFuncs;
-            const snap = await getDocs(collection(window.fbDB, 'adminMessages'));
-            
-            const myMessages = [];
-            snap.forEach(d => {
-                const data = d.data();
-                if (data._type !== 'student_dues_reminder_guardian') return;
-                if (!data.recipients) return;
-                const isForMe = data.recipients.some(r => 
-                    String(r.studentDbId) === String(student.id) ||
-                    String(r.studentId) === String(student.studentId)
-                );
-                if (isForMe) myMessages.push({ id: d.id, ...data });
-            });
-            
-            myMessages.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-            
-            if (myMessages.length > 0) {
-                duesMessagesHTML = `
-                    <div class="mt-4 bg-violet-50 border-2 border-violet-300 rounded-xl p-4">
-                        <h3 class="text-sm font-bold text-violet-900 mb-2 flex items-center gap-2">
-                            <i class="fa-solid fa-bell text-violet-600"></i>
-                            প্রদেয় বাকি বার্তা (${myMessages.length})
-                        </h3>
-                        ${myMessages.slice(0, 3).map(m => {
-                            const dateStr = m.createdAt?.seconds ? new Date(m.createdAt.seconds * 1000).toLocaleDateString('bn-BD') : '—';
-                            return `
-                                <div class="bg-white rounded-lg p-3 mb-2 border border-violet-200">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="badge bg-violet-600 text-white text-[10px]">প্রদেয় বাকি</span>
-                                        <span class="text-[10px] text-slate-500">${dateStr}</span>
-                                    </div>
-                                    <p class="text-xs text-slate-700 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(m.message)}</p>
-                                    <p class="text-[10px] text-slate-500 mt-2">— ${m.sentBy || 'প্রতিষ্ঠান'}</p>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                `;
-            }
-        } catch (err) {
-            console.warn('dues messages load:', err);
+        // ─── ১. এককালীন প্রদেয় ───
+        const onetimeQ = query(
+            collection(window.fbDB, STUDENT_DUES_FS.ONETIME),
+            where('studentDbId', '==', student.id)
+        );
+        const onetimeSnap = await getDocs(onetimeQ);
+        let onetimeDues = {};
+        if (!onetimeSnap.empty) {
+            onetimeDues = onetimeSnap.docs[0].data().items || {};
+        } else {
+            onetimeDues = {
+                admissionForm: Number(student.admissionFormFee) || 0,
+                admissionFee:  Number(student.admissionFee)  || 0,
+                sessionFee:    Number(student.sessionFee)    || 0
+            };
         }
 
-        container.innerHTML = `
-            <div class="space-y-4">
-                <!-- সারসংক্ষেপ -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-4 text-center">
-                        <p class="text-[10px] font-bold text-rose-800">মোট বকেয়া</p>
-                        <h3 class="text-2xl font-bold text-rose-900">৳ ${dueThisMonth}</h3>
-                    </div>
-                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
-                        <p class="text-[10px] font-bold text-emerald-800">মোট পরিশোধিত</p>
-                        <h3 class="text-2xl font-bold text-emerald-900">৳ ${paidTotal}</h3>
-                    </div>
-                </div>
+        // ─── ২. মাসিক প্রদেয় (সিলেক্ট করা মাসের) ───
+        const monthlyQ = query(
+            collection(window.fbDB, STUDENT_DUES_FS.MONTHLY),
+            where('studentDbId', '==', student.id),
+            where('yearMonth', '==', state.selectedMonth)
+        );
+        const monthlySnap = await getDocs(monthlyQ);
+        let monthlyDues = {};
+        if (!monthlySnap.empty) {
+            monthlyDues = monthlySnap.docs[0].data().items || {};
+        } else {
+            monthlyDues = {
+                food:        Number(student.monthlyFood)   || 0,
+                salary:      Number(student.monthlySalary) || 0,
+                hostel:      Number(student.hostelFee)     || 0,
+                electricity: 0,
+                iron:        0
+            };
+        }
 
-                <!-- ফি বিবরণ -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                    <h3 class="text-sm font-bold text-slate-800 mb-3">মাসিক ফি বিবরণ</h3>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between border-b pb-1">
-                            <span class="text-slate-600">মাসিক বেতন</span>
-                            <span class="font-bold">৳ ${fee.monthlyFee || 0}</span>
-                        </div>
-                        <div class="flex justify-between border-b pb-1">
-                            <span class="text-slate-600">খোরাকি</span>
-                            <span class="font-bold">৳ ${fee.monthlyFood || 0}</span>
-                        </div>
-                        <div class="flex justify-between border-b pb-1">
-                            <span class="text-slate-600">আবাসন ফি</span>
-                            <span class="font-bold">৳ ${fee.hostelFee || 0}</span>
-                        </div>
-                        <div class="flex justify-between pt-1 font-bold text-violet-700 text-base">
-                            <span>মোট</span>
-                            <span>৳ ${monthlyTotal}</span>
-                        </div>
-                    </div>
-                </div>
+        // ─── ৩. সব পেমেন্ট ───
+        const payQ = query(
+            collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS),
+            where('studentDbId', '==', student.id)
+        );
+        const paySnap = await getDocs(payQ);
+        const payments = {};
+        paySnap.forEach(d => {
+            const p = d.data();
+            const key = `${p.type}::${p.itemKey}::${p.yearMonth || ''}`;
+            payments[key] = p;
+        });
 
-                <!-- ★★★ নতুন যোগ করা হলো: এখানে duesMessagesHTML বসানো হয়েছে ★★★ -->
-                ${duesMessagesHTML}
-                
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
-                    <i class="fa-solid fa-info-circle"></i> ফি পরিশোধের জন্য সরাসরি মাদরাসার অফিসে যোগাযোগ করুন অথবা শিক্ষাসচিবের সাথে কথা বলুন।
+        // ─── ৪. প্রদেয় বাকি বার্তা লোড করি ★ নতুন ───
+        const duesMessages = await loadGpDuesMessages();
+
+        // ─── ৫. ক্যাশে সেভ ───
+        state.data = { onetimeDues, monthlyDues, payments, duesMessages };
+
+        // ─── ৫. ৩টি বার আপডেট (মাসিক হিসাব) ───
+        const config = window._studentDuesConfig;
+        const monthlyItems = config.monthly.items;
+
+        let monthlyTotal = 0;
+        let monthlyPaid  = 0;
+
+        monthlyItems.forEach(item => {
+            const due = Number(monthlyDues[item.key] || 0);
+            monthlyTotal += due;
+
+            const payKey = `monthly::${item.key}::${state.selectedMonth}`;
+            const pay = payments[payKey];
+            if (pay) monthlyPaid += Number(pay.amount) || 0;
+        });
+
+        const monthlyDue = Math.max(0, monthlyTotal - monthlyPaid);
+
+        const barsBox = document.getElementById('gp-fees-bars');
+        if (barsBox) {
+            barsBox.innerHTML = `
+                <div class="bg-indigo-50 border-2 border-indigo-300 rounded-xl p-3 text-center">
+                    <p class="text-[10px] font-bold text-indigo-800 mb-1 leading-tight">মোট ধার্যকৃত প্রদেয়</p>
+                    <p class="text-base md:text-lg font-bold text-indigo-900">৳${toBanglaNumber(monthlyTotal)}</p>
+                </div>
+                <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-3 text-center">
+                    <p class="text-[10px] font-bold text-emerald-800 mb-1 leading-tight">পরিশোধিত</p>
+                    <p class="text-base md:text-lg font-bold text-emerald-900">৳${toBanglaNumber(monthlyPaid)}</p>
+                </div>
+                <div class="bg-rose-50 border-2 border-rose-300 rounded-xl p-3 text-center">
+                    <p class="text-[10px] font-bold text-rose-800 mb-1 leading-tight">মোট বকেয়া</p>
+                    <p class="text-base md:text-lg font-bold text-rose-900">৳${toBanglaNumber(monthlyDue)}</p>
+                </div>
+            `;
+        }
+
+        // ─── ৬. স্মার্ট মেসেজ ───
+        renderGpFeesMessage(monthlyDue, monthlyTotal);
+
+        // ─── ৭. সিলেক্টর ───
+        renderGpFeesSelector();
+
+        // ─── ৮. ট্যাব ───
+        renderGpFeesTabs();
+
+        // ─── ৯. ট্যাব কনটেন্ট (পরবর্তী ধাপ) ───
+        renderGpFeesTabContent();
+
+    } catch (err) {
+        console.error('❌ loadGpFeesData:', err);
+        const content = document.getElementById('gp-fees-content');
+        if (content) {
+            content.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center text-red-700 text-sm font-bold">
+                    <i class="fa-solid fa-triangle-exclamation"></i> ডাটা লোড ব্যর্থ: ${err.message}
+                </div>`;
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★ স্মার্ট মেসেজ (তারিখ ও স্ট্যাটাস ভিত্তিক)
+// ═══════════════════════════════════════════════════════════════
+function renderGpFeesMessage(monthlyDue, monthlyTotal) {
+    const msgBox = document.getElementById('gp-fees-message');
+    if (!msgBox) return;
+
+    const state = window._gpFeesState;
+    const now = new Date();
+    const today = now.getDate();
+    const currentMonthKey = now.toISOString().slice(0, 7);
+
+    // ★ সব পরিশোধিত
+    if (monthlyTotal > 0 && monthlyDue <= 0) {
+        msgBox.innerHTML = `
+            <div class="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-3 flex items-start gap-2">
+                <i class="fa-solid fa-check-circle text-emerald-600 text-xl mt-0.5 flex-shrink-0"></i>
+                <div class="flex-1">
+                    <p class="text-sm font-bold text-emerald-900">আপনার সকল প্রদেয় পরিশোধ।</p>
+                    <p class="text-xs text-emerald-700 mt-0.5">আমরা আপনার প্রতি কৃতজ্ঞ। জাযাকুমুল্লাহ।</p>
                 </div>
             </div>
         `;
-
-    } catch (err) {
-        console.error(err);
-        container.innerHTML = `<p class="text-center text-red-500">ফি ডাটা লোড ব্যর্থ</p>`;
+        return;
     }
+
+    // ★ কোন প্রদেয় নেই
+    if (monthlyTotal === 0) {
+        msgBox.innerHTML = '';
+        return;
+    }
+
+    // ★ পুরনো মাস → সাধারণ তথ্য
+    if (state.selectedMonth !== currentMonthKey) {
+        msgBox.innerHTML = `
+            <div class="bg-slate-50 border border-slate-300 rounded-xl p-3 flex items-start gap-2">
+                <i class="fa-solid fa-info-circle text-slate-500 text-lg mt-0.5 flex-shrink-0"></i>
+                <p class="text-xs text-slate-700">এই মাসের বকেয়া <strong>৳${toBanglaNumber(monthlyDue)}</strong>। সম্ভব হলে পরিশোধ করুন।</p>
+            </div>
+        `;
+        return;
+    }
+
+    // ★ চলতি মাস — ১-১০ তারিখ
+    if (today <= 10) {
+        msgBox.innerHTML = `
+            <div class="bg-amber-50 border-2 border-amber-400 rounded-xl p-3 flex items-start gap-2">
+                <i class="fa-solid fa-clock text-amber-600 text-xl mt-0.5 flex-shrink-0"></i>
+                <div class="flex-1">
+                    <p class="text-sm font-bold text-amber-900">আগামী ১০ তারিখের মধ্যেই প্রদেয় পরিশোধ করুন।</p>
+                    <p class="text-xs text-amber-700 mt-0.5">ধন্যবাদ।</p>
+                </div>
+            </div>
+        `;
+    } else {
+        // ★ ১০ তারিখের পরে
+        msgBox.innerHTML = `
+            <div class="bg-red-50 border-2 border-red-400 rounded-xl p-3 flex items-start gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-red-600 text-xl mt-0.5 flex-shrink-0"></i>
+                <div class="flex-1">
+                    <p class="text-sm font-bold text-red-900">আপনার প্রদেয় এখনো বাকি।</p>
+                    <p class="text-xs text-red-700 mt-0.5">মেহেরবানী করে আজই পরিশোধ করুন।</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★ মাস/বছর সিলেক্টর
+// ═══════════════════════════════════════════════════════════════
+function renderGpFeesSelector() {
+    const box = document.getElementById('gp-fees-selector');
+    if (!box) return;
+
+    const state = window._gpFeesState;
+    const now = new Date();
+
+    // ★ মাসিক বা খন্ডকালীন → মাস সিলেক্টর
+    if (state.activeTab === 'monthly' || state.activeTab === 'partial') {
+        const monthNames = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+                            'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+        const monthOptions = [];
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+            monthOptions.push({ key, label });
+        }
+
+        box.innerHTML = `
+            <div class="flex items-center gap-2 flex-wrap">
+                <label class="text-xs font-bold text-slate-700 whitespace-nowrap">
+                    <i class="fa-solid fa-calendar"></i> মাস:
+                </label>
+                <select onchange="onGpFeesMonthChange(this.value)"
+                        class="rounded-lg border-slate-300 border p-2 text-sm font-bold bg-white flex-1 min-w-[140px]">
+                    ${monthOptions.map(m => `
+                        <option value="${m.key}" ${state.selectedMonth === m.key ? 'selected' : ''}>
+                            ${m.label}
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+        `;
+    } else {
+        // ★ এককালীন → বছর সিলেক্টর
+        const yearOptions = [];
+        for (let i = 0; i < 5; i++) yearOptions.push(now.getFullYear() - i);
+
+        box.innerHTML = `
+            <div class="flex items-center gap-2 flex-wrap">
+                <label class="text-xs font-bold text-slate-700 whitespace-nowrap">
+                    <i class="fa-solid fa-calendar"></i> বছর:
+                </label>
+                <select onchange="onGpFeesYearChange(this.value)"
+                        class="rounded-lg border-slate-300 border p-2 text-sm font-bold bg-white flex-1 min-w-[140px]">
+                    ${yearOptions.map(y => `
+                        <option value="${y}" ${state.selectedYear === String(y) ? 'selected' : ''}>
+                            ${toBanglaNumber(y)} ইং
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+        `;
+    }
+}
+
+window.onGpFeesMonthChange = function (monthKey) {
+    window._gpFeesState.selectedMonth = monthKey;
+    loadGpFeesData();
+};
+
+window.onGpFeesYearChange = function (year) {
+    window._gpFeesState.selectedYear = String(year);
+    renderGpFeesTabContent();  // পরবর্তী ধাপে এখানে ডাটা লোড হবে
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ★ ট্যাব হেডার
+// ═══════════════════════════════════════════════════════════════
+function renderGpFeesTabs() {
+    const box = document.getElementById('gp-fees-tabs');
+    if (!box) return;
+
+    const state = window._gpFeesState;
+    const tabs = [
+        { key: 'monthly', label: 'মাসিক',    icon: 'fa-calendar-day' },
+        { key: 'onetime', label: 'এককালীন',  icon: 'fa-calendar-plus' },
+        { key: 'partial', label: 'খন্ডকালীন', icon: 'fa-clock' }
+    ];
+
+    box.innerHTML = tabs.map(t => {
+        const isActive = state.activeTab === t.key;
+        return `
+            <button onclick="switchGpFeesTab('${t.key}')"
+                    class="${isActive
+                        ? 'bg-violet-600 text-white shadow'
+                        : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}
+                           flex-1 px-2 py-2.5 rounded-lg text-xs font-bold transition
+                           flex items-center justify-center gap-1.5">
+                <i class="fa-solid ${t.icon}"></i> ${t.label}
+            </button>
+        `;
+    }).join('');
+}
+
+window.switchGpFeesTab = function (tab) {
+    window._gpFeesState.activeTab = tab;
+    renderGpFeesSelector();
+    renderGpFeesTabs();
+    renderGpFeesTabContent();
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ★ ট্যাব কনটেন্ট ডিসপ্যাচার
+// ═══════════════════════════════════════════════════════════════
+function renderGpFeesTabContent() {
+    const content = document.getElementById('gp-fees-content');
+    if (!content) return;
+
+    const state = window._gpFeesState;
+
+    // ★★★ নতুন: ট্যাবের উপরে প্রদেয় বাকি বার্তা ব্যানার ★★★
+    const duesMessages = state.data?.duesMessages || [];
+    const bannerHTML = renderGpDuesMessagesBanner(duesMessages);
+
+    // ★★ ট্যাব কনটেন্ট আলাদা ডিভে রেন্ডার করি
+    content.innerHTML = `
+        ${bannerHTML}
+        <div id="gp-fees-tab-inner"></div>
+    `;
+
+    const inner = document.getElementById('gp-fees-tab-inner');
+    if (!inner) return;
+
+    if (state.activeTab === 'monthly') {
+        renderGpMonthlyFeesChart(inner);
+    } else if (state.activeTab === 'onetime') {
+        renderGpOnetimeFeesChart(inner);
+    } else {
+        renderGpPartialFeesChart(inner);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ১. মাসিক প্রদেয় চার্ট ★★★
+// ═══════════════════════════════════════════════════════════════
+function renderGpMonthlyFeesChart(content) {
+    const state = window._gpFeesState;
+    const data = state.data;
+    if (!data) {
+        content.innerHTML = `<div class="bg-white rounded-xl p-6 text-center text-slate-400 text-sm">ডাটা লোড হয়নি</div>`;
+        return;
+    }
+
+    const config = window._studentDuesConfig;
+    const monthlyItems = config.monthly.items;
+    const monthlyDues = data.monthlyDues || {};
+    const payments = data.payments || {};
+
+    if (monthlyItems.length === 0) {
+        content.innerHTML = `<div class="bg-white rounded-xl p-6 text-center text-slate-400 text-sm">মাসিক প্রদেয় কনফিগার করা হয়নি</div>`;
+        return;
+    }
+
+    // ★ প্রতিটি আইটেমের হিসাব
+    let totalDue = 0;
+    let totalPaid = 0;
+
+    const rows = monthlyItems.map(item => {
+        const due = Number(monthlyDues[item.key] || 0);
+        const payKey = `monthly::${item.key}::${state.selectedMonth}`;
+        const pay = payments[payKey];
+        const paid = pay ? Number(pay.amount) || 0 : 0;
+        const pending = Math.max(0, due - paid);
+        const isPaid = due > 0 && paid >= due;
+        const isPartial = paid > 0 && paid < due;
+
+        totalDue += due;
+        totalPaid += paid;
+
+        return {
+            label: item.label,
+            key: item.key,
+            due,
+            paid,
+            pending,
+            isPaid,
+            isPartial,
+            paidAt: pay?.paidAt || '',
+            receiptNo: pay?.receiptNo || ''
+        };
+    });
+
+    const totalPending = Math.max(0, totalDue - totalPaid);
+
+    // ★★★ সব পরিশোধিত হলে সবুজ মেসেজ ★★★
+    const allPaidBanner = (totalDue > 0 && totalPending === 0) ? `
+        <div class="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-3 mb-3 flex items-start gap-2">
+            <i class="fa-solid fa-check-circle text-emerald-600 text-xl mt-0.5 flex-shrink-0"></i>
+            <div class="flex-1">
+                <p class="text-sm font-bold text-emerald-900">এই মাসের সকল প্রদেয় পরিশোধ হয়েছে!</p>
+                <p class="text-xs text-emerald-700 mt-0.5">আমরা আপনার প্রতি কৃতজ্ঞ। জাযাকুমুল্লাহ।</p>
+            </div>
+        </div>
+    ` : '';
+
+    // ★ প্রতিটি সারির HTML
+    const rowsHTML = rows.map((r, i) => {
+        let rowBg = 'bg-white';
+        let borderColor = 'border-slate-200';
+        let statusBadge = '';
+        let paymentCell = '';
+
+        if (r.due === 0) {
+            // ★ প্রদেয় নেই
+            rowBg = 'bg-slate-50';
+            statusBadge = `<span class="badge bg-slate-200 text-slate-600 text-[10px] font-bold">প্রদেয় নেই</span>`;
+            paymentCell = `<span class="text-[10px] text-slate-400 italic">—</span>`;
+        } else if (r.isPaid) {
+            // ★ পরিশোধিত
+            rowBg = 'bg-emerald-50';
+            borderColor = 'border-emerald-300';
+            statusBadge = `<span class="badge bg-emerald-600 text-white text-[10px] font-bold"><i class="fa-solid fa-check"></i> পরিশোধিত</span>`;
+            paymentCell = `
+                <div class="text-center">
+                    <p class="text-[10px] font-bold text-emerald-800">
+                        <i class="fa-solid fa-check-circle"></i> ৳${toBanglaNumber(r.paid)}
+                    </p>
+                    ${r.paidAt ? `<p class="text-[9px] text-emerald-700 mt-0.5">${formatBanglaShortDate(r.paidAt)}</p>` : ''}
+                    ${r.receiptNo ? `<p class="text-[9px] text-emerald-600 font-mono">${r.receiptNo}</p>` : ''}
+                </div>`;
+        } else if (r.isPartial) {
+            // ★ আংশিক পরিশোধিত
+            rowBg = 'bg-amber-50';
+            borderColor = 'border-amber-400';
+            statusBadge = `<span class="badge bg-amber-500 text-white text-[10px] font-bold">আংশিক</span>`;
+            paymentCell = `
+                <div class="text-center">
+                    <p class="text-[10px] font-bold text-amber-800">৳${toBanglaNumber(r.paid)} / ৳${toBanglaNumber(r.due)}</p>
+                    <p class="text-[9px] text-red-700 font-bold mt-0.5">বাকি: ৳${toBanglaNumber(r.pending)}</p>
+                </div>`;
+        } else {
+            // ★ সম্পূর্ণ বাকি
+            rowBg = 'bg-yellow-50';
+            borderColor = 'border-yellow-400';
+            statusBadge = `<span class="badge bg-red-500 text-white text-[10px] font-bold"><i class="fa-solid fa-clock"></i> বাকি</span>`;
+            paymentCell = `
+                <div class="text-center">
+                    <p class="text-[10px] text-red-700 font-bold">অপরিশোধিত</p>
+                </div>`;
+        }
+
+        return `
+            <tr class="${rowBg} border-b ${borderColor}">
+                <td class="p-2 text-center text-xs text-slate-500 font-bold">${i + 1}</td>
+                <td class="p-2 text-xs font-bold text-slate-800 font-arabic">${r.label}</td>
+                <td class="p-2 text-right text-xs font-bold text-indigo-700">৳${toBanglaNumber(r.due)}</td>
+                <td class="p-2 text-center">${statusBadge}</td>
+                <td class="p-2">${paymentCell}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // ★ বাকি থাকলে সতর্কবার্তা
+    const pendingAlert = totalPending > 0 ? `
+        <div class="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3 mt-3 flex items-start gap-2">
+            <i class="fa-solid fa-hourglass-half text-yellow-600 text-xl mt-0.5 flex-shrink-0"></i>
+            <div class="flex-1">
+                <p class="text-xs font-bold text-yellow-900">
+                    মেহেরবানী করে নির্দিষ্ট সময়ের মধ্যে পরিশোধ করুন।
+                </p>
+                <p class="text-[11px] text-yellow-800 mt-0.5">
+                    মোট বাকি: <strong>৳${toBanglaNumber(totalPending)}</strong>
+                </p>
+            </div>
+        </div>
+    ` : '';
+
+    content.innerHTML = `
+        <div class="space-y-3">
+
+            ${allPaidBanner}
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-violet-600 to-violet-800 text-white px-3 py-2 flex justify-between items-center flex-wrap gap-2">
+                    <h3 class="text-sm font-bold">
+                        <i class="fa-solid fa-calendar-day"></i> মাসিক প্রদেয়
+                    </h3>
+                    <span class="badge bg-white/20 text-white text-[10px] font-bold">
+                        ${formatBanglaMonth(state.selectedMonth)}
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-xs" style="min-width:500px;">
+                        <thead class="bg-violet-100 text-violet-900">
+                            <tr>
+                                <th class="p-2 text-[10px] text-center w-8">#</th>
+                                <th class="p-2 text-[10px] text-left">খাত</th>
+                                <th class="p-2 text-[10px] text-right">ধার্যকৃত</th>
+                                <th class="p-2 text-[10px] text-center">স্ট্যাটাস</th>
+                                <th class="p-2 text-[10px] text-center">পরিশোধ</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHTML}</tbody>
+                        <tfoot>
+                            <tr class="bg-violet-50 font-bold border-t-2 border-violet-400">
+                                <td colspan="2" class="p-2 text-xs text-right text-violet-900">সর্বমোট:</td>
+                                <td class="p-2 text-right text-xs text-violet-900">৳${toBanglaNumber(totalDue)}</td>
+                                <td class="p-2 text-center text-[10px]">
+                                    ${totalPending === 0
+                                        ? '<span class="text-emerald-700">✓ সম্পূর্ণ</span>'
+                                        : `<span class="text-red-700">বাকি: ৳${toBanglaNumber(totalPending)}</span>`}
+                                </td>
+                                <td class="p-2 text-center text-[10px] text-emerald-800">
+                                    ৳${toBanglaNumber(totalPaid)}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            ${pendingAlert}
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 leading-relaxed">
+                <i class="fa-solid fa-info-circle"></i>
+                <strong>নোট:</strong> পরিশোধের তথ্য মাদরাসা কর্তৃপক্ষ আপডেট করেন। কোনো ভুল থাকলে অফিসে যোগাযোগ করুন।
+            </div>
+        </div>
+    `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ২. এককালীন প্রদেয় চার্ট (বছর-ভিত্তিক) ★★★
+// ═══════════════════════════════════════════════════════════════
+function renderGpOnetimeFeesChart(content) {
+    const state = window._gpFeesState;
+    const data = state.data;
+    if (!data) {
+        content.innerHTML = `<div class="bg-white rounded-xl p-6 text-center text-slate-400 text-sm">ডাটা লোড হয়নি</div>`;
+        return;
+    }
+
+    const config = window._studentDuesConfig;
+    const onetimeItems = config.onetime.items;
+    const onetimeDues = data.onetimeDues || {};
+    const payments = data.payments || {};
+
+    if (onetimeItems.length === 0) {
+        content.innerHTML = `<div class="bg-white rounded-xl p-6 text-center text-slate-400 text-sm">এককালীন প্রদেয় কনফিগার করা হয়নি</div>`;
+        return;
+    }
+
+    // ★ প্রতিটি আইটেমের হিসাব
+    let totalDue = 0;
+    let totalPaid = 0;
+
+    const rows = onetimeItems.map(item => {
+        const due = Number(onetimeDues[item.key] || 0);
+        const payKey = `onetime::${item.key}::`;
+        const pay = payments[payKey];
+        const paid = pay ? Number(pay.amount) || 0 : 0;
+        const pending = Math.max(0, due - paid);
+        const isPaid = due > 0 && paid >= due;
+        const isPartial = paid > 0 && paid < due;
+
+        totalDue += due;
+        totalPaid += paid;
+
+        return {
+            label: item.label,
+            key: item.key,
+            due,
+            paid,
+            pending,
+            isPaid,
+            isPartial,
+            paidAt: pay?.paidAt || '',
+            receiptNo: pay?.receiptNo || ''
+        };
+    });
+
+    const totalPending = Math.max(0, totalDue - totalPaid);
+
+    // ★★★ সব পরিশোধিত হলে সবুজ মেসেজ ★★★
+    const allPaidBanner = (totalDue > 0 && totalPending === 0) ? `
+        <div class="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-3 mb-3 flex items-start gap-2">
+            <i class="fa-solid fa-check-circle text-emerald-600 text-xl mt-0.5 flex-shrink-0"></i>
+            <div class="flex-1">
+                <p class="text-sm font-bold text-emerald-900">আপনার সকল এককালীন প্রদেয় পরিশোধ হয়েছে!</p>
+                <p class="text-xs text-emerald-700 mt-0.5">আমরা আপনার প্রতি কৃতজ্ঞ। জাযাকুমুল্লাহ।</p>
+            </div>
+        </div>
+    ` : '';
+
+    // ★ প্রতিটি সারির HTML
+    const rowsHTML = rows.map((r, i) => {
+        let rowBg = 'bg-white';
+        let borderColor = 'border-slate-200';
+        let statusBadge = '';
+        let paymentCell = '';
+
+        if (r.due === 0) {
+            rowBg = 'bg-slate-50';
+            statusBadge = `<span class="badge bg-slate-200 text-slate-600 text-[10px] font-bold">প্রদেয় নেই</span>`;
+            paymentCell = `<span class="text-[10px] text-slate-400 italic">—</span>`;
+        } else if (r.isPaid) {
+            rowBg = 'bg-emerald-50';
+            borderColor = 'border-emerald-300';
+            statusBadge = `<span class="badge bg-emerald-600 text-white text-[10px] font-bold"><i class="fa-solid fa-check"></i> পরিশোধিত</span>`;
+            paymentCell = `
+                <div class="text-center">
+                    <p class="text-[10px] font-bold text-emerald-800">
+                        <i class="fa-solid fa-check-circle"></i> ৳${toBanglaNumber(r.paid)}
+                    </p>
+                    ${r.paidAt ? `<p class="text-[9px] text-emerald-700 mt-0.5">${formatBanglaShortDate(r.paidAt)}</p>` : ''}
+                    ${r.receiptNo ? `<p class="text-[9px] text-emerald-600 font-mono">${r.receiptNo}</p>` : ''}
+                </div>`;
+        } else if (r.isPartial) {
+            rowBg = 'bg-amber-50';
+            borderColor = 'border-amber-400';
+            statusBadge = `<span class="badge bg-amber-500 text-white text-[10px] font-bold">আংশিক</span>`;
+            paymentCell = `
+                <div class="text-center">
+                    <p class="text-[10px] font-bold text-amber-800">৳${toBanglaNumber(r.paid)} / ৳${toBanglaNumber(r.due)}</p>
+                    <p class="text-[9px] text-red-700 font-bold mt-0.5">বাকি: ৳${toBanglaNumber(r.pending)}</p>
+                </div>`;
+        } else {
+            rowBg = 'bg-yellow-50';
+            borderColor = 'border-yellow-400';
+            statusBadge = `<span class="badge bg-red-500 text-white text-[10px] font-bold"><i class="fa-solid fa-clock"></i> বাকি</span>`;
+            paymentCell = `<div class="text-center"><p class="text-[10px] text-red-700 font-bold">অপরিশোধিত</p></div>`;
+        }
+
+        return `
+            <tr class="${rowBg} border-b ${borderColor}">
+                <td class="p-2 text-center text-xs text-slate-500 font-bold">${i + 1}</td>
+                <td class="p-2 text-xs font-bold text-slate-800 font-arabic">${r.label}</td>
+                <td class="p-2 text-right text-xs font-bold text-indigo-700">৳${toBanglaNumber(r.due)}</td>
+                <td class="p-2 text-center">${statusBadge}</td>
+                <td class="p-2">${paymentCell}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // ★ বাকি থাকলে সতর্কবার্তা
+    const pendingAlert = totalPending > 0 ? `
+        <div class="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3 mt-3 flex items-start gap-2">
+            <i class="fa-solid fa-hourglass-half text-yellow-600 text-xl mt-0.5 flex-shrink-0"></i>
+            <div class="flex-1">
+                <p class="text-xs font-bold text-yellow-900">
+                    মেহেরবানী করে নির্দিষ্ট সময়ের মধ্যে পরিশোধ করুন।
+                </p>
+                <p class="text-[11px] text-yellow-800 mt-0.5">
+                    মোট বাকি: <strong>৳${toBanglaNumber(totalPending)}</strong>
+                </p>
+            </div>
+        </div>
+    ` : '';
+
+    content.innerHTML = `
+        <div class="space-y-3">
+
+            ${allPaidBanner}
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white px-3 py-2 flex justify-between items-center flex-wrap gap-2">
+                    <h3 class="text-sm font-bold">
+                        <i class="fa-solid fa-calendar-plus"></i> এককালীন প্রদেয়
+                    </h3>
+                    <span class="badge bg-white/20 text-white text-[10px] font-bold">
+                        ${toBanglaNumber(state.selectedYear)} ইং
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-xs" style="min-width:500px;">
+                        <thead class="bg-indigo-100 text-indigo-900">
+                            <tr>
+                                <th class="p-2 text-[10px] text-center w-8">#</th>
+                                <th class="p-2 text-[10px] text-left">খাত</th>
+                                <th class="p-2 text-[10px] text-right">ধার্যকৃত</th>
+                                <th class="p-2 text-[10px] text-center">স্ট্যাটাস</th>
+                                <th class="p-2 text-[10px] text-center">পরিশোধ</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHTML}</tbody>
+                        <tfoot>
+                            <tr class="bg-indigo-50 font-bold border-t-2 border-indigo-400">
+                                <td colspan="2" class="p-2 text-xs text-right text-indigo-900">সর্বমোট:</td>
+                                <td class="p-2 text-right text-xs text-indigo-900">৳${toBanglaNumber(totalDue)}</td>
+                                <td class="p-2 text-center text-[10px]">
+                                    ${totalPending === 0
+                                        ? '<span class="text-emerald-700">✓ সম্পূর্ণ</span>'
+                                        : `<span class="text-red-700">বাকি: ৳${toBanglaNumber(totalPending)}</span>`}
+                                </td>
+                                <td class="p-2 text-center text-[10px] text-emerald-800">
+                                    ৳${toBanglaNumber(totalPaid)}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            ${pendingAlert}
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 leading-relaxed">
+                <i class="fa-solid fa-info-circle"></i>
+                <strong>নোট:</strong> এককালীন প্রদেয় সাধারণত ভর্তির সময় পরিশোধ করতে হয়। কোনো ভুল থাকলে অফিসে যোগাযোগ করুন।
+            </div>
+        </div>
+    `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ ৩. খন্ডকালীন প্রদেয় (মাসিকের মতো স্ট্রাকচার — ডাটা না এলে খালি) ★★★
+// ═══════════════════════════════════════════════════════════════
+function renderGpPartialFeesChart(content) {
+    const state = window._gpFeesState;
+    const data = state.data;
+    if (!data) {
+        content.innerHTML = `<div class="bg-white rounded-xl p-6 text-center text-slate-400 text-sm">ডাটা লোড হয়নি</div>`;
+        return;
+    }
+
+    // ★★★ কনফিগ থেকে partial_items খুঁজি (ভবিষ্যতে মেইন সেকশনে যোগ হবে) ★★★
+    const config = window._studentDuesConfig;
+    const partialItems = (config.partial && config.partial.items) ? config.partial.items : [];
+
+    // ★★★ ডাটা খালি হলে placeholder ★★★
+    if (partialItems.length === 0) {
+        content.innerHTML = `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
+                <div class="w-16 h-16 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-clock text-3xl"></i>
+                </div>
+                <p class="text-sm font-bold text-slate-700 mb-1">খন্ডকালীন প্রদেয়</p>
+                <p class="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
+                    এই সেকশনটি প্রস্তুত আছে। মেইন সেকশনে (ছাত্রপ্রদেয়) খন্ডকালীন খাত যোগ হলে এখানে স্বয়ংক্রিয়ভাবে দেখা যাবে।
+                </p>
+                <div class="mt-3 inline-block bg-teal-50 border border-teal-200 rounded-lg px-3 py-1.5">
+                    <p class="text-[10px] text-teal-700">
+                        <i class="fa-solid fa-lightbulb"></i> উদাহরণ: পরীক্ষার ফি, রুম চাঁদা, ট্যুর ফি ইত্যাদি
+                    </p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // ★ partialDues ও payments থেকে হিসাব (মাসিকের মতোই)
+    const partialDues = data.partialDues || {};
+    const payments = data.payments || {};
+
+    let totalDue = 0;
+    let totalPaid = 0;
+
+    const rows = partialItems.map(item => {
+        const due = Number(partialDues[item.key] || 0);
+        const payKey = `partial::${item.key}::${state.selectedMonth}`;
+        const pay = payments[payKey];
+        const paid = pay ? Number(pay.amount) || 0 : 0;
+        const pending = Math.max(0, due - paid);
+        const isPaid = due > 0 && paid >= due;
+        const isPartial = paid > 0 && paid < due;
+
+        totalDue += due;
+        totalPaid += paid;
+
+        return {
+            label: item.label, key: item.key, due, paid, pending,
+            isPaid, isPartial,
+            paidAt: pay?.paidAt || '', receiptNo: pay?.receiptNo || ''
+        };
+    });
+
+    const totalPending = Math.max(0, totalDue - totalPaid);
+
+    // ★ সারি রেন্ডার
+    const rowsHTML = rows.map((r, i) => {
+        let rowBg = 'bg-white', borderColor = 'border-slate-200';
+        let statusBadge = '', paymentCell = '';
+
+        if (r.due === 0) {
+            rowBg = 'bg-slate-50';
+            statusBadge = `<span class="badge bg-slate-200 text-slate-600 text-[10px]">প্রদেয় নেই</span>`;
+            paymentCell = `<span class="text-[10px] text-slate-400 italic">—</span>`;
+        } else if (r.isPaid) {
+            rowBg = 'bg-emerald-50'; borderColor = 'border-emerald-300';
+            statusBadge = `<span class="badge bg-emerald-600 text-white text-[10px]"><i class="fa-solid fa-check"></i> পরিশোধিত</span>`;
+            paymentCell = `
+                <div class="text-center">
+                    <p class="text-[10px] font-bold text-emerald-800"><i class="fa-solid fa-check-circle"></i> ৳${toBanglaNumber(r.paid)}</p>
+                    ${r.paidAt ? `<p class="text-[9px] text-emerald-700 mt-0.5">${formatBanglaShortDate(r.paidAt)}</p>` : ''}
+                </div>`;
+        } else if (r.isPartial) {
+            rowBg = 'bg-amber-50'; borderColor = 'border-amber-400';
+            statusBadge = `<span class="badge bg-amber-500 text-white text-[10px]">আংশিক</span>`;
+            paymentCell = `<div class="text-center"><p class="text-[10px] font-bold text-amber-800">৳${toBanglaNumber(r.paid)} / ৳${toBanglaNumber(r.due)}</p><p class="text-[9px] text-red-700 font-bold">বাকি: ৳${toBanglaNumber(r.pending)}</p></div>`;
+        } else {
+            rowBg = 'bg-yellow-50'; borderColor = 'border-yellow-400';
+            statusBadge = `<span class="badge bg-red-500 text-white text-[10px]"><i class="fa-solid fa-clock"></i> বাকি</span>`;
+            paymentCell = `<div class="text-center"><p class="text-[10px] text-red-700 font-bold">অপরিশোধিত</p></div>`;
+        }
+
+        return `
+            <tr class="${rowBg} border-b ${borderColor}">
+                <td class="p-2 text-center text-xs text-slate-500 font-bold">${i + 1}</td>
+                <td class="p-2 text-xs font-bold text-slate-800 font-arabic">${r.label}</td>
+                <td class="p-2 text-right text-xs font-bold text-indigo-700">৳${toBanglaNumber(r.due)}</td>
+                <td class="p-2 text-center">${statusBadge}</td>
+                <td class="p-2">${paymentCell}</td>
+            </tr>`;
+    }).join('');
+
+    content.innerHTML = `
+        <div class="space-y-3">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-teal-600 to-teal-800 text-white px-3 py-2 flex justify-between items-center flex-wrap gap-2">
+                    <h3 class="text-sm font-bold"><i class="fa-solid fa-clock"></i> খন্ডকালীন প্রদেয়</h3>
+                    <span class="badge bg-white/20 text-white text-[10px]">${formatBanglaMonth(state.selectedMonth)}</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-xs" style="min-width:500px;">
+                        <thead class="bg-teal-100 text-teal-900">
+                            <tr>
+                                <th class="p-2 text-[10px] text-center w-8">#</th>
+                                <th class="p-2 text-[10px] text-left">খাত</th>
+                                <th class="p-2 text-[10px] text-right">ধার্যকৃত</th>
+                                <th class="p-2 text-[10px] text-center">স্ট্যাটাস</th>
+                                <th class="p-2 text-[10px] text-center">পরিশোধ</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHTML}</tbody>
+                        <tfoot>
+                            <tr class="bg-teal-50 font-bold border-t-2 border-teal-400">
+                                <td colspan="2" class="p-2 text-xs text-right text-teal-900">সর্বমোট:</td>
+                                <td class="p-2 text-right text-xs text-teal-900">৳${toBanglaNumber(totalDue)}</td>
+                                <td class="p-2 text-center text-[10px]">
+                                    ${totalPending === 0 ? '<span class="text-emerald-700">✓ সম্পূর্ণ</span>' : `<span class="text-red-700">বাকি: ৳${toBanglaNumber(totalPending)}</span>`}
+                                </td>
+                                <td class="p-2 text-center text-[10px] text-emerald-800">৳${toBanglaNumber(totalPaid)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ প্রদেয় বাকি বার্তা — adminMessages থেকে লোড ★★★
+// ═══════════════════════════════════════════════════════════════
+
+async function loadGpDuesMessages() {
+    const student = _guardianSession;
+    if (!student) return [];
+
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, 'adminMessages'));
+
+        const myMessages = [];
+        snap.forEach(d => {
+            const data = d.data();
+            if (data._type !== 'student_dues_reminder_guardian') return;
+            if (!Array.isArray(data.recipients)) return;
+
+            const myRecipient = data.recipients.find(r =>
+                String(r.studentDbId) === String(student.id) ||
+                (r.studentId && String(r.studentId) === String(student.studentId))
+            );
+            if (!myRecipient) return;
+
+            myMessages.push({
+                id: d.id,
+                ...data,
+                _myRecipient: myRecipient
+            });
+        });
+
+        // ★ নতুন আগে
+        myMessages.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        return myMessages;
+    } catch (err) {
+        console.warn('⚠️ loadGpDuesMessages:', err);
+        return [];
+    }
+}
+
+function renderGpDuesMessagesBanner(messages) {
+    if (!messages || messages.length === 0) return '';
+
+    // ★ সর্বোচ্চ ৩টি দেখাব, বাকিগুলো "আরও Nটি" হিসেবে
+    const shown = messages.slice(0, 3);
+    const moreCount = messages.length - shown.length;
+
+    const itemsHTML = shown.map(m => {
+        const dateStr = m.createdAt?.seconds
+            ? new Date(m.createdAt.seconds * 1000).toLocaleDateString('bn-BD')
+            : '—';
+
+        // ★ মেসেজে pendingItems থাকলে সেগুলো দেখাই
+        let itemsList = '';
+        if (m._myRecipient?.pendingItems?.length > 0) {
+            itemsList = `
+                <ul class="mt-1.5 mb-1 space-y-0.5">
+                    ${m._myRecipient.pendingItems.map(p => `
+                        <li class="text-[11px] font-bold text-red-700 flex items-center gap-1">
+                            <i class="fa-solid fa-circle text-[4px]"></i>
+                            ${p.label} — ৳${toBanglaNumber(p.pending)}
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+        }
+
+        return `
+            <div class="bg-white border-l-4 border-violet-500 rounded-r-lg p-2.5 shadow-sm mb-1.5">
+                <div class="flex items-center justify-between mb-1 flex-wrap gap-1">
+                    <span class="badge bg-violet-600 text-white text-[9px] font-bold">
+                        <i class="fa-solid fa-bell"></i> প্রদেয় বার্তা
+                    </span>
+                    <span class="text-[9px] text-slate-500">
+                        <i class="fa-regular fa-clock"></i> ${dateStr}
+                    </span>
+                </div>
+                <p class="text-[11px] text-slate-700 leading-relaxed" style="white-space: pre-wrap;">${escapeHtml(m.message || '')}</p>
+                ${itemsList}
+                <p class="text-[9px] text-slate-500 mt-1.5 text-right">— ${m.sentBy || 'প্রতিষ্ঠান'}</p>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="bg-violet-50 border-2 border-violet-300 rounded-xl p-3 mb-3">
+            <div class="flex items-center gap-2 mb-2">
+                <i class="fa-solid fa-bell text-violet-600 text-lg"></i>
+                <h3 class="text-sm font-bold text-violet-900">
+                    প্রদেয় বাকি বার্তা
+                </h3>
+                <span class="badge bg-violet-600 text-white text-[9px] font-bold ml-auto">
+                    ${toBanglaNumber(messages.length)} টি
+                </span>
+            </div>
+            ${itemsHTML}
+            ${moreCount > 0 ? `
+                <p class="text-[10px] text-violet-700 text-center font-bold mt-2 bg-white rounded py-1 border border-violet-200">
+                    <i class="fa-solid fa-ellipsis"></i> আরও ${toBanglaNumber(moreCount)} টি বার্তা আছে
+                </p>
+            ` : ''}
+        </div>
+    `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ হেল্পার: তারিখ ও মাস ফরম্যাট ★★★
+// ═══════════════════════════════════════════════════════════════
+
+// ★ '2026-11-05' → '৫ নভে ২০২৬'
+function formatBanglaShortDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const months = ['জানু', 'ফেব', 'মার্চ', 'এপ্রি', 'মে', 'জুন',
+                    'জুলা', 'আগ', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে'];
+    return `${toBanglaNumber(d.getDate())} ${months[d.getMonth()]} ${toBanglaNumber(d.getFullYear())}`;
+}
+
+// ★ '2026-11' → 'নভেম্বর ২০২৬'
+function formatBanglaMonth(monthKey) {
+    if (!monthKey) return '';
+    const [y, m] = monthKey.split('-');
+    const names = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+                   'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+    const idx = parseInt(m, 10) - 1;
+    if (idx < 0 || idx > 11) return monthKey;
+    return `${names[idx]} ${toBanglaNumber(y)}`;
 }
 
 // ═══════════════════ ৪. রুটিন ট্যাব (শীত ও গ্রীষ্ম উভয় রুটিন) ═══════════════════
@@ -67595,7 +68512,7 @@ window.printAcctFundReport = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 【 ৭. বকেয়া ও পাওনা হিসাব 】
+// 【 ৭. বকেয়া ও পাওনা হিসাব (নতুন ছাত্রপ্রদেয় সিস্টেম থেকে) 】
 // ═══════════════════════════════════════════════════════════════
 window.openAcctDues = async function() {
     document.getElementById('acct-main-menu').classList.add('hidden');
@@ -67607,75 +68524,147 @@ window.openAcctDues = async function() {
     container.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>`;
 
     try {
-        // গার্ডিয়ান ফি স্ট্রাকচার ও পেমেন্ট লোড
-        if (typeof loadFeeStructure === 'function') await loadFeeStructure();
-        if (typeof loadFeePayments === 'function') await loadFeePayments();
+        // ★★★ ১. ছাত্র ডাটা লোড নিশ্চিত করি ★★★
         if (!studentsCache || studentsCache.length === 0) {
             if (typeof loadStudentsFromFirestore === 'function') await loadStudentsFromFirestore();
         }
 
-        const curMonth = new Date().getMonth() + 1;
-        const curYear = new Date().getFullYear();
+        // ★★★ ২. কনফিগ লোড ★★★
+        if (typeof loadStudentDuesConfig === 'function') {
+            await loadStudentDuesConfig();
+        }
+        const config = window._studentDuesConfig;
 
+        // ★★★ ৩. এই মাসের yearMonth কী ★★★
+        const now = new Date();
+        const curMonthKey = now.toISOString().slice(0, 7); // 'YYYY-MM'
+
+        // ★★★ ৪. সব ডাটা লোড (একসাথে) ★★★
+        const { collection, getDocs, query, where } = window.fbFuncs;
+
+        // ৪.ক. এই মাসের মাসিক প্রদেয়
+        const monthlyQ = query(
+            collection(window.fbDB, STUDENT_DUES_FS.MONTHLY),
+            where('yearMonth', '==', curMonthKey)
+        );
+        const monthlySnap = await getDocs(monthlyQ);
+        const monthlyDuesMap = {};
+        monthlySnap.forEach(d => {
+            const data = d.data();
+            monthlyDuesMap[String(data.studentDbId)] = data.items || {};
+        });
+
+        // ৪.খ. এই মাসের সব পরিশোধ (monthly টাইপ)
+        const payQ = query(
+            collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS),
+            where('type', '==', 'monthly'),
+            where('yearMonth', '==', curMonthKey)
+        );
+        const paySnap = await getDocs(payQ);
+        const paidMap = {};
+        paySnap.forEach(d => {
+            const data = d.data();
+            const sid = String(data.studentDbId);
+            if (!paidMap[sid]) paidMap[sid] = {};
+            paidMap[sid][data.itemKey] = (paidMap[sid][data.itemKey] || 0) + (Number(data.amount) || 0);
+        });
+
+        // ★★★ ৫. প্রতিটি সক্রিয় ছাত্রের বকেয়া হিসাব ★★★
         const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
-        const students = (studentsCache || []).filter(s => !excludedRemarks.includes((s.remark?.type || '').trim()));
+        const activeStudents = (studentsCache || []).filter(s =>
+            !excludedRemarks.includes((s.remark?.type || '').trim())
+        );
 
+        const monthlyItems = config.monthly.items;
         let totalDue = 0;
         let dueStudents = [];
         let totalOverpaid = 0;
 
-        students.forEach(s => {
-            const fee = typeof getClassFeeStructure === 'function' ? getClassFeeStructure(s.dept, s.className) : {};
-            const monthlyDue = (Number(fee.monthlyFee) || 0) + (Number(fee.monthlyFood) || 0) + (Number(fee.hostelFee) || 0);
+        activeStudents.forEach(s => {
+            const sid = String(s.id);
+            let studentDues = monthlyDuesMap[sid];
+
+            // ★ ডাটাবেসে না থাকলে ছাত্র ডাটা থেকে অটো
+            if (!studentDues || Object.keys(studentDues).length === 0) {
+                studentDues = {
+                    food:        Number(s.monthlyFood)   || 0,
+                    salary:      Number(s.monthlySalary) || 0,
+                    hostel:      Number(s.hostelFee)     || 0,
+                    electricity: 0,
+                    iron:        0
+                };
+            }
+
+            const studentPaid = paidMap[sid] || {};
+
+            let monthlyDue = 0;
+            let paidThisMonth = 0;
+
+            monthlyItems.forEach(item => {
+                monthlyDue    += Number(studentDues[item.key] || 0);
+                paidThisMonth += Number(studentPaid[item.key] || 0);
+            });
+
             if (monthlyDue === 0) return;
 
-            const paidThisMonth = (_feePaymentsCache || []).filter(p =>
-                p.studentDbId === s.id && Number(p.month) === curMonth && Number(p.year) === curYear
-            ).reduce((a, p) => a + (Number(p.amount) || 0), 0);
-
-            const due = monthlyDue - paidThisMonth;
-            if (due > 0) {
-                totalDue += due;
-                dueStudents.push({ student: s, due, paidThisMonth, monthlyDue });
-            } else if (due < 0) {
-                totalOverpaid += Math.abs(due);
+            const pending = monthlyDue - paidThisMonth;
+            if (pending > 0) {
+                totalDue += pending;
+                dueStudents.push({
+                    student: s,
+                    due: pending,
+                    paidThisMonth,
+                    monthlyDue
+                });
+            } else if (pending < 0) {
+                totalOverpaid += Math.abs(pending);
             }
         });
 
         dueStudents.sort((a, b) => b.due - a.due);
 
+        // ★★★ ৬. টেবিল রেন্ডার ★★★
         let rowsHTML = dueStudents.map((d, i) => `
             <tr class="border-b hover:bg-red-50 text-xs">
-                <td class="p-2 text-center">${i+1}</td>
-                <td class="p-2 font-bold">${d.student.name}</td>
-                <td class="p-2 font-mono">${d.student.studentId || '—'}</td>
-                <td class="p-2 text-center font-arabic">${d.student.className}</td>
+                <td class="p-2 text-center">${i + 1}</td>
+                <td class="p-2 font-bold">${d.student.name || '—'}</td>
+                <td class="p-2 font-mono text-slate-600">${d.student.studentId || '—'}</td>
+                <td class="p-2 text-center font-arabic">${d.student.className || '—'}</td>
                 <td class="p-2 font-mono text-[10px]">${d.student.mobile1 || '—'}</td>
-                <td class="p-2 text-right font-mono">৳ ${d.monthlyDue.toLocaleString('bn-BD')}</td>
-                <td class="p-2 text-right font-mono text-emerald-700">৳ ${d.paidThisMonth.toLocaleString('bn-BD')}</td>
-                <td class="p-2 text-right font-mono font-bold text-red-700">৳ ${d.due.toLocaleString('bn-BD')}</td>
+                <td class="p-2 text-right font-mono">৳ ${toBanglaNumber(d.monthlyDue)}</td>
+                <td class="p-2 text-right font-mono text-emerald-700">৳ ${toBanglaNumber(d.paidThisMonth)}</td>
+                <td class="p-2 text-right font-mono font-bold text-red-700">৳ ${toBanglaNumber(d.due)}</td>
             </tr>
-        `).join('') || '<tr><td colspan="8" class="p-6 text-center text-slate-400">কোন বকেয়া নেই!</td></tr>';
+        `).join('') || '<tr><td colspan="8" class="p-6 text-center text-emerald-600 font-bold"><i class="fa-solid fa-check-circle"></i> কোন বকেয়া নেই!</td></tr>';
 
         container.innerHTML = `
             <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
                 <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                    <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-triangle-exclamation text-red-600"></i> বকেয়া ও পাওনা হিসাব</h3>
-                    <button onclick="printAcctDues()" class="px-3 py-2 bg-red-700 text-white text-xs font-bold rounded"><i class="fa-solid fa-print"></i> প্রিন্ট</button>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">
+                            <i class="fa-solid fa-triangle-exclamation text-red-600"></i> বকেয়া ও পাওনা হিসাব
+                        </h3>
+                        <p class="text-[10px] text-slate-500 mt-0.5">
+                            চলতি মাস: <strong>${formatBanglaMonth(curMonthKey)}</strong>
+                        </p>
+                    </div>
+                    <button onclick="printAcctDues()" class="px-3 py-2 bg-red-700 text-white text-xs font-bold rounded">
+                        <i class="fa-solid fa-print"></i> প্রিন্ট
+                    </button>
                 </div>
 
                 <div class="grid grid-cols-3 gap-3 mb-4">
                     <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
                         <p class="text-[10px] font-bold text-red-800">মোট বকেয়া</p>
-                        <p class="text-xl font-bold text-red-900">৳ ${totalDue.toLocaleString('bn-BD')}</p>
+                        <p class="text-xl font-bold text-red-900">৳ ${toBanglaNumber(totalDue)}</p>
                     </div>
                     <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
                         <p class="text-[10px] font-bold text-amber-800">বকেয়া ছাত্র</p>
-                        <p class="text-xl font-bold text-amber-900">${dueStudents.length}</p>
+                        <p class="text-xl font-bold text-amber-900">${toBanglaNumber(dueStudents.length)}</p>
                     </div>
                     <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
                         <p class="text-[10px] font-bold text-emerald-800">অগ্রিম জমা</p>
-                        <p class="text-xl font-bold text-emerald-900">৳ ${totalOverpaid.toLocaleString('bn-BD')}</p>
+                        <p class="text-xl font-bold text-emerald-900">৳ ${toBanglaNumber(totalOverpaid)}</p>
                     </div>
                 </div>
 
@@ -67696,10 +68685,16 @@ window.openAcctDues = async function() {
                         <tbody>${rowsHTML}</tbody>
                     </table>
                 </div>
+
+                <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+                    <i class="fa-solid fa-info-circle"></i>
+                    <strong>নোট:</strong> এই তালিকা <strong>শুধু চলতি মাসের মাসিক প্রদেয়</strong> দেখাচ্ছে। এককালীন বকেয়ার জন্য "ছাত্রপ্রদেয় → বাকি তথ্য" সেকশন দেখুন।
+                </div>
             </div>
         `;
     } catch (err) {
-        container.innerHTML = `<p class="text-center text-red-500 py-6">${err.message}</p>`;
+        console.error('❌ openAcctDues:', err);
+        container.innerHTML = `<p class="text-center text-red-500 py-6">লোড ব্যর্থ: ${err.message}</p>`;
     }
 };
 
@@ -67981,7 +68976,16 @@ window._studentDuesConfig = {
             { key: 'electricity',  label: 'বিদ্যুৎ বিল',     amount: 0, required: false, isSystem: false },
             { key: 'iron',         label: 'আয়রন বিল',      amount: 0, required: false, isSystem: false }
         ]
+    },
+        partial: {
+        title: 'খন্ডকালীন',
+        items: [
+            { key: 'examFee',   label: 'পরীক্ষার ফি',  amount: 0, isSystem: false },
+            { key: 'roomFund',  label: 'রুম চাঁদা',     amount: 0, isSystem: false },
+            { key: 'tourFee',   label: 'ট্যুর ফি',      amount: 0, isSystem: false }
+        ]
     }
+
 };
 
 // ─── রানটাইম স্টেট ───
@@ -68090,63 +69094,64 @@ window.openStudentDuesPage = async function(subPage) {
 // ═══════════════════════════════════════════════════════════════
 function renderStudentDuesMenu(container) {
     container.innerHTML = `
-        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-8">
-            <div class="flex items-center justify-center gap-2 mb-6">
-                <div class="w-8 h-8 bg-gradient-to-br from-violet-500 to-violet-700 rounded-lg flex items-center justify-center text-white text-sm shadow-sm">
-                    <i class="fa-solid fa-user-graduate"></i>
+        <div class="space-y-4">
+            <!-- ★ হেডার -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center justify-between flex-wrap gap-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-violet-100 text-violet-700 rounded-lg flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-user-graduate"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 leading-tight">ছাত্রপ্রদেয়</h2>
+                        <p class="text-[10px] text-slate-500">ছাত্রদের ফি, বকেয়া ও পরিশোধের হিসাব</p>
+                    </div>
                 </div>
-                <h2 class="text-xl md:text-2xl font-bold text-violet-900 leading-none">ছাত্রপ্রদেয়</h2>
             </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-4xl mx-auto">
+
+            <!-- ★ ৪টি কার্ড (অন্যান্য পেজের মতো ডিজাইন) -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 max-w-6xl mx-auto mt-6">
                 
-                <!-- ১. প্রদেয় তথ্য -->
-                <button onclick="openStudentDuesPage('info')" class="group  rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-4 text-left">
-                    <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <i class="fa-solid fa-clipboard-list text-2xl"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h3 class="text-base font-bold mb-1">১. প্রদেয় তথ্য</h3>
-                        <p class="text-xs opacity-90">ছাত্রদের এককালীন ও মাসিক প্রদেয় সেট করুন</p>
+                <!-- ১. প্রদেয় তথ্য (নীল) -->
+                <button onclick="openStudentDuesPage('info')" class="group bg-white border border-slate-200 rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[140px] md:min-h-[170px]">
+                    <i class="fa-solid fa-clipboard-list text-white bg-blue-500 rounded-xl w-12 h-12 flex items-center justify-center text-3xl md:text-4xl group-hover:scale-110 transition-transform"></i>
+                    <div class="text-center">
+                        <span class="text-sm md:text-base font-bold text-slate-800 leading-tight block">১. প্রদেয় তথ্য</span>
+                        <span class="text-[10px] text-slate-500 mt-1 block">এককালীন, মাসিক ও খন্ডকালীন</span>
                     </div>
                 </button>
-                
-                <!-- ২. পরিশোধ তথ্য -->
-                <button onclick="openStudentDuesPage('payment')" class="group  rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-4 text-left">
-                    <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <i class="fa-solid fa-money-bill-wave text-2xl"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h3 class="text-base font-bold mb-1">২. পরিশোধ তথ্য</h3>
-                        <p class="text-xs opacity-90">কোন ছাত্র কী দিয়েছে, কখন দিয়েছে</p>
+
+                <!-- ২. পরিশোধ তথ্য (সবুজ) -->
+                <button onclick="openStudentDuesPage('payment')" class="group bg-white border border-slate-200 rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[140px] md:min-h-[170px]">
+                    <i class="fa-solid fa-money-bill-wave text-white bg-emerald-500 rounded-xl w-12 h-12 flex items-center justify-center text-3xl md:text-4xl group-hover:scale-110 transition-transform"></i>
+                    <div class="text-center">
+                        <span class="text-sm md:text-base font-bold text-slate-800 leading-tight block">২. পরিশোধ তথ্য</span>
+                        <span class="text-[10px] text-slate-500 mt-1 block">কে কী দিয়েছে, কখন দিয়েছে</span>
                     </div>
                 </button>
-                
-                <!-- ৩. জমা তথ্য -->
-                <button onclick="openStudentDuesPage('deposit')" class="group  rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-4 text-left">
-                    <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <i class="fa-solid fa-check-circle text-2xl"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h3 class="text-base font-bold mb-1">৩. জমা তথ্য</h3>
-                        <p class="text-xs opacity-90">যারা প্রদেয় জমা দিয়েছে তাদের তালিকা</p>
+
+                <!-- ৩. জমা তথ্য (টিল/সবুজাভ) -->
+                <button onclick="openStudentDuesPage('deposit')" class="group bg-white border border-slate-200 rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[140px] md:min-h-[170px]">
+                    <i class="fa-solid fa-check-circle text-white bg-teal-500 rounded-xl w-12 h-12 flex items-center justify-center text-3xl md:text-4xl group-hover:scale-110 transition-transform"></i>
+                    <div class="text-center">
+                        <span class="text-sm md:text-base font-bold text-slate-800 leading-tight block">৩. জমা তথ্য</span>
+                        <span class="text-[10px] text-slate-500 mt-1 block">যারা প্রদেয় জমা দিয়েছে</span>
                     </div>
                 </button>
-                
-                <!-- ৪. বাকি তথ্য -->
-                <button onclick="openStudentDuesPage('pending')" class="group  rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-4 text-left">
-                    <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h3 class="text-base font-bold mb-1">৪. বাকি তথ্য</h3>
-                        <p class="text-xs opacity-90">যারা এখনো দেয়নি বা আংশিক দিয়েছে</p>
+
+                <!-- ৪. বাকি তথ্য (লাল/রোজ) -->
+                <button onclick="openStudentDuesPage('pending')" class="group bg-white border border-slate-200 rounded-2xl p-5 md:p-7 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-3 min-h-[140px] md:min-h-[170px]">
+                    <i class="fa-solid fa-triangle-exclamation text-white bg-rose-500 rounded-xl w-12 h-12 flex items-center justify-center text-3xl md:text-4xl group-hover:scale-110 transition-transform"></i>
+                    <div class="text-center">
+                        <span class="text-sm md:text-base font-bold text-slate-800 leading-tight block">৪. বাকি তথ্য</span>
+                        <span class="text-[10px] text-slate-500 mt-1 block">যারা এখনো দেয়নি বা আংশিক</span>
                     </div>
                 </button>
+
             </div>
         </div>
     `;
 }
+
 // ═══════════════════════════════════════════════════════════════
 // 【 সাব-পেজ ১: প্রদেয় তথ্য 】
 // ═══════════════════════════════════════════════════════════════
@@ -68278,7 +69283,8 @@ window.switchStudentDuesInfoTab = function(tab) {
 
 // ─── ডাটা লোড (অটো-লোড লজিকসহ সম্পূর্ণ নতুন) ───
 async function loadStudentDuesData(studentsList) {
-    const result = { onetime: {}, monthly: {} };
+    // ★ এখানে result-এ 'partial' যোগ করা হয়েছে
+    const result = { onetime: {}, monthly: {}, partial: {} }; 
     if (studentsList.length === 0) return result;
     
     try {
@@ -68303,7 +69309,21 @@ async function loadStudentDuesData(studentsList) {
             }
         });
 
-        // ★★★ ২. নতুন অটো-লোড লজিক: যাদের ডাটাবেসে প্রদেয় নেই, তাদের ছাত্র ডাটা/ভর্তি ফরম থেকে ফি লোড করি ★★★
+        // ★★★ নতুন: খন্ডকালীন ডাটা লোড ★★★
+        try {
+            const partialSnap = await getDocs(collection(window.fbDB, 'studentDuesPartial'));
+            partialSnap.forEach(d => {
+                const data = d.data();
+                if (studentDbIds.includes(data.studentDbId)) {
+                    if (!result.partial[data.studentDbId]) result.partial[data.studentDbId] = {};
+                    result.partial[data.studentDbId][data.yearMonth] = data;
+                }
+            });
+        } catch (e) {
+            console.warn('partial load:', e);
+        }
+
+        // ★★★ ২. অটো-লোড লজিক (এককালীন ও মাসিক) ★★★
         const currentMonth = new Date().toISOString().slice(0, 7);
         
         studentsList.forEach(student => {
@@ -68330,12 +69350,13 @@ async function loadStudentDuesData(studentsList) {
                         food: Number(student.monthlyFood) || 0,
                         salary: Number(student.monthlySalary) || 0,
                         hostel: Number(student.hostelFee) || 0,
-                        electricity: 0, // ডাটা না থাকলে ০
+                        electricity: 0,
                         iron: 0,
                         _isAutoLoaded: true
                     }
                 };
             }
+            // খন্ডকালীন ডাটার জন্য অটো-লোড নেই, কারণ এটি হাতে সেট করতে হয়।
         });
 
     } catch (err) {
@@ -68343,57 +69364,77 @@ async function loadStudentDuesData(studentsList) {
     }
     return result;
 }
+
 // ═══════════════════════════════════════════════════════════════
-// 【 প্রদেয় টেবিল — এডিটেবল হেডার + ইনপুট সেল 】
+// ★★★ প্রদেয় টেবিল — ৩ ভাগ: এককালীন | মাসিক | খন্ডকালীন ★★★
 // ═══════════════════════════════════════════════════════════════
 function buildStudentDuesTable(students, duesData) {
     const config = window._studentDuesConfig;
     const currentMonth = new Date().toISOString().slice(0, 7);
-    
-    // হেডার সেল তৈরি
-    const onetimeHeaders = config.onetime.items.map((item, i) => `
-        <th class="p-2 text-[10px] text-center bg-blue-700 text-white relative group" data-dues-head="${item.key}">
-            <input type="text" value="${item.label}" 
-                   onchange="updateStudentDuesItemLabel('onetime', '${item.key}', this.value)"
-                   class="w-full bg-transparent border-0 text-white text-center text-[10px] font-bold focus:ring-1 focus:ring-white/50 rounded" style="min-width:80px">
-            ${!item.isSystem ? `<button onclick="deleteStudentDuesItem('onetime', '${item.key}')" class="absolute top-0 right-0 text-red-200 hover:text-white opacity-0 group-hover:opacity-100 bg-red-600 rounded-full w-4 h-4 flex items-center justify-center" title="ডিলিট"><i class="fa-solid fa-xmark text-[8px]"></i></button>` : ''}
-        </th>
-    `).join('');
-    
-    const monthlyHeaders = config.monthly.items.map((item, i) => `
-        <th class="p-2 text-[10px] text-center bg-teal-700 text-white relative group" data-dues-head="${item.key}">
-            <input type="text" value="${item.label}" 
-                   onchange="updateStudentDuesItemLabel('monthly', '${item.key}', this.value)"
-                   class="w-full bg-transparent border-0 text-white text-center text-[10px] font-bold focus:ring-1 focus:ring-white/50 rounded" style="min-width:80px">
-            ${!item.isSystem ? `<button onclick="deleteStudentDuesItem('monthly', '${item.key}')" class="absolute top-0 right-0 text-red-200 hover:text-white opacity-0 group-hover:opacity-100 bg-red-600 rounded-full w-4 h-4 flex items-center justify-center" title="ডিলিট"><i class="fa-solid fa-xmark text-[8px]"></i></button>` : ''}
-        </th>
-    `).join('');
-    
-    // body সারি
+
+    // ★ ৩টি গ্রুপের হেডার
+    const buildGroupHeader = (items, bgColor, groupName, groupType) => {
+        const cols = items.map(item => `
+            <th class="p-2 text-[10px] text-center ${bgColor} text-white relative group" data-dues-head="${groupType}__${item.key}">
+                <input type="text" value="${item.label}" 
+                       onchange="updateStudentDuesItemLabel('${groupType}', '${item.key}', this.value)"
+                       class="w-full bg-transparent border-0 text-white text-center text-[10px] font-bold focus:ring-1 focus:ring-white/50 rounded" style="min-width:80px">
+                ${!item.isSystem ? `<button onclick="deleteStudentDuesItem('${groupType}', '${item.key}')" 
+                    class="absolute top-0 right-0 text-red-200 hover:text-white opacity-0 group-hover:opacity-100 bg-red-600 rounded-full w-4 h-4 flex items-center justify-center" title="ডিলিট">
+                    <i class="fa-solid fa-xmark text-[8px]"></i></button>` : ''}
+            </th>
+        `).join('');
+
+        return {
+            titleCol: `<th class="p-1 text-[10px] text-center ${bgColor.replace('-700','-800')} text-white" colspan="${items.length}">
+                <div class="flex items-center justify-center gap-1">
+                    <span>${groupName}</span>
+                    <button onclick="addStudentDuesItem('${groupType}')" class="text-[9px] bg-white/30 hover:bg-white/50 rounded-full w-4 h-4 flex items-center justify-center" title="নতুন হেডার">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+            </th>`,
+            cols
+        };
+    };
+
+    const onetimeHeader = buildGroupHeader(config.onetime.items, 'bg-blue-700', 'এককালীন', 'onetime');
+    const monthlyHeader = buildGroupHeader(config.monthly.items, 'bg-teal-700', 'মাসিক', 'monthly');
+    const partialHeader = buildGroupHeader(config.partial?.items || [], 'bg-amber-700', 'খন্ডকালীন', 'partial');
+
+    // ★ ছাত্র সারি
     let rowsHTML = students.map((s, i) => {
         const onetime = duesData.onetime[s.id]?.items || {};
         const monthly = duesData.monthly[s.id]?.[currentMonth]?.items || {};
-        
+        const partial = duesData.partial?.[s.id]?.[currentMonth]?.items || {};
+
         const onetimeCells = config.onetime.items.map(item => `
             <td class="p-1 border">
                 <input type="number" value="${onetime[item.key] || 0}" 
                        data-student-id="${s.id}" data-type="onetime" data-item-key="${item.key}"
                        onchange="onStudentDueChange(this)"
-                       class="w-full text-center text-xs p-1.5 border-0 focus:ring-2 focus:ring-blue-500 rounded"
-                       style="min-width:70px">
+                       class="w-full text-center text-xs p-1.5 border-0 focus:ring-2 focus:ring-blue-500 rounded" style="min-width:70px">
             </td>
         `).join('');
-        
+
         const monthlyCells = config.monthly.items.map(item => `
             <td class="p-1 border">
                 <input type="number" value="${monthly[item.key] || 0}" 
                        data-student-id="${s.id}" data-type="monthly" data-item-key="${item.key}" data-year-month="${currentMonth}"
                        onchange="onStudentDueChange(this)"
-                       class="w-full text-center text-xs p-1.5 border-0 focus:ring-2 focus:ring-teal-500 rounded"
-                       style="min-width:70px">
+                       class="w-full text-center text-xs p-1.5 border-0 focus:ring-2 focus:ring-teal-500 rounded" style="min-width:70px">
             </td>
         `).join('');
-        
+
+        const partialCells = (config.partial?.items || []).map(item => `
+            <td class="p-1 border bg-amber-50/30">
+                <input type="number" value="${partial[item.key] || 0}" 
+                       data-student-id="${s.id}" data-type="partial" data-item-key="${item.key}" data-year-month="${currentMonth}"
+                       onchange="onStudentDueChange(this)"
+                       class="w-full text-center text-xs p-1.5 border-0 focus:ring-2 focus:ring-amber-500 rounded" style="min-width:70px">
+            </td>
+        `).join('');
+
         return `
             <tr class="border-b hover:bg-slate-50">
                 <td class="p-2 text-xs text-center">${i + 1}</td>
@@ -68402,38 +69443,36 @@ function buildStudentDuesTable(students, duesData) {
                 <td class="p-2 text-xs text-center font-arabic">${s.className || '—'}</td>
                 ${onetimeCells}
                 ${monthlyCells}
+                ${partialCells}
             </tr>
         `;
     }).join('');
-    
+
     if (!rowsHTML) {
-        rowsHTML = `<tr><td colspan="${3 + config.onetime.items.length + config.monthly.items.length}" class="p-6 text-center text-slate-400">কোন ছাত্র নেই</td></tr>`;
+        const totalCols = 4 + config.onetime.items.length + config.monthly.items.length + (config.partial?.items?.length || 0);
+        rowsHTML = `<tr><td colspan="${totalCols}" class="p-6 text-center text-slate-400">কোন ছাত্র নেই</td></tr>`;
     }
-    
+
+    const totalCols = 4 + config.onetime.items.length + config.monthly.items.length + (config.partial?.items?.length || 0);
+
     return `
-        <table class="w-full border-collapse text-xs" id="student-dues-table" style="min-width:${400 + (config.onetime.items.length + config.monthly.items.length) * 90}px;">
+        <table class="w-full border-collapse text-xs" id="student-dues-table" style="min-width:${500 + (config.onetime.items.length + config.monthly.items.length + (config.partial?.items?.length || 0)) * 90}px;">
             <thead>
+                <!-- ★ ৩ গ্রুপের টাইটেল সারি -->
                 <tr>
                     <th class="p-2 text-[10px] text-center bg-slate-700 text-white" rowspan="2">#</th>
                     <th class="p-2 text-[10px] text-center bg-slate-700 text-white" rowspan="2">নাম</th>
                     <th class="p-2 text-[10px] text-center bg-slate-700 text-white" rowspan="2">আইডি</th>
                     <th class="p-2 text-[10px] text-center bg-slate-700 text-white" rowspan="2">শ্রেণি</th>
-                    <th class="p-1 text-[10px] text-center bg-blue-800 text-white" colspan="${config.onetime.items.length}">
-                        <div class="flex items-center justify-center gap-1">
-                            <span>এককালীন</span>
-                            <button onclick="addStudentDuesItem('onetime')" class="text-[9px] bg-blue-500 hover:bg-blue-400 rounded-full w-4 h-4 flex items-center justify-center" title="নতুন হেডার"><i class="fa-solid fa-plus"></i></button>
-                        </div>
-                    </th>
-                    <th class="p-1 text-[10px] text-center bg-teal-800 text-white" colspan="${config.monthly.items.length}">
-                        <div class="flex items-center justify-center gap-1">
-                            <span>মাসিক</span>
-                            <button onclick="addStudentDuesItem('monthly')" class="text-[9px] bg-teal-500 hover:bg-teal-400 rounded-full w-4 h-4 flex items-center justify-center" title="নতুন হেডার"><i class="fa-solid fa-plus"></i></button>
-                        </div>
-                    </th>
+                    ${onetimeHeader.titleCol}
+                    ${monthlyHeader.titleCol}
+                    ${partialHeader.titleCol}
                 </tr>
+                <!-- ★ প্রতিটি গ্রুপের কলাম -->
                 <tr>
-                    ${onetimeHeaders}
-                    ${monthlyHeaders}
+                    ${onetimeHeader.cols}
+                    ${monthlyHeader.cols}
+                    ${partialHeader.cols}
                 </tr>
             </thead>
             <tbody>${rowsHTML}</tbody>
@@ -68441,26 +69480,29 @@ function buildStudentDuesTable(students, duesData) {
     `;
 }
 
-// ─── সেলে এডিট ───
 window.onStudentDueChange = function(input) {
     const studentId = input.dataset.studentId;
     const type = input.dataset.type;
     const itemKey = input.dataset.itemKey;
     const yearMonth = input.dataset.yearMonth || '';
     const amount = parseFloat(input.value) || 0;
-    
-    // স্টেটে জমা করি
+
     if (!window._studentDuesState.duesCache) window._studentDuesState.duesCache = {};
     const cache = window._studentDuesState.duesCache;
-    
-    if (!cache[studentId]) cache[studentId] = { onetime: {}, monthly: {} };
+
+    if (!cache[studentId]) cache[studentId] = { onetime: {}, monthly: {}, partial: {} };
+
     if (type === 'onetime') {
         if (!cache[studentId].onetime) cache[studentId].onetime = {};
         cache[studentId].onetime[itemKey] = amount;
-    } else {
+    } else if (type === 'monthly') {
         if (!cache[studentId].monthly) cache[studentId].monthly = {};
         if (!cache[studentId].monthly[yearMonth]) cache[studentId].monthly[yearMonth] = {};
         cache[studentId].monthly[yearMonth][itemKey] = amount;
+    } else if (type === 'partial') {
+        if (!cache[studentId].partial) cache[studentId].partial = {};
+        if (!cache[studentId].partial[yearMonth]) cache[studentId].partial[yearMonth] = {};
+        cache[studentId].partial[yearMonth][itemKey] = amount;
     }
 };
 
@@ -68474,31 +69516,20 @@ window.saveAllStudentDues = async function() {
 
     const btn = event?.target?.closest('button');
     const origHTML = btn ? btn.innerHTML : '';
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> সেভ হচ্ছে...';
-    }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> সেভ হচ্ছে...'; }
 
     try {
         const { doc, setDoc, collection, getDocs, query, where, serverTimestamp, addDoc } = window.fbFuncs;
         let savedCount = 0;
-        
+
         for (const studentId of Object.keys(cache)) {
             const data = cache[studentId];
-            
-            // এককালীন সেভ
+
+            // ─── এককালীন ───
             if (data.onetime && Object.keys(data.onetime).length > 0) {
-                // আগের ডাটা খুঁজি
                 const q1 = query(collection(window.fbDB, STUDENT_DUES_FS.ONETIME), where('studentDbId', '==', studentId));
                 const snap1 = await getDocs(q1);
-                
-                const payload = {
-                    studentDbId: studentId,
-                    items: data.onetime,
-                    updatedAt: serverTimestamp(),
-                    updatedBy: currentUser?.uid || 'unknown'
-                };
-                
+                const payload = { studentDbId: studentId, items: data.onetime, updatedAt: serverTimestamp(), updatedBy: currentUser?.uid || 'unknown' };
                 if (snap1.empty) {
                     payload.createdAt = serverTimestamp();
                     await addDoc(collection(window.fbDB, STUDENT_DUES_FS.ONETIME), payload);
@@ -68507,25 +69538,13 @@ window.saveAllStudentDues = async function() {
                 }
                 savedCount++;
             }
-            
-            // মাসিক সেভ
+
+            // ─── মাসিক ───
             if (data.monthly) {
                 for (const ym of Object.keys(data.monthly)) {
-                    const q2 = query(
-                        collection(window.fbDB, STUDENT_DUES_FS.MONTHLY), 
-                        where('studentDbId', '==', studentId),
-                        where('yearMonth', '==', ym)
-                    );
+                    const q2 = query(collection(window.fbDB, STUDENT_DUES_FS.MONTHLY), where('studentDbId', '==', studentId), where('yearMonth', '==', ym));
                     const snap2 = await getDocs(q2);
-                    
-                    const payload2 = {
-                        studentDbId: studentId,
-                        yearMonth: ym,
-                        items: data.monthly[ym],
-                        updatedAt: serverTimestamp(),
-                        updatedBy: currentUser?.uid || 'unknown'
-                    };
-                    
+                    const payload2 = { studentDbId: studentId, yearMonth: ym, items: data.monthly[ym], updatedAt: serverTimestamp(), updatedBy: currentUser?.uid || 'unknown' };
                     if (snap2.empty) {
                         payload2.createdAt = serverTimestamp();
                         await addDoc(collection(window.fbDB, STUDENT_DUES_FS.MONTHLY), payload2);
@@ -68535,26 +69554,38 @@ window.saveAllStudentDues = async function() {
                     savedCount++;
                 }
             }
+
+            // ─── খন্ডকালীন ★ নতুন ───
+            if (data.partial) {
+                for (const ym of Object.keys(data.partial)) {
+                    const q3 = query(collection(window.fbDB, 'studentDuesPartial'), where('studentDbId', '==', studentId), where('yearMonth', '==', ym));
+                    const snap3 = await getDocs(q3);
+                    const payload3 = { studentDbId: studentId, yearMonth: ym, items: data.partial[ym], updatedAt: serverTimestamp(), updatedBy: currentUser?.uid || 'unknown' };
+                    if (snap3.empty) {
+                        payload3.createdAt = serverTimestamp();
+                        await addDoc(collection(window.fbDB, 'studentDuesPartial'), payload3);
+                    } else {
+                        await setDoc(doc(window.fbDB, 'studentDuesPartial', snap3.docs[0].id), payload3, { merge: true });
+                    }
+                    savedCount++;
+                }
+            }
         }
-        
-        // ক্যাশ রিসেট
+
         window._studentDuesState.duesCache = {};
-        
         showToast(`✅ ${savedCount}টি এন্ট্রি সেভ হয়েছে`, 'success');
     } catch (err) {
         console.error('saveAllStudentDues:', err);
         showToast('❌ ' + err.message, 'error');
     } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = origHTML;
-        }
+        if (btn) { btn.disabled = false; btn.innerHTML = origHTML; }
     }
 };
 
 // ─── হেডার কনফিগ এডিটর ───
 window.updateStudentDuesItemLabel = function(type, itemKey, label) {
-    const items = window._studentDuesConfig[type].items;
+    const items = window._studentDuesConfig[type]?.items;
+    if (!items) return;
     const item = items.find(i => i.key === itemKey);
     if (item) item.label = label;
 };
@@ -68562,17 +69593,15 @@ window.updateStudentDuesItemLabel = function(type, itemKey, label) {
 window.addStudentDuesItem = function(type) {
     const label = prompt('নতুন হেডারের নাম:');
     if (!label || !label.trim()) return;
-    
+
     const key = 'custom_' + type + '_' + Date.now();
+    if (!window._studentDuesConfig[type]) {
+        window._studentDuesConfig[type] = { title: type, items: [] };
+    }
     window._studentDuesConfig[type].items.push({
-        key,
-        label: label.trim(),
-        amount: 0,
-        required: false,
-        isSystem: false
+        key, label: label.trim(), amount: 0, required: false, isSystem: false
     });
-    
-    // কনফিগ সেভ
+
     saveStudentDuesConfig().then(() => {
         openStudentDuesPage('info');
         showToast('✅ নতুন হেডার যোগ হয়েছে', 'success');
@@ -68580,41 +69609,38 @@ window.addStudentDuesItem = function(type) {
 };
 
 window.deleteStudentDuesItem = async function(type, itemKey) {
-    const item = window._studentDuesConfig[type].items.find(i => i.key === itemKey);
+    const items = window._studentDuesConfig[type]?.items;
+    if (!items) return;
+    const item = items.find(i => i.key === itemKey);
     if (!item) return;
     if (item.isSystem) {
         showToast('⚠️ সিস্টেম হেডার ডিলিট করা যাবে না', 'warn');
         return;
     }
-    if (!confirm(`"${item.label}" হেডারটি ডিলিট করবেন? এর ভেতরের সব ডাটা মুছে যাবে।`)) return;
-    
-    window._studentDuesConfig[type].items = window._studentDuesConfig[type].items.filter(i => i.key !== itemKey);
-    
-    // কনফিগ সেভ
+    if (!confirm(`"${item.label}" হেডারটি ডিলিট করবেন?`)) return;
+
+    window._studentDuesConfig[type].items = items.filter(i => i.key !== itemKey);
     await saveStudentDuesConfig();
-    
+
     // ডাটা ডিলিট
     try {
-        const { collection, getDocs } = window.fbFuncs;
-        const fs = type === 'onetime' ? STUDENT_DUES_FS.ONETIME : STUDENT_DUES_FS.MONTHLY;
+        const fs = type === 'onetime' ? STUDENT_DUES_FS.ONETIME
+                 : type === 'monthly' ? STUDENT_DUES_FS.MONTHLY
+                 : 'studentDuesPartial';
+        const { collection, getDocs, setDoc, doc } = window.fbFuncs;
         const snap = await getDocs(collection(window.fbDB, fs));
-        
-        // সব ডকুমেন্ট আপডেট
         for (const d of snap.docs) {
             const data = d.data();
             if (data.items && data.items[itemKey] !== undefined) {
-                const { doc, setDoc } = window.fbFuncs;
                 const newItems = { ...data.items };
                 delete newItems[itemKey];
                 await setDoc(doc(window.fbDB, fs, d.id), { items: newItems }, { merge: true });
             }
         }
-    } catch (err) {
-        console.warn('delete item from data:', err);
-    }
-    
+    } catch (err) { console.warn(err); }
+
     openStudentDuesPage('info');
-    showToast('🗑️ হেডার ডিলিট হয়েছে', 'info');
+    showToast('🗑️ ডিলিট হয়েছে', 'info');
 };
 
 // ─── হেডার কনফিগার এডিটর (মডাল) ───
@@ -68759,6 +69785,9 @@ async function renderStudentDuesPayment(container) {
                 <button onclick="switchStudentDuesPaymentTab('monthly')" class="${state.paymentTab === 'monthly' ? 'bg-teal-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-4 py-2 rounded-lg text-xs font-bold transition flex-1 flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-calendar-day"></i> মাসিক
                 </button>
+                <button onclick="switchStudentDuesPaymentTab('partial')" class="${state.paymentTab === 'partial' ? 'bg-amber-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-4 py-2 rounded-lg text-xs font-bold transition flex-1 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-clock"></i> খন্ডকালীন
+                </button>
             </div>
 
             <div id="student-dues-payment-content">
@@ -68796,16 +69825,18 @@ async function loadStudentDuesPaymentTable() {
 
     // ডাটা লোড
     const duesData = await loadStudentDuesData(students);
+    const isOnetime = state.paymentTab === 'onetime';
+    const isPartial = state.paymentTab === 'partial';
+    const typeStr = isOnetime ? 'onetime' : (isPartial ? 'partial' : 'monthly');
     const payments = await loadStudentDuesPayments(students.map(s => s.id), state.paymentTab);
     
     // প্রস্তুত টেবিল
-    const isOnetime = state.paymentTab === 'onetime';
-    const items = isOnetime ? config.onetime.items : config.monthly.items;
+    const items = isOnetime ? config.onetime.items : (isPartial ? (config.partial?.items || []) : config.monthly.items);
     const monthKey = state.paymentMonth;
     
     // হেডার
     const headers = items.map(item => `
-        <th class="p-2 text-[10px] text-center ${isOnetime ? 'bg-blue-700' : 'bg-teal-700'} text-white" style="min-width:110px;">
+        <th class="p-2 text-[10px] text-center ${isOnetime ? 'bg-blue-700' : (isPartial ? 'bg-amber-700' : 'bg-teal-700')} text-white" style="min-width:110px;">
             ${item.label}
         </th>
     `).join('');
@@ -68814,14 +69845,14 @@ async function loadStudentDuesPaymentTable() {
     let rowsHTML = students.map((s, i) => {
         const studentDues = isOnetime 
             ? (duesData.onetime[s.id]?.items || {}) 
-            : (duesData.monthly[s.id]?.[monthKey]?.items || {});
+            : (isPartial ? (duesData.partial?.[s.id]?.[monthKey]?.items || {}) : (duesData.monthly[s.id]?.[monthKey]?.items || {}));
         
         const cells = items.map(item => {
             const dueAmount = Number(studentDues[item.key] || 0);
             
             // ★★★ এককালীন হলে yearMonth ফাঁকা, মাসিক হলে সিলেক্ট করা মাস ★★★
             const targetYearMonth = isOnetime ? '' : (monthKey || '');
-            const paymentKey = `${s.id}::${isOnetime ? 'onetime' : 'monthly'}::${item.key}::${targetYearMonth}`;
+            const pKey = `${s.id}::${isOnetime ? 'onetime' : (isPartial ? 'partial' : 'monthly')}::${item.key}::${isOnetime ? '' : monthKey}`;
             
             const payment = payments[paymentKey];
             const paidAmount = payment ? Number(payment.amount) : 0;
@@ -68873,11 +69904,11 @@ async function loadStudentDuesPaymentTable() {
                             <input type="number" 
                                    value="${paidAmount || ''}"
                                    placeholder="৳ পরিমাণ"
-                                   onchange="onStudentPaymentAmountChange('${s.id}', '${isOnetime ? 'onetime' : 'monthly'}', '${item.key}', '${targetYearMonth}', this)"
+                                   onchange="onStudentPaymentAmountChange('${s.id}', '${typeStr}', '${item.key}', '${targetYearMonth}', this)"
                                    class="w-full text-center text-xs p-1.5 border-2 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-md font-bold mb-1">
                             
                             ${dueAmount > 0 ? `
-                                <button onclick="toggleStudentPayment('${s.id}', '${isOnetime ? 'onetime' : 'monthly'}', '${item.key}', '${targetYearMonth}', ${dueAmount})" 
+                                <button onclick="toggleStudentPayment('${s.id}', '${isOnetime ? 'onetime' : (state.paymentTab === 'partial' ? 'partial' : 'monthly')}', '${item.key}', '${targetYearMonth}', ${dueAmount})" 
                                         class="w-full py-1.5 ${isPartial ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'} text-white text-[11px] font-bold rounded shadow-sm transition">
                                     ${isPartial ? 'বাকি পরিশোধ' : 'পরিশোধ করুন'}
                                 </button>
@@ -69143,7 +70174,7 @@ async function renderStudentDuesDeposit(container) {
                     </select>
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-600 mb-1">মাস</label>
+                    <label class="block text-[10px] font-bold text-slate-600 mb-1">মাস (এককালীন ছাড়া)</label>
                     <select onchange="_studentDuesState.paymentMonth=this.value; openStudentDuesPage('deposit')" class="w-full rounded border border-slate-300 p-1.5 text-xs">
                         ${monthOptions}
                     </select>
@@ -69164,12 +70195,16 @@ async function renderStudentDuesDeposit(container) {
                 </div>
             </div>
             
+            <!-- ৩টি ট্যাব -->
             <div class="bg-slate-50 rounded-xl p-2 mb-3 flex gap-1.5 shadow-sm border border-slate-200">
-                <button onclick="_studentDuesState.depositTab='onetime'; openStudentDuesPage('deposit')" class="${state.depositTab === 'onetime' ? 'bg-blue-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-4 py-2 rounded-lg text-xs font-bold transition flex-1">
+                <button onclick="_studentDuesState.depositTab='onetime'; openStudentDuesPage('deposit')" class="${state.depositTab === 'onetime' ? 'bg-blue-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-4 py-2 rounded-lg text-xs font-bold transition flex-1 flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-calendar-plus"></i> এককালীন
                 </button>
-                <button onclick="_studentDuesState.depositTab='monthly'; openStudentDuesPage('deposit')" class="${state.depositTab === 'monthly' ? 'bg-teal-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-4 py-2 rounded-lg text-xs font-bold transition flex-1">
+                <button onclick="_studentDuesState.depositTab='monthly'; openStudentDuesPage('deposit')" class="${state.depositTab === 'monthly' ? 'bg-teal-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-4 py-2 rounded-lg text-xs font-bold transition flex-1 flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-calendar-day"></i> মাসিক
+                </button>
+                <button onclick="_studentDuesState.depositTab='partial'; openStudentDuesPage('deposit')" class="${state.depositTab === 'partial' ? 'bg-amber-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'} px-4 py-2 rounded-lg text-xs font-bold transition flex-1 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-clock"></i> খন্ডকালীন
                 </button>
             </div>
 
@@ -69188,7 +70223,7 @@ async function loadStudentDuesDepositTable() {
     if (!content) return;
     
     try {
-        const { collection, getDocs, query, where } = window.fbFuncs;
+        const { collection, getDocs } = window.fbFuncs;
         
         // পেমেন্ট লোড
         const snap = await getDocs(collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS));
@@ -69198,12 +70233,17 @@ async function loadStudentDuesDepositTable() {
         // ফিল্টার
         let filtered = payments.filter(p => {
             if (p.type !== state.depositTab) return false;
+            
+            // অর্থবছর ফিল্টার
             if (state.paymentYear) {
                 if (p.yearId !== state.paymentYear) return false;
             }
-            if (state.depositTab === 'monthly' && state.paymentMonth) {
+            
+            // এককালীন ছাড়া বাকি সবের জন্য মাস ফিল্টার
+            if (state.depositTab !== 'onetime' && state.paymentMonth) {
                 if (p.yearMonth !== state.paymentMonth) return false;
             }
+            
             if (state.paymentDept && p.dept !== state.paymentDept) return false;
             if (state.paymentClass && p.className !== state.paymentClass) return false;
             return true;
@@ -69216,6 +70256,7 @@ async function loadStudentDuesDepositTable() {
             return;
         }
         
+        // টেবিল রেন্ডার
         let rowsHTML = filtered.map((p, i) => `
             <tr class="border-b hover:bg-teal-50">
                 <td class="p-2 text-xs text-center">${i + 1}</td>
@@ -69304,6 +70345,7 @@ async function renderStudentDuesPending(container) {
                     <select onchange="_studentDuesState.pendingTab=this.value; openStudentDuesPage('pending')" class="w-full rounded border border-slate-300 p-1.5 text-xs">
                         <option value="onetime" ${state.pendingTab === 'onetime' ? 'selected' : ''}>এককালীন</option>
                         <option value="monthly" ${state.pendingTab === 'monthly' ? 'selected' : ''}>মাসিক</option>
+                        <option value="partial" ${state.pendingTab === 'partial' ? 'selected' : ''}>খন্ডকালীন</option>
                     </select>
                 </div>
             </div>
@@ -69324,8 +70366,11 @@ async function loadStudentDuesPendingTable() {
     if (!content) return;
 
     const isOnetime = state.pendingTab === 'onetime';
+    const isPartial = state.pendingTab === 'partial';
+    const typeStr = isOnetime ? 'onetime' : (isPartial ? 'partial' : 'monthly');
+    
     const monthKey = state.paymentMonth;
-    const items = isOnetime ? config.onetime.items : config.monthly.items;
+    const items = isOnetime ? config.onetime.items : (isPartial ? (config.partial?.items || []) : config.monthly.items);
 
     // ছাত্র ফিল্টার
     let students = (studentsCache || []).filter(s => {
@@ -69341,13 +70386,18 @@ async function loadStudentDuesPendingTable() {
 
     // ডাটা লোড
     const duesData = await loadStudentDuesData(students);
-    const payments = await loadStudentDuesPayments(students.map(s => s.id), isOnetime ? 'onetime' : 'monthly');
+    const payments = await loadStudentDuesPayments(students.map(s => s.id), typeStr);
 
     // প্রতিটি ছাত্রের জন্য "কী কী বাকি" বের করি
     const pendingList = students.map(s => {
-        const studentDues = isOnetime 
-            ? (duesData.onetime[s.id]?.items || {}) 
-            : (duesData.monthly[s.id]?.[monthKey]?.items || {});
+        let studentDues = {};
+        if (isOnetime) {
+            studentDues = duesData.onetime[s.id]?.items || {};
+        } else if (isPartial) {
+            studentDues = duesData.partial?.[s.id]?.[monthKey]?.items || {};
+        } else {
+            studentDues = duesData.monthly[s.id]?.[monthKey]?.items || {};
+        }
         
         const pendingItems = [];
         let totalPending = 0;
@@ -69356,8 +70406,8 @@ async function loadStudentDuesPendingTable() {
             const due = Number(studentDues[item.key] || 0);
             if (due <= 0) return;
             
-            const paymentKey = `${s.id}::${isOnetime ? 'onetime' : 'monthly'}::${item.key}::${isOnetime ? '' : monthKey}`;
-            const paid = payments[paymentKey] ? Number(payments[paymentKey].amount) : 0;
+            const pKey = `${s.id}::${typeStr}::${item.key}::${isOnetime ? '' : monthKey}`;
+            const paid = payments[pKey] ? Number(payments[pKey].amount) : 0;
             const pending = due - paid;
             
             if (pending > 0) {
@@ -69380,10 +70430,6 @@ async function loadStudentDuesPendingTable() {
     }
 
     const totalPendingAll = pendingList.reduce((a, p) => a + p.totalPending, 0);
-
-    // ★★★ নতুন যোগ: স্ট্যাটাস বার আপডেট করার জন্য এই লাইনটি যোগ করুন ★★★
-    const elDues = document.getElementById('stat-dues');
-    if (elDues) elDues.textContent = toBanglaNumber(pendingList.length) + ' জন';
 
     let rowsHTML = pendingList.map((p, i) => `
         <tr class="border-b hover:bg-amber-50">
@@ -69411,6 +70457,159 @@ async function loadStudentDuesPendingTable() {
                         <th class="p-2 text-[10px] text-center">শ্রেণি</th>
                         <th class="p-2 text-[10px]">কী কী বাকি</th>
                         <th class="p-2 text-[10px] text-right">মোট বাকি</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHTML}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+async function loadStudentDuesPaymentTable() {
+    const content = document.getElementById('student-dues-payment-content');
+    if (!content) return;
+    
+    const state = window._studentDuesState;
+    const config = window._studentDuesConfig;
+    
+    // ছাত্র ফিল্টার
+    let students = (studentsCache||[]).filter(s => {
+        if (state.paymentDept && s.dept !== state.paymentDept) return false;
+        if (state.paymentClass && s.className !== state.paymentClass) return false;
+        return !['বিদায়','বহিষ্কৃত','ভর্তির অনুপযুক্ত'].includes((s.remark?.type || '').trim());
+    });
+
+    if (students.length === 0) {
+        content.innerHTML = `<p class="text-center text-slate-400 py-6">এই ফিল্টারে কোন ছাত্র নেই</p>`;
+        return;
+    }
+
+    // ডাটা লোড
+    const duesData = await loadStudentDuesData(students);
+    const payments = await loadStudentDuesPayments(students.map(s => s.id), state.paymentTab);
+    
+    // প্রস্তুত টেবিল
+    const isOnetime = state.paymentTab === 'onetime';
+    const isPartial = state.paymentTab === 'partial';
+    
+    // ★★★ ৩ ধরনের টাইপ হ্যান্ডেল করার জন্য ★★★
+    const typeStr = isOnetime ? 'onetime' : (isPartial ? 'partial' : 'monthly');
+    const items = isOnetime ? config.onetime.items : (isPartial ? (config.partial?.items || []) : config.monthly.items);
+    const monthKey = state.paymentMonth;
+    
+    // হেডার কালার
+    const headerBg = isOnetime ? 'bg-blue-700' : (isPartial ? 'bg-amber-700' : 'bg-teal-700');
+    
+    // হেডার
+    const headers = items.map(item => `
+        <th class="p-2 text-[10px] text-center ${headerBg} text-white" style="min-width:110px;">
+            ${item.label}
+        </th>
+    `).join('');
+    
+    // প্রতিটি সারি
+    let rowsHTML = students.map((s, i) => {
+        // ★★★ ডাটা বের করার লজিক (এককালীন, মাসিক, খন্ডকালীন) ★★★
+        let studentDues = {};
+        if (isOnetime) {
+            studentDues = duesData.onetime[s.id]?.items || {};
+        } else if (isPartial) {
+            studentDues = duesData.partial?.[s.id]?.[monthKey]?.items || {};
+        } else {
+            studentDues = duesData.monthly[s.id]?.[monthKey]?.items || {};
+        }
+        
+        const cells = items.map(item => {
+            const dueAmount = Number(studentDues[item.key] || 0);
+            
+            // ★★★ পেমেন্ট কি (Payment Key) তৈরি ★★★
+            const targetYearMonth = isOnetime ? '' : (monthKey || '');
+            const paymentKey = `${s.id}::${typeStr}::${item.key}::${targetYearMonth}`;
+            
+            const payment = payments[paymentKey];
+            const paidAmount = payment ? Number(payment.amount) : 0;
+            
+            // ★★★ ০.০১ পার্থক্য থাকলেও যেন পরিশোধিত ধরে ★★★
+            const isPaid = dueAmount > 0 && (paidAmount + 0.01) >= dueAmount;
+            const isPartiallyPaid = paidAmount > 0 && !isPaid;
+            
+            let cellClass = 'bg-slate-50 border-slate-300';
+            let dueColor = 'text-slate-600';
+            
+            if (isPaid) { 
+                cellClass = 'bg-emerald-50 border-emerald-500'; 
+                dueColor = 'text-emerald-700';
+            } else if (isPartiallyPaid) { 
+                cellClass = 'bg-amber-50 border-amber-500'; 
+                dueColor = 'text-amber-700';
+            } else if (dueAmount > 0) { 
+                cellClass = 'bg-red-50 border-red-400'; 
+                dueColor = 'text-red-700';
+            }
+            
+            return `
+                <td class="p-2 border-2 ${cellClass}" data-payment-cell="${s.id}-${item.key}">
+                    <div class="text-center flex flex-col items-center justify-center min-h-[85px]">
+                        <!-- প্রদেয় লেখা -->
+                        <div class="text-xs font-bold ${dueColor} mb-1.5 whitespace-nowrap">
+                            প্রদেয়: ৳${dueAmount.toLocaleString('bn-BD')}
+                        </div>
+                        
+                        <!-- পরিশোধিত হলে সবুজ লেবেল + লাল ক্রস বাটন, না হলে ইনপুট -->
+                        ${isPaid ? `
+                            <div class="flex items-center justify-center gap-1 w-full">
+                                <div class="flex-1 py-2 bg-emerald-600 text-white text-[11px] font-bold rounded shadow-sm text-center">
+                                    <i class="fa-solid fa-check-circle"></i> ✓ পরিশোধিত
+                                </div>
+                                <button onclick="undoStudentPayment('${payment.id}')" 
+                                        class="py-2 px-2 bg-red-100 hover:bg-red-600 text-red-600 hover:text-white rounded shadow-sm transition"
+                                        title="ভুল হলে বাতিল করুন">
+                                    <i class="fa-solid fa-xmark text-sm"></i>
+                                </button>
+                            </div>
+                            <div class="text-[11px] text-emerald-800 font-bold mt-1">
+                                ৳${paidAmount.toLocaleString('bn-BD')}
+                            </div>
+                        ` : `
+                            <input type="number" 
+                                   value="${paidAmount || ''}"
+                                   placeholder="৳ পরিমাণ"
+                                   onchange="onStudentPaymentAmountChange('${s.id}', '${typeStr}', '${item.key}', '${targetYearMonth}', this)"
+                                   class="w-full text-center text-xs p-1.5 border-2 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-md font-bold mb-1">
+                            
+                            ${dueAmount > 0 ? `
+                                <button onclick="toggleStudentPayment('${s.id}', '${typeStr}', '${item.key}', '${targetYearMonth}', ${dueAmount})" 
+                                        class="w-full py-1.5 ${isPartiallyPaid ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'} text-white text-[11px] font-bold rounded shadow-sm transition">
+                                    ${isPartiallyPaid ? 'বাকি পরিশোধ' : 'পরিশোধ করুন'}
+                                </button>
+                            ` : '<div class="text-[10px] text-slate-400 italic py-1">প্রদেয় নেই</div>'}
+                        `}
+                    </div>
+                </td>
+            `;
+        }).join('');
+        
+        return `
+            <tr class="border-b hover:bg-slate-50">
+                <td class="p-2 text-xs text-center">${i + 1}</td>
+                <td class="p-2 text-xs font-bold">${s.name || '—'}</td>
+                <td class="p-2 text-xs font-mono text-center">${s.studentId || '—'}</td>
+                <td class="p-2 text-xs text-center font-arabic">${s.className || '—'}</td>
+                ${cells}
+            </tr>
+        `;
+    }).join('');
+    
+    content.innerHTML = `
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-xs" style="min-width:${400 + items.length * 120}px;">
+                <thead>
+                    <tr>
+                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">#</th>
+                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">নাম</th>
+                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">আইডি</th>
+                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">শ্রেণি</th>
+                        ${headers}
                     </tr>
                 </thead>
                 <tbody>${rowsHTML}</tbody>
