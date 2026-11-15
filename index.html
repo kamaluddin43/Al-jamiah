@@ -6526,6 +6526,18 @@ header button {
                         </label>
                     </div>
 
+                    <!-- ★★★ নতুন যোগ: শিক্ষকের মার্কস এন্ট্রি অনুমতি ★★★ -->
+                    <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg shadow-sm mt-3">
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-lock text-rose-500"></i> শিক্ষকের মার্কস এন্ট্রি অনুমতি</h4>
+                            <p class="text-[10px] text-slate-500">টিক দেওয়া থাকলে শিক্ষকরা বর্তমান পরীক্ষার মার্কস এন্ট্রি করতে পারবেন।</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="setting-teacher-mark-entry" onchange="toggleTeacherMarkEntryPermission(this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        </label>
+                    </div>
+
                     <!-- ৮. গ্রেডিং স্কেল এডিটর (Grading Scale) -->
                     <div class="bg-cyan-50 border border-cyan-200 rounded-xl p-4">
                         <h4 class="text-sm font-bold text-cyan-900 mb-3 flex items-center gap-2">
@@ -6616,19 +6628,19 @@ function getStudentTermMarks(student, academicYear, examType) {
     const key = buildMarksKey(academicYear, examType);
     if (!key) return { resultMarksObj: {}, customMarks: {} };
 
-    // ১. নতুন ফরম্যাটে ডাটা আছে কি না দেখি (marksByTerm)
-    if (student.marksByTerm?.[key]) {
+    // ১. নতুন ফরম্যাটে default অথবা custom — যেকোনো মার্কস থাকলেই পড়ি
+    if (student.marksByTerm?.[key] || student.customMarksByTerm?.[key]) {
         return {
-            resultMarksObj: student.marksByTerm[key] || {},
+            resultMarksObj: student.marksByTerm?.[key] || {},
             customMarks: student.customMarksByTerm?.[key] || {}
         };
     }
 
     // ২. পুরনো ব্র্যাকেটসহ key (যেমন: ২০২৬-২০২৭__term2) চেক করি
     const oldKey = `${academicYear}__${examType}`;
-    if (student.marksByTerm?.[oldKey]) {
+    if (student.marksByTerm?.[oldKey] || student.customMarksByTerm?.[oldKey]) {
         return {
-            resultMarksObj: student.marksByTerm[oldKey] || {},
+            resultMarksObj: student.marksByTerm?.[oldKey] || {},
             customMarks: student.customMarksByTerm?.[oldKey] || {}
         };
     }
@@ -29169,134 +29181,222 @@ window.exportTeacherListCSV = function() {
 // ★★★ শিক্ষার্থী — ডাটা লোড ও স্টেট ★★★
 // ═══════════════════════════════════════════════════════════════
 
-let studentsCache = [];              // সব ছাত্রের লিস্ট (Firestore থেকে)
+let studentsCache = [];   
+
+// ★★★ FIX: মূল studentsCache ও window.studentsCache একই রাখা ★★★
+Object.defineProperty(window, 'studentsCache', {
+    configurable: true,
+    get: function() {
+        return studentsCache;
+    },
+    set: function(value) {
+        if (Array.isArray(value)) {
+            studentsCache = value;
+        }
+    }
+});
+
 let studentsLoaded = false;          // একবার load হলে আর load করব না
 let _currentStudentClass = '';       // বর্তমান জামাত/গ্রুপ (sub-sub tab)
 
-// ★ শিক্ষার্থী লোড (Firestore)
+
+// ★ শিক্ষার্থী লোড (Firestore) — Promise-based shared loading
 async function loadStudentsFromFirestore() {
-    // ★★★ ১. নতুন যোগ করা হলো: ইনফিনিট লুপ বন্ধ করার সেফটি লক ★★★
-    if (window._isStudentsLoading) {
-        console.log('⏳ Students already loading, skipping duplicate call');
-        return;
+
+    // অন্য কোথাও লোড চললে সেটি শেষ হওয়া পর্যন্ত অপেক্ষা করবে
+    if (window._studentsLoadPromise) {
+        console.log('⏳ Students loading চলছে — অপেক্ষা করছি...');
+        return await window._studentsLoadPromise;
     }
+
     window._isStudentsLoading = true;
 
-    if (!currentUser) {
-        window._isStudentsLoading = false; // লক খুলে দিলাম
-        return;
-    }
+    const loadPromise = (async () => {
+        const CACHE_KEY = 'madrasa_students_cache_v1';
+        let hasValidCache = false;
 
-    const CACHE_KEY = 'madrasa_students_cache_v1';
-
-    // ★ ১. প্রথমে লোকাল স্টোরেজ থেকে ছাত্র ডাটা লোড করি (অফলাইন সাপোর্ট)
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
         try {
-            studentsCache = JSON.parse(cached);
-            studentsLoaded = true;
-            console.log('📦 Students loaded from cache');
-        } catch(e) {}
-    }
+            if (!currentUser) {
+                return studentsCache;
+            }
 
-    // ★ ২. ইন্টারনেট থাকলে ফায়ারবেস থেকে লেটেস্ট ডাটা আনব
-    if (navigator.onLine) {
-        try {
-            const { collection, getDocs } = window.fbFuncs;
+            // ১. প্রথমে Local Cache লোড
+            const cached = localStorage.getItem(CACHE_KEY);
 
-            // ─── ১. এডমিন প্যানেলের ম্যানুয়াল ছাত্র (students কালেকশন) ───
-            const sSnap = await getDocs(collection(window.fbDB, 'students'));
-            const manualStudents = [];
-            sSnap.forEach(d => manualStudents.push({ id: d.id, ...d.data(), source: 'manual' }));
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
 
-            // ─── ২. ভর্তি সম্পন্ন ছাত্র (admissionForms কালেকশন) ───
-            const fSnap = await getDocs(collection(window.fbDB, 'admissionForms'));
-            const admittedStudents = [];
-            
-            fSnap.forEach(d => {
-                const form = { id: d.id, ...d.data() };
-                
-                const isApproved = form.status === 'approved' 
-                    || form.currentStep === 'COMPLETED' 
-                    || form.currentStep === 12
-                    || (form.savedSteps && form.savedSteps.includes(11));
-                
-                if (!isApproved) return;
+                    if (Array.isArray(parsed)) {
+                        studentsCache = parsed;
+                        studentsLoaded = true;
+                        hasValidCache = true;
+                        console.log('📦 Students loaded from cache');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Invalid students cache:', e);
+                }
+            }
 
-                const fd = flattenAdmFormData(form);
-                
-                const isDuplicate = manualStudents.some(s => 
-                    s.studentId && fd.studentId && 
-                    String(s.studentId).trim() === String(fd.studentId).trim()
-                );
-                
-                if (isDuplicate) return;
+            // ২. অনলাইন থাকলে Firestore থেকে সর্বশেষ ডাটা
+            if (navigator.onLine) {
+                try {
+                    const { collection, getDocs } = window.fbFuncs;
 
-                admittedStudents.push({
-                    id: 'admission_' + form.id,
-                    name: fd.name,
-                    guardian: fd.guardianName || fd.fatherName,
-                    studentId: fd.studentId,
-                    dob: fd.dob,
-                    mobile1: fd.mobile1,
-                    mobile2: fd.mobile2,
-                    address: fd.currentAddress,
-                    dept: fd.dept,
-                    className: fd.nextClass,
-                    admissionFee: fd.admissionFee,
-                    firstMonthFood: fd.firstMonthFood,
-                    sessionFee: 0,
-                    monthlyFood: fd.monthlyFood,
-                    hostelFee: fd.monthlyHostel,
-                    monthlySalary: fd.monthlySalary,
-                    remark: null,
-                    photo: fd.studentPhoto || '',
-                    source: 'admission',
-                    admissionFormId: form.id,
-                    approvedAt: fd.approvedAt,
-                    marksByTerm: fd.marksByTerm || {},
-                    customMarksByTerm: fd.customMarksByTerm || {},
-                    resultMarksObj: fd.examMarks || form.data?.examMarks || form.data?.resultMarksObj || {},
-                    customMarks: fd.customMarks || form.data?.customMarks || {}
-                });
-            });
+                    // ম্যানুয়াল ছাত্র
+                    const sSnap = await getDocs(
+                        collection(window.fbDB, 'students')
+                    );
 
-            // ─── ৩. একসাথে মিলাই ───
-            studentsCache = [...manualStudents, ...admittedStudents];
+                    const manualStudents = [];
 
-            studentsCache.sort((a, b) => {
-                const d = (a.dept || '').localeCompare(b.dept || '');
-                if (d !== 0) return d;
-                const c = (a.className || '').localeCompare(b.className || '');
-                if (c !== 0) return c;
-                return (a.name || '').localeCompare(b.name || '');
-            });
+                    sSnap.forEach(d => {
+                        manualStudents.push({
+                            id: d.id,
+                            ...d.data(),
+                            source: 'manual'
+                        });
+                    });
 
-            studentsLoaded = true;
-            console.log(`👨‍🎓 মোট ${studentsCache.length} জন`);
+                    // ভর্তি সম্পন্ন ছাত্র
+                    const fSnap = await getDocs(
+                        collection(window.fbDB, 'admissionForms')
+                    );
 
-            // ★ সফলভাবে লোড হলে ক্যাশে সেভ করি
-            localStorage.setItem(CACHE_KEY, JSON.stringify(studentsCache));
-            console.log('☁️ Students data saved to cache');
+                    const admittedStudents = [];
+
+                    fSnap.forEach(d => {
+                        const form = {
+                            id: d.id,
+                            ...d.data()
+                        };
+
+                        const isApproved =
+                            form.status === 'approved' ||
+                            form.currentStep === 'COMPLETED' ||
+                            form.currentStep === 12 ||
+                            (form.savedSteps &&
+                             form.savedSteps.includes(11));
+
+                        if (!isApproved) return;
+
+                        const fd = flattenAdmFormData(form);
+
+                        const isDuplicate = manualStudents.some(s =>
+                            s.studentId &&
+                            fd.studentId &&
+                            String(s.studentId).trim() ===
+                            String(fd.studentId).trim()
+                        );
+
+                        if (isDuplicate) return;
+
+                        admittedStudents.push({
+                            id: 'admission_' + form.id,
+                            name: fd.name,
+                            guardian: fd.guardianName || fd.fatherName,
+                            studentId: fd.studentId,
+                            dob: fd.dob,
+                            mobile1: fd.mobile1,
+                            mobile2: fd.mobile2,
+                            address: fd.currentAddress,
+                            dept: fd.dept,
+                            className: fd.nextClass,
+                            admissionFee: fd.admissionFee,
+                            firstMonthFood: fd.firstMonthFood,
+                            sessionFee: 0,
+                            monthlyFood: fd.monthlyFood,
+                            hostelFee: fd.monthlyHostel,
+                            monthlySalary: fd.monthlySalary,
+                            remark: null,
+                            photo: fd.studentPhoto || '',
+                            source: 'admission',
+                            admissionFormId: form.id,
+                            approvedAt: fd.approvedAt,
+                            marksByTerm: fd.marksByTerm || {},
+                            customMarksByTerm: fd.customMarksByTerm || {},
+                            marksMeta: fd.marksMeta || form.data?.marksMeta || {},
+                            resultMarksObj:
+                                fd.examMarks ||
+                                form.data?.examMarks ||
+                                form.data?.resultMarksObj || {},
+                            customMarks:
+                                fd.customMarks ||
+                                form.data?.customMarks || {}
+                        });
+                    });
+
+                    // ৩. দুই উৎসের ডাটা একত্রিত
+                    const freshStudents = [
+                        ...manualStudents,
+                        ...admittedStudents
+                    ];
+
+                    freshStudents.sort((a, b) => {
+                        const d = (a.dept || '').localeCompare(b.dept || '');
+                        if (d !== 0) return d;
+
+                        const c = (a.className || '').localeCompare(b.className || '');
+                        if (c !== 0) return c;
+
+                        return (a.name || '').localeCompare(b.name || '');
+                    });
+
+                    // ৪. সর্বশেষ ডাটা Cache-এ বসানো
+                    studentsCache = freshStudents;
+                    studentsLoaded = true;
+
+                    localStorage.setItem(
+                        CACHE_KEY,
+                        JSON.stringify(freshStudents)
+                    );
+
+                    console.log(
+                        `☁️ Firestore থেকে সর্বশেষ ${studentsCache.length} জন ছাত্র লোড হয়েছে`
+                    );
+
+                } catch (err) {
+                    console.error('❌ Firestore students load error:', err);
+
+                    // বৈধ Cache থাকলে সেটি থাকবে
+                    if (!hasValidCache) {
+                        studentsCache = [];
+                        studentsLoaded = true;
+                    }
+                }
+
+            } else {
+                console.log('📴 Offline mode — Cache ব্যবহার হচ্ছে');
+
+                if (!hasValidCache) {
+                    studentsCache = [];
+                    studentsLoaded = true;
+                }
+            }
+
+            return studentsCache;
 
         } catch (err) {
             console.error('❌ loadStudentsFromFirestore error:', err);
-            if (!cached) {
-                studentsCache = [];
-                studentsLoaded = true;
-            }
+            throw err;
         }
-    } else {
-        console.log('📴 Offline mode — students loaded from cache');
-        if (!cached) {
-            studentsCache = [];
-            studentsLoaded = true;
-        }
-    }
+    })();
 
-    // ★★★ ২. নতুন যোগ করা হলো: কাজ শেষে লক খুলে দেওয়া ★★★
-    window._isStudentsLoading = false;
+    // Promise সংরক্ষণ — অন্য কলগুলো এটিতেই অপেক্ষা করবে
+    window._studentsLoadPromise = loadPromise;
+
+    try {
+        return await loadPromise;
+    } finally {
+        // কাজ শেষ হলে Lock ও Promise পরিষ্কার
+        if (window._studentsLoadPromise === loadPromise) {
+            window._studentsLoadPromise = null;
+        }
+
+        window._isStudentsLoading = false;
+    }
 }
+
 
 // ★ শিক্ষক nào কোন জামাত দেখতে পারবে (assignment থেকে)
 function getTeacherAllowedClasses() {
@@ -40995,8 +41095,22 @@ window.renderMarksEntryTable = async function() {
         tempColumns.forEach(col => {
             if (!currentColumns.find(c => c.key === col.key)) currentColumns.push(col);
         });
-    } 
-    else {
+                if (window.studentsCache) {
+            window.studentsCache.forEach(s => {
+                if (s.className !== currentClass) return;
+                const termMarks = (typeof getStudentTermMarks === 'function') ? getStudentTermMarks(s, academicYear, examType) : null;
+                if (termMarks && termMarks.customMarks) {
+                    Object.keys(termMarks.customMarks).forEach(k => {
+                        if (k.startsWith('custom_book_') && !_deletedMarksColumns[currentClass]?.includes(k)) {
+                            if (!currentColumns.find(c => c.key === k)) {
+                                currentColumns.push({ type: 'custom', key: k, label: k.replace('custom_book_', '') });
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    } else {
         // ─── ডিফল্ট (এডমিন প্যানেলের সব কিতাব) ───
         _marksEntrySubjects.forEach((sub, idx) => {
             const colKey = `default_${idx}`;
@@ -41004,6 +41118,40 @@ window.renderMarksEntryTable = async function() {
                 currentColumns.push({ type: 'default', key: colKey, index: idx, label: sub });
             }
         });
+
+        // ★★★ ডিফল্ট ট্যাবে সেভ করা কাস্টম কলাম লোড ★★★
+        const classCustomCols = _customMarksColumns[currentClass] || [];
+
+        classCustomCols.forEach(col => {
+            if (
+                !_deletedMarksColumns[currentClass]?.includes(col.key) &&
+                !currentColumns.find(c => c.key === col.key)
+            ) {
+                currentColumns.push({
+                    type: 'custom',
+                    key: col.key,
+                    label: col.label,
+                    books: col.books
+                });
+            }
+        });
+
+        // ★★★ নতুন: শিক্ষকদের দেওয়া ডাইনামিক কলামগুলো যোগ করি (ডিফল্ট ট্যাব) ★★★
+        if (window.studentsCache) {
+            window.studentsCache.forEach(s => {
+                if (s.className !== currentClass) return;
+                const termMarks = (typeof getStudentTermMarks === 'function') ? getStudentTermMarks(s, academicYear, examType) : null;
+                if (termMarks && termMarks.customMarks) {
+                    Object.keys(termMarks.customMarks).forEach(k => {
+                        if (k.startsWith('custom_book_') && !_deletedMarksColumns[currentClass]?.includes(k)) {
+                            if (!currentColumns.find(c => c.key === k)) {
+                                currentColumns.push({ type: 'custom', key: k, label: k.replace('custom_book_', '') });
+                            }
+                        }
+                    });
+                }
+            });
+        }
     }
 
     // ২. সর্টিং লজিক
@@ -41122,12 +41270,18 @@ window.renderMarksEntryTable = async function() {
             let val = '';
             
             if (window._marksEntrySource === 'routine') {
-                // ★ রুটিন কলাম: একাধিক কিতাবের মোট নম্বর দেখাবে
+                // রুটিন ট্যাবের জন্য
                 let existingSum = 0;
                 let hasAny = false;
                 (col.books || []).forEach(bookName => {
-                    const bookKey = `rtbook_${bookName.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '')}`;
-                    const v = termMarks.customMarks?.[bookKey];
+                    const cleanBk = bookName.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '');
+                    const bookKey = `rtbook_${cleanBk}`;
+                    const dynamicKey = `custom_book_${cleanBk}`;
+
+                    let v = termMarks.customMarks?.[bookKey];
+                    if (v === undefined || v === null || v === '') {
+                        v = termMarks.customMarks?.[dynamicKey];
+                    }
                     if (v !== undefined && v !== null && v !== '') {
                         existingSum += Number(v);
                         hasAny = true;
@@ -41148,29 +41302,58 @@ window.renderMarksEntryTable = async function() {
                             onfocus="this.select()">
                 </td>`;
             } else {
-                // ডিফল্ট বা সেভকৃত ভিউ
+                // ★★★ ডিফল্ট বা সেভকৃত ভিউ (নতুন লজিক) ★★★
                 if (col.type === 'default') {
-                    // ★★★ শুধুমাত্র নির্দিষ্ট টার্মের ডাটা দেখাবে ★★★
                     val = termMarks.resultMarksObj?.[col.key] !== undefined 
                         ? termMarks.resultMarksObj[col.key] 
                         : '';
                 } else {
-                    // ★★★ কাস্টম কলামের ক্ষেত্রেও শুধুমাত্র নির্দিষ্ট টার্মের ডাটা ★★★
+                    // কাস্টম কলামের জন্য
                     val = termMarks.customMarks?.[col.key] !== undefined 
                         ? termMarks.customMarks[col.key] 
                         : '';
+                    
+                    // ★★★ নতুন: যদি col.key না পাওয়া যায়, স্ট্যাবল কী (custom_book_...) চেক করি ★★★
+                    if (val === '') {
+                        const cleanLabel = String(col.label).replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '');
+                        const stableKey = `custom_book_${cleanLabel}`;
+                        if (termMarks.customMarks?.[stableKey] !== undefined) {
+                            val = termMarks.customMarks[stableKey];
+                        }
+                    }
+                    
+                    // ★★★ নতুন: রুটিন কী (rtbook_...) চেক করি ★★★
+                    if (val === '') {
+                        const cleanLabel = String(col.label).replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '');
+                        const rtKey = `rtbook_${cleanLabel}`;
+                        if (termMarks.customMarks?.[rtKey] !== undefined) {
+                            val = termMarks.customMarks[rtKey];
+                        }
+                    }
                 }
 
-                cellsHTML += `<td class="p-0 border text-center">
+                // ★★★ লকিং সিস্টেম ★★★
+                const marksKey = (typeof buildMarksKey === 'function') ? buildMarksKey(academicYear, examType) : `${academicYear}::${examType}`;
+                const cellMeta = (typeof getStudentMarkMeta === 'function') ? getStudentMarkMeta(student, marksKey, col.key) : null;
+                
+                // শিক্ষক-সেভ করা নম্বর শিক্ষক প্যানেলে লক থাকবে; অ্যাডমিন সবসময় সম্পাদনা করতে পারবেন।
+                const isTeacherEntry = currentUserData?.role !== 'admin' && !!(cellMeta && cellMeta.by === 'teacher');
+                const lockClass = isTeacherEntry ? 'bg-yellow-100 cursor-not-allowed' : 'bg-transparent';
+                const lockAttr = isTeacherEntry ? `readonly title='শিক্ষকের এন্ট্রি — পরিবর্তন করা যাবে না'` : `onkeydown="handleSpreadsheetKeydown(event)"`;
+                
+                const indicatorHTML = isTeacherEntry ? `<span class="absolute top-0 right-0 text-[8px] bg-yellow-400 text-yellow-900 px-1 rounded-bl font-bold"><i class="fa-solid fa-lock"></i></span>` : '';
+
+                cellsHTML += `<td class="p-0 border text-center relative group">
                     <input type="text" inputmode="numeric" 
                         data-row="${rIdx}" data-student-id="${student.id}" data-col-key="${col.key}" data-col-type="${col.type}" 
                         data-col-label="${col.label}"
                         value="${val !== null ? val : ''}" 
-                        class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm mark-input outline-none bg-transparent"
-                        onkeydown="handleSpreadsheetKeydown(event)"
+                        class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm mark-input outline-none ${lockClass}"
+                        ${lockAttr}
                         onmousedown="startCellSelection(event, this)"
                         onmouseenter="dragCellSelection(this)"
-                        onfocus="this.select()">                                          
+                        onfocus="this.select()">
+                    ${indicatorHTML}
                 </td>`;
             }
         });
@@ -41715,9 +41898,6 @@ window.saveAllMarks = async function() {
         return; 
     }
     
-    // ═══════════════════════════════════════════════════════════════
-    // ★★★ ধাপ ১: কনটেক্সট চেক (শিক্ষাবর্ষ + পরীক্ষা) ★★★
-    // ═══════════════════════════════════════════════════════════════
     reloadMarksContext();
     const { academicYear, examType } = window._marksContext;
     
@@ -41730,9 +41910,6 @@ window.saveAllMarks = async function() {
         return;
     }
     
-    // ═══════════════════════════════════════════════════════════════
-    // ★★★ ধাপ ২: নম্বর ভ্যালিডেশন (১০০-এর বেশি চেক) ★★★
-    // ═══════════════════════════════════════════════════════════════
     let hasInvalidMarks = false;
     document.querySelectorAll('.mark-input').forEach(inp => {
         const val = inp.value.trim();
@@ -41752,11 +41929,15 @@ window.saveAllMarks = async function() {
         return;
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // ★★★ ধাপ ৩: ডাটা সংগ্রহ — নতুন স্ট্রাকচারে (marksByTerm) ★★★
-    // ═══════════════════════════════════════════════════════════════
     const studentDataToSave = {}; 
     const marksKey = buildMarksKey(academicYear, examType);
+    
+    // ★★★ নতুন যোগ: এডমিনের মেটা ডাটা (লক করার জন্য) ★★★
+    const adminMeta = {
+        by: 'admin',
+        byName: currentUserData?.name || 'এডমিন',
+        at: new Date().toISOString()
+    };
 
     inputs.forEach(inp => {
         const sId = inp.dataset.studentId;
@@ -41772,107 +41953,142 @@ window.saveAllMarks = async function() {
             if (isNaN(safeVal)) safeVal = 0;
         }
 
-        // কন্টেইনার তৈরি
         if (!studentDataToSave[sId]) {
             studentDataToSave[sId] = { 
                 marksByTerm: {}, 
-                customMarksByTerm: {} 
+                customMarksByTerm: {},
+                marksMeta: {} // ★★★ নতুন ★★★
             };
         }
         
-        // এই টার্মের জন্য সাব-কন্টেইনার
         if (!studentDataToSave[sId].marksByTerm[marksKey]) {
             studentDataToSave[sId].marksByTerm[marksKey] = {};
         }
         if (!studentDataToSave[sId].customMarksByTerm[marksKey]) {
             studentDataToSave[sId].customMarksByTerm[marksKey] = {};
         }
+        if (!studentDataToSave[sId].marksMeta[marksKey]) {
+            studentDataToSave[sId].marksMeta[marksKey] = {}; // ★★★ নতুন ★★★
+        }
 
+        // অ্যাডমিন ও শিক্ষক উভয়েই config-এর একই custom column key ব্যবহার করবে।
+        // timestamp-ভিত্তিক colKey-কে label থেকে নতুন key-তে রূপান্তর করা হবে না।
+        const finalColKey = colKey;
+
+        // ★★★ নতুন ফিক্স: নম্বর খালি হলে মেটা মুছে ফেলি ★★★
+        // ★★★ নতুন ফিক্স ★★★
         if (type === 'default') {
-            // ডিফল্ট কলাম (কিতাব)
-            studentDataToSave[sId].marksByTerm[marksKey][colKey] = safeVal;
+            studentDataToSave[sId].marksByTerm[marksKey][finalColKey] = safeVal;
+            if (safeVal === null) {
+                studentDataToSave[sId].marksMeta[marksKey][finalColKey] = 'DELETE'; // স্পেশাল স্ট্রিং
+            } else {
+                studentDataToSave[sId].marksMeta[marksKey][finalColKey] = adminMeta; 
+            }
         } 
         else if (type === 'custom') {
-            // কাস্টম কলাম
-            studentDataToSave[sId].customMarksByTerm[marksKey][colKey] = safeVal;
+            studentDataToSave[sId].customMarksByTerm[marksKey][finalColKey] = safeVal;
+            if (safeVal === null) {
+                studentDataToSave[sId].marksMeta[marksKey][finalColKey] = 'DELETE';
+
+                // আগের সংস্করণে label-ভিত্তিক custom_book_ key-তে থাকা নম্বরও পরিষ্কার করি।
+                const legacyLabel = inp.dataset.colLabel || '';
+                const legacyKey = `custom_book_${legacyLabel.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '')}`;
+                if (legacyKey && legacyKey !== finalColKey) {
+                    studentDataToSave[sId].customMarksByTerm[marksKey][legacyKey] = null;
+                    studentDataToSave[sId].marksMeta[marksKey][legacyKey] = 'DELETE';
+                }
+            } else {
+                studentDataToSave[sId].marksMeta[marksKey][finalColKey] = adminMeta; 
+            }
         } 
         else if (type === 'routine_multi') {
-            // পরীক্ষার রুটিন ভিত্তিক (একাধিক কিতাবের মোট)
             const booksArr = JSON.parse(decodeURIComponent(inp.dataset.books));
             const totalMark = safeVal || 0;
             
             booksArr.forEach((bookName, idx) => {
                 const bookKey = `rtbook_${bookName.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '')}`;
-                // প্রথম কিতাবে পুরো নম্বর, বাকিগুলোতে 0 (মোট হিসাবের জন্য)
                 studentDataToSave[sId].customMarksByTerm[marksKey][bookKey] = (idx === 0) ? totalMark : 0; 
             });
             
-            // ডামি কী-ও রাখি যাতে রুটিন রি-লোডে নম্বর ফিরে আসে
             studentDataToSave[sId].customMarksByTerm[marksKey][colKey] = totalMark; 
+            // ★★★ নতুন ফিক্স: রুটিনেও নম্বর খালি হলে মেটা ডিলিট করি ★★★
+            if (safeVal === null) {
+                studentDataToSave[sId].marksMeta[marksKey][colKey] = 'DELETE'; 
+            } else {
+                studentDataToSave[sId].marksMeta[marksKey][colKey] = adminMeta; 
+            }
         }
     });
 
     showToast(`💾 মার্কস সেভ হচ্ছে... (${examType === 'term1' ? '১ম সাময়িক' : examType === 'term2' ? '২য় সাময়িক' : examType === 'annual' ? 'বার্ষিক' : examType})`, 'info');
 
-    // ═══════════════════════════════════════════════════════════════
-    // ★★★ ধাপ ৪: Firestore-এ সেভ (Dot-notation দিয়ে) ★★★
-    // ═══════════════════════════════════════════════════════════════
     try {
-        const { doc, updateDoc } = window.fbFuncs;
+        const { doc, updateDoc, deleteField } = window.fbFuncs;
         let count = 0;
         let failed = 0;
 
         for (const sId of Object.keys(studentDataToSave)) {
             const data = studentDataToSave[sId];
-
-            // 'admission_' প্রিফিক্স থাকলে সরিয়ে ফেলি (admissionForms এ আইডি আলাদা)
             const rawDocId = String(sId).startsWith('admission_') 
                 ? String(sId).replace('admission_', '') 
                 : sId;
 
             try {
-                // ─── students কালেকশনের জন্য dot-notation আপডেট ───
                 const updateDataForStudent = {};
                 
-                // marksByTerm.{marksKey}.{colKey} = value
                 const marksForTerm = data.marksByTerm[marksKey] || {};
+                const customForTerm = data.customMarksByTerm[marksKey] || {};
+                const metaForTerm = data.marksMeta[marksKey] || {};
+
                 Object.keys(marksForTerm).forEach(colKey => {
                     updateDataForStudent[`marksByTerm.${marksKey}.${colKey}`] = marksForTerm[colKey];
                 });
                 
-                // customMarksByTerm.{marksKey}.{colKey} = value
-                const customForTerm = data.customMarksByTerm[marksKey] || {};
                 Object.keys(customForTerm).forEach(colKey => {
-                    updateDataForStudent[`customMarksByTerm.${marksKey}.${colKey}`] = customForTerm[colKey];
+                    updateDataForStudent[`customMarksByTerm.${marksKey}.${colKey}`] =
+                        customForTerm[colKey] === null ? deleteField() : customForTerm[colKey];
                 });
-
+                
+                Object.keys(metaForTerm).forEach(colKey => {
+                    // ★★★ ফিক্স: 'DELETE' পেলে ফিল্ড ডিলিট করি ★★★
+                    if (metaForTerm[colKey] === 'DELETE') {
+                        updateDataForStudent[`marksMeta.${marksKey}.${colKey}`] = deleteField(); 
+                    } else {
+                        updateDataForStudent[`marksMeta.${marksKey}.${colKey}`] = metaForTerm[colKey]; 
+                    }
+                });
                 let isSaved = false;
 
-                // ─── চেষ্টা ১: students কালেকশনে সেভ ───
                 if (Object.keys(updateDataForStudent).length > 0) {
                     try {
                         await updateDoc(doc(window.fbDB, 'students', sId), updateDataForStudent);
                         isSaved = true;
                     } catch (err) {
-                        // যদি students এ ডকুমেন্ট না থাকে, admissionForms এ চেষ্টা করব
                         if (err.code !== 'not-found' && !err.message.includes('No document to update')) {
                             throw err;
                         }
                     }
                 }
 
-                // ─── চেষ্টা ২: admissionForms এ সেভ ───
                 if (!isSaved) {
                     const updateDataForAdmission = {};
                     
-                    // data.examMarksByTerm.{marksKey}.{colKey} = value
                     Object.keys(marksForTerm).forEach(colKey => {
                         updateDataForAdmission[`data.examMarksByTerm.${marksKey}.${colKey}`] = marksForTerm[colKey];
                     });
                     
-                    // data.customMarksByTerm.{marksKey}.{colKey} = value
                     Object.keys(customForTerm).forEach(colKey => {
-                        updateDataForAdmission[`data.customMarksByTerm.${marksKey}.${colKey}`] = customForTerm[colKey];
+                        updateDataForAdmission[`data.customMarksByTerm.${marksKey}.${colKey}`] =
+                            customForTerm[colKey] === null ? deleteField() : customForTerm[colKey];
+                    });
+                    
+                    Object.keys(metaForTerm).forEach(colKey => {
+                        // ★★★ ফিক্স: 'DELETE' পেলে ফিল্ড ডিলিট করি ★★★
+                        if (metaForTerm[colKey] === 'DELETE') {
+                            updateDataForAdmission[`data.marksMeta.${marksKey}.${colKey}`] = deleteField(); 
+                        } else {
+                            updateDataForAdmission[`data.marksMeta.${marksKey}.${colKey}`] = metaForTerm[colKey]; 
+                        }
                     });
 
                     if (Object.keys(updateDataForAdmission).length > 0) {
@@ -41881,20 +42097,31 @@ window.saveAllMarks = async function() {
                     }
                 }
 
-                // ─── ধাপ ৫: লোকাল ক্যাশ (studentsCache) আপডেট ───
                 if (isSaved) {
                     const s = studentsCache.find(x => x.id === sId);
                     if (s) {
-                        // Nested স্ট্রাকচার তৈরি (যদি না থাকে)
                         if (!s.marksByTerm) s.marksByTerm = {};
                         if (!s.customMarksByTerm) s.customMarksByTerm = {};
+                        if (!s.marksMeta) s.marksMeta = {};
                         
                         if (!s.marksByTerm[marksKey]) s.marksByTerm[marksKey] = {};
                         if (!s.customMarksByTerm[marksKey]) s.customMarksByTerm[marksKey] = {};
+                        if (!s.marksMeta[marksKey]) s.marksMeta[marksKey] = {};
                         
-                        // এই টার্মের মার্কস merge করি
                         Object.assign(s.marksByTerm[marksKey], marksForTerm);
-                        Object.assign(s.customMarksByTerm[marksKey], customForTerm);
+                        Object.keys(customForTerm).forEach(k => {
+                            if (customForTerm[k] === null) delete s.customMarksByTerm[marksKey][k];
+                            else s.customMarksByTerm[marksKey][k] = customForTerm[k];
+                        });
+                        
+                        // ★★★ নতুন: লোকাল ক্যাশেও DELETE হ্যান্ডেল করি ★★★
+                        Object.keys(metaForTerm).forEach(k => {
+                            if (metaForTerm[k] === 'DELETE') {
+                                delete s.marksMeta[marksKey][k];
+                            } else {
+                                s.marksMeta[marksKey][k] = metaForTerm[k];
+                            }
+                        });
                     }
                     count++;
                 } else {
@@ -41907,9 +42134,6 @@ window.saveAllMarks = async function() {
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // ★★★ ধাপ ৬: সফলতার মেসেজ ★★★
-        // ═══════════════════════════════════════════════════════════════
         if (count > 0) {
             showToast(
                 `✅ ${count} জন ছাত্রের মার্কস সেভ হয়েছে!${failed > 0 ? ` (${failed}টি ব্যর্থ)` : ''}`, 
@@ -43246,6 +43470,14 @@ window.populateExamSettingsUI = function() {
         document.getElementById('setting-mandatory-subjects').value = _mandatorySubjects.join(', ');
     }
     toggleMandatorySubjectsUI();
+
+    // ★★★ নতুন যোগ: শিক্ষকের মার্কস এন্ট্রি অনুমতি টগল ★★★
+    const teacherMarkEntryToggle = document.getElementById('setting-teacher-mark-entry');
+    if (teacherMarkEntryToggle) {
+        // লোকাল স্টোরেজ থেকে স্ট্যাটাস নিই (ডিফল্ট: true)
+        const isAllowed = localStorage.getItem('madrasa_teacher_marks_allowed') !== 'false';
+        teacherMarkEntryToggle.checked = isAllowed;
+    }
     
     // গ্রেড স্কেল সেটিংস লোড
     const savedGrades = localStorage.getItem('madrasa_grade_scale');
@@ -43399,6 +43631,27 @@ document.addEventListener('DOMContentLoaded', () => {
         _awardLimit = parseInt(savedLimit);
     }
 });
+
+// ★★★ নতুন যোগ: টগল বাটন ক্লিক করলে স্ট্যাটাস সেভ হবে ★★★
+window.toggleTeacherMarkEntryPermission = async function(isChecked) {
+    // লোকাল স্টোরেজে সেভ করি
+    localStorage.setItem('madrasa_teacher_marks_allowed', isChecked);
+    
+    // ফায়ারবেসে সেভ করি (যাতে সব ডিভাইসে আপডেট হয়)
+    if (window.fbDB && window.fbFuncs && currentUser) {
+        const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+        try {
+            await setDoc(doc(window.fbDB, 'config', 'examSettings'), {
+                teacherMarkEntryAllowed: isChecked,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        } catch (err) {
+            console.error('Toggle save error:', err);
+        }
+    }
+    
+    showToast(isChecked ? '✅ শিক্ষকদের মার্কস এন্ট্রি চালু করা হয়েছে' : '🔒 শিক্ষকদের মার্কস এন্ট্রি বন্ধ করা হয়েছে', isChecked ? 'success' : 'info');
+};
 
 // ★★★ নতুন যোগ করুন: অটো-লগইন চেকার ★★★
 window.addEventListener('load', async () => {
@@ -50652,6 +50905,7 @@ function flattenAdmFormData(form) {
         examMarks: d.examMarks || form.examMarks || form.data?.examMarks || d.exam?.marks || {},
         marksByTerm: d.examMarksByTerm || form.examMarksByTerm || {},
         customMarksByTerm: d.customMarksByTerm || form.customMarksByTerm || {},
+        marksMeta: d.marksMeta || form.marksMeta || {}, // ★★★ নতুন লাইন ★★★
         examTotal: d.exam?.totalMarks || 0,
         examiner: d.exam?.examiner || '',
         examComment: d.exam?.comment || '',
@@ -56822,73 +57076,112 @@ window.switchTpExamSub = async function(sub) {
 
     // ১. ফলাফল এন্ট্রি
     if (sub === 'entry') {
-        wrap.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-teal-600"></i><p>রুটিন লোড হচ্ছে...</p></div>`;
-
-        // ★★★ ফিক্স ১: রিলোড দিলে রুটিন অটো লোড করি (যদি খালি থাকে) ★★★
-        if (!window.routinesCache || window.routinesCache.length === 0) {
-            try {
-                const { collection, getDocs, query, where } = window.fbFuncs;
-                const year = (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
-                // ফায়ারবেস থেকে রুটিন আনছি
-                const rSnap = await getDocs(collection(window.fbDB, 'routines'));
-                window.routinesCache = [];
-                rSnap.forEach(d => window.routinesCache.push({ id: d.id, ...d.data() }));
-            } catch (e) { 
-                console.warn('Routine load err:', e); 
-            }
-        }
-
-        const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
+        // ★★★ নতুন: শিক্ষক পোর্টালের নতুন মার্কস এন্ট্রি পেজ ★★★
         
-        // ★★★ ফিক্স ২: নামের স্পেস বা ছোটখাটো ভুল উপেক্ষা করে রুটিন খোঁজা ★★★
-        const cleanName = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, '');
-        
-        const myRoutines = (window.routinesCache || []).filter(r => {
-            const rName = cleanName(r.teacherName);
-            const tName = cleanName(teacherName);
-            return rName === tName || rName.includes(tName) || tName.includes(rName);
-        });
-        
-        // ইউনিক জামাতের নাম বের করি
-        const myUniqueClasses = [...new Set(myRoutines.map(r => r.className))];
-
-        if (myUniqueClasses.length === 0) {
-            wrap.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-500 font-bold">
-                আপনার নামে রুটিনে কোনো জামাত বরাদ্দ নেই।<br>
-                <span class="text-xs text-slate-400 mt-2 block">খোঁজা হয়েছে: "${teacherName}" নামে। এডমিনের সাথে যোগাযোগ করুন।</span>
-            </div>`;
+        // ১. অনুমতি চেক (এডমিন টগল বন্ধ করলে শিক্ষক ঢুকতে পারবে না)
+        const isAllowed = localStorage.getItem('madrasa_teacher_marks_allowed') !== 'false';
+        if (!isAllowed) {
+            wrap.innerHTML = `
+                <div class="bg-rose-50 border-2 border-rose-300 rounded-xl p-10 text-center mt-4">
+                    <i class="fa-solid fa-lock text-5xl text-rose-500 mb-3"></i>
+                    <h3 class="text-lg font-bold text-rose-900">মার্কস এন্ট্রি বন্ধ আছে</h3>
+                    <p class="text-sm text-rose-700 mt-2">অনুগ্রহ করে এডমিনের সাথে যোগাযোগ করুন।</p>
+                </div>`;
             return;
         }
 
-        // ড্রপডাউনের অপশন তৈরি
-        const classOptions = myUniqueClasses.map(c => {
-            const routineItem = myRoutines.find(r => r.className === c);
-            const deptKey = routineItem ? routineItem.dept : '';
-            return `<option value="${deptKey}::${c}" ${window._tpExamState.entryClass === c ? 'selected' : ''}>${c}</option>`;
-        }).join('');
+        // ২. টিচার পোর্টালের জন্য ডাটা লোড
+        wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-blue-600"></i><p class="text-xs mt-2">রুটিন লোড হচ্ছে...</p></div>`;
 
-        wrap.innerHTML = `
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3">
-                <div class="flex flex-wrap gap-2 items-end">
-                    <div class="flex-1 min-w-[150px]">
-                        <label class="block text-xs font-bold text-slate-700 mb-1">আপনার জামাত নির্বাচন করুন</label>
-                        <select onchange="onTpEntryClassChange(this.value)" class="w-full rounded-lg border-slate-300 border p-2 text-sm">
-                            <option value="">-- জামাত --</option>
-                            ${classOptions}
-                        </select>
+        try {
+            const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
+            
+            // রুটিন থেকে শিক্ষকের কিতাবগুলো নিই
+            if (!window.routinesCache || window.routinesCache.length === 0) {
+                const { collection, getDocs } = window.fbFuncs;
+                const rSnap = await getDocs(collection(window.fbDB, 'routines'));
+                window.routinesCache = [];
+                rSnap.forEach(d => window.routinesCache.push({ id: d.id, ...d.data() }));
+            }
+
+            const cleanName = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, '');
+            const myRoutines = (window.routinesCache || []).filter(r => {
+                const rName = cleanName(r.teacherName);
+                const tName = cleanName(teacherName);
+                return rName === tName || rName.includes(tName) || tName.includes(rName);
+            });
+
+            // ইউনিক কিতাব বের করি (একই কিতাব একাধিক ক্লাসে পড়ালেও একবারই দেখাবে)
+            const uniqueBooks = [];
+            const seenBooks = new Set();
+            
+            myRoutines.forEach(r => {
+                if (!r.bookName || !r.className) return;
+                const key = `${r.bookName}::${r.className}`;
+                if (!seenBooks.has(key)) {
+                    seenBooks.add(key);
+                    uniqueBooks.push({
+                        bookName: r.bookName,
+                        className: r.className,
+                        dept: r.dept
+                    });
+                }
+            });
+
+            if (uniqueBooks.length === 0) {
+                wrap.innerHTML = `<div class="bg-white rounded-xl p-10 text-center text-slate-500 font-bold border border-slate-200 shadow-sm">
+                    আপনার নামে রুটিনে কোনো কিতাব বরাদ্দ নেই।
+                </div>`;
+                return;
+            }
+
+            // ৩. বইয়ের কার্ড তৈরি করি
+            let bookCardsHTML = uniqueBooks.map((b, idx) => `
+                <button onclick="openTpBookMarksEntry('${b.bookName.replace(/'/g, "\\'")}', '${b.className.replace(/'/g, "\\'")}', '${b.dept}')"
+                        class="group bg-white border-2 border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 flex flex-col items-center justify-center gap-2 min-h-[130px] text-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center text-white text-xl shadow-md group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-book-open"></i>
+                    </div>
+                    <span class="font-arabic text-sm font-bold text-slate-800 leading-tight">${b.bookName}</span>
+                    <span class="text-[10px] text-slate-500 font-arabic">${b.className}</span>
+                </button>
+            `).join('');
+
+            // ৪. চলতি সেশন ও টার্ম বের করি (অটো লোডের জন্য)
+            const currentYear = (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
+            const currentExam = window._marksContext?.examType || 'term2'; // ডিফল্ট ২য় সাময়িক
+            const examLabels = { term1: '১ম সাময়িক', term2: '২য় সাময়িক', model: 'মডেল টেস্ট', qurbani: 'কুরবানী', annual: 'বার্ষিক' };
+
+            wrap.innerHTML = `
+                <div class="space-y-4">
+                    <!-- হেডার -->
+                    <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl p-4 shadow-md text-white flex justify-between items-center flex-wrap gap-2">
+                        <div>
+                            <h3 class="text-base font-bold"><i class="fa-solid fa-keyboard"></i> মার্কস এন্ট্রি</h3>
+                            <p class="text-xs opacity-90 mt-1">যে কিতাবের নম্বর দিতে চান, সেটি নির্বাচন করুন</p>
+                        </div>
+                        <!-- অটো লোড হওয়া সেশন ও টার্ম -->
+                        <div class="text-right bg-white/20 px-3 py-1.5 rounded-lg border border-white/30">
+                            <p class="text-[10px] font-bold text-blue-100">চলমান পরীক্ষা</p>
+                            <p class="text-sm font-bold">${examLabels[currentExam] || currentExam} | ${currentYear}</p>
+                        </div>
+                    </div>
+
+                    <!-- কিতাবের কার্ড গ্রিড -->
+                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                        ${bookCardsHTML}
                     </div>
                 </div>
-            </div>
-            <div id="tp-entry-table-wrap" class="bg-white rounded-xl shadow-sm border border-slate-200 p-2 min-h-[300px] overflow-x-auto">
-                <div class="text-center py-10 text-slate-400"><p class="text-sm">জামাত নির্বাচন করুন</p></div>
-            </div>
-        `;
-        
-        // আগে থেকে কোনো ক্লাস সিলেক্ট করা থাকলে টেবিল লোড করি
-        if (window._tpExamState.entryClass) {
-            loadTpMarksEntryTable();
+            `;
+
+        } catch (err) {
+            console.error('❌ TP Marks Entry Error:', err);
+            wrap.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center text-red-600 font-bold text-sm">
+                লোড ব্যর্থ: ${err.message}
+            </div>`;
         }
     }
+
     // ২. আমার শ্রেণি ভিউ
     else if (sub === 'class-view') {
         const allowed = getTeacherAllowedClasses();
@@ -57330,317 +57623,6 @@ window.loadTpDeptExamRoutine = async function(deptKey) {
 // ───────────────────────────────────────────────────────────────
 // ১. ফলাফল এন্ট্রি হেল্পার
 // ───────────────────────────────────────────────────────────────
-window.onTpEntryClassChange = function(val) {
-    if (!val) return;
-    const [d, c] = val.split('::');
-    window._tpExamState.entryDept = d;
-    window._tpExamState.entryClass = c;
-    loadTpMarksEntryTable();
-};
-
-async function loadTpMarksEntryTable() {
-    const wrap = document.getElementById('tp-entry-table-wrap');
-    if (!wrap) return;
-    wrap.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-xl"></i></div>`;
-
-    const dept = window._tpExamState.entryDept;
-    const className = window._tpExamState.entryClass;
-    const teacherName = currentUserData?.teacherName || currentUserData?.name || '';
-    const currentExam = window._marksContext?.examType || 'term2';
-    const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
-
-    // কলাম সেটিংস লোড
-    try {
-        const { doc, getDoc } = window.fbFuncs;
-        const configRef = doc(window.fbDB, 'config', 'marksColumnsConfig');
-        const snap = await getDoc(configRef);
-        if (snap.exists()) {
-            const data = snap.data();
-            _customMarksColumns = data.custom || {};
-            _deletedMarksColumns = data.deleted || {};
-            _marksColumnOrder = data.order || {};
-        }
-    } catch (e) { console.warn('Column config:', e); }
-
-    // রুটিন ফিল্টার
-    const clean = (str) => String(str || '').trim().toLowerCase().replace(/\s+/g, '');
-    const teacherRoutines = (window.routinesCache || []).filter(r => 
-        clean(r.teacherName) === clean(teacherName) && clean(r.className) === clean(className)
-    );
-    
-    const uniqueBooks = [...new Set(teacherRoutines.map(r => r.bookName))];
-
-    if (uniqueBooks.length === 0) {
-        wrap.innerHTML = `<div class="text-center py-10 text-amber-600 font-bold">এই জামাতে আপনার কোনো কিতাব বরাদ্দ নেই।</div>`;
-        return;
-    }
-
-    // শিক্ষার্থী ফিল্টার
-    const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
-    const students = (window.studentsCache || []).filter(s => 
-        s.dept === dept && s.className === className && 
-        !excludedRemarks.includes((s.remark?.type || '').trim())
-    );
-
-    if (students.length === 0) {
-        wrap.innerHTML = `<div class="text-center py-10 text-slate-400">এই জামাতে কোনো ছাত্র নেই।</div>`;
-        return;
-    }
-
-    let headHTML = `<tr>
-        <th class="p-1 border bg-slate-100 sticky top-0 z-10 w-10 text-center text-xs">#</th>
-        <th class="p-1 border bg-slate-100 sticky top-0 z-10 min-w-[130px] text-xs">নাম</th>
-        <th class="p-1 border bg-slate-100 sticky top-0 z-10 min-w-[90px] text-xs">আইডি</th>`;
-    
-    uniqueBooks.forEach((bookName) => {
-        const uniqueKey = `tpbook_${bookName}`.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '');
-        headHTML += `<th class="p-1 border bg-slate-100 sticky top-0 z-10 min-w-[80px] max-w-[110px] text-center text-xs">
-            <span class="font-arabic font-bold block">${bookName}</span>
-        </th>`;
-    });
-
-    headHTML += `<th class="p-1 border bg-blue-100 text-blue-800 sticky top-0 z-10 w-16 text-center text-xs font-bold">মোট</th>`;
-    headHTML += `<th class="p-1 border bg-emerald-100 text-emerald-800 sticky top-0 z-10 w-16 text-center text-xs font-bold">গড়</th>`;
-    headHTML += `<th class="p-1 border bg-amber-100 text-amber-800 sticky top-0 z-10 w-20 text-center text-xs font-bold">বিভাগ</th></tr>`;
-
-    let rowsHTML = '';
-    students.forEach((s, rIdx) => {
-        let cellsHTML = '';
-        
-        uniqueBooks.forEach(bookName => {
-            const uniqueKey = `tpbook_${bookName}`.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '');
-            
-            // ★★★ আপনার মেইন সেকশনের হুবহু ডাটা রিডিং লজিক ★★★
-            let val = '';
-            
-            // ১. মেইন সেকশনের টার্ম মার্কস চেক
-            if (typeof getStudentTermMarks === 'function') {
-                const termMarks = getStudentTermMarks(s, academicYear, currentExam);
-                if (termMarks.resultMarksObj && termMarks.resultMarksObj[uniqueKey] !== undefined) {
-                    val = termMarks.resultMarksObj[uniqueKey];
-                } else if (termMarks.customMarks && termMarks.customMarks[uniqueKey] !== undefined) {
-                    val = termMarks.customMarks[uniqueKey];
-                }
-            }
-
-            // ২. যদি না পাওয়া যায়, সরাসরি স্টুডেন্ট অবজেক্ট চেক
-            if (val === '') {
-                if (s.resultMarksObj && s.resultMarksObj[uniqueKey] !== undefined) {
-                    val = s.resultMarksObj[uniqueKey];
-                } else if (s.customMarks && s.customMarks[uniqueKey] !== undefined) {
-                    val = s.customMarks[uniqueKey];
-                }
-            }
-
-            cellsHTML += `<td class="p-0 border text-center relative group">
-                <input type="text" inputmode="numeric" 
-                    data-row="${rIdx}" data-student-id="${s.id}" 
-                    data-col-key="${uniqueKey}" data-col-type="custom" 
-                    data-col-label="${bookName}"
-                    value="${val !== null && val !== '' ? val : ''}" 
-                    class="w-full h-full min-h-[35px] text-center border-0 focus:ring-2 focus:ring-emerald-500 p-2 text-sm tp-mark-input outline-none bg-transparent"
-                    onkeydown="handleTpSpreadsheetKeydown(event)"
-                    onfocus="this.select()">
-                ${val !== '' ? `<span class="absolute top-0 right-0 text-[8px] bg-blue-100 text-blue-700 px-1 rounded-bl opacity-70">এন্ট্রি হয়েছে</span>` : ''}
-            </td>`;
-        });
-
-        cellsHTML += `<td class="p-1 border text-center font-bold bg-blue-50 text-blue-800 total-cell" id="tp-total-${rIdx}">-</td>`;
-        cellsHTML += `<td class="p-1 border text-center font-bold bg-emerald-50 text-emerald-800 avg-cell" id="tp-avg-${rIdx}">-</td>`;
-        cellsHTML += `<td class="p-1 border text-center font-bold bg-amber-50 text-amber-800 grade-cell" id="tp-grade-${rIdx}">-</td>`;
-
-        rowsHTML += `<tr class="border-b hover:bg-emerald-50">
-            <td class="p-2 border text-center text-xs text-slate-500 bg-slate-50">${rIdx + 1}</td>
-            <td class="p-2 border font-bold text-sm whitespace-nowrap">${s.name}</td>
-            <td class="p-2 border font-mono text-xs text-slate-600">${s.studentId || '-'}</td>
-            ${cellsHTML}
-        </tr>`;
-    });
-
-    wrap.innerHTML = `
-        <div class="flex justify-between items-center mb-2">
-            <p class="text-[10px] text-slate-500"><i class="fa-solid fa-info-circle"></i> আগের নাম্বার থাকলে নীল রঙে লেখা থাকবে।</p>
-            <button onclick="saveTpMarks()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-floppy-disk"></i> সেভ করুন
-            </button>
-        </div>
-        <div class="overflow-x-auto max-h-[60vh]">
-            <table class="w-full border-collapse text-sm whitespace-nowrap bg-white">
-                <thead>${headHTML}</thead>
-                <tbody>${rowsHTML}</tbody>
-            </table>
-        </div>
-    `;
-
-    setTimeout(() => {
-        students.forEach((_, rIdx) => window.updateTpRowLiveStats(rIdx, dept, className));
-    }, 50);
-}
-
-window.updateTpRowLiveStats = function(rIdx, dept, className) {
-    const inputs = document.querySelectorAll(`.tp-mark-input[data-row="${rIdx}"]`);
-    let marksArray = [];
-    let columnMeta = [];
-    inputs.forEach(inp => {
-        const val = inp.value.trim();
-        marksArray.push(val === '' ? 0 : Number(val));
-    });
-
-    const totalEl = document.getElementById(`tp-total-${rIdx}`);
-    const avgEl = document.getElementById(`tp-avg-${rIdx}`);
-    const gradeEl = document.getElementById(`tp-grade-${rIdx}`);
-    if (!totalEl || !avgEl || !gradeEl) return;
-
-    const hasAnyMark = marksArray.some(m => m > 0);
-    if (!hasAnyMark) {
-        totalEl.textContent = '-'; avgEl.textContent = '-'; gradeEl.textContent = '-';
-        return;
-    }
-
-    const calc = calculateGradeAndDivision(dept, marksArray, className, columnMeta);
-    
-    totalEl.textContent = marksArray.reduce((a, b) => a + b, 0);
-    avgEl.textContent = calc.avg;
-    gradeEl.textContent = calc.grade;
-
-    if (calc.grade === 'রাসিব' || calc.grade === 'F' || calc.grade === 'অনুপস্থিত') {
-        gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-red-600';
-    } else {
-        gradeEl.className = 'p-1 border text-center font-bold bg-amber-50 text-amber-800';
-    }
-};
-
-window.handleTpSpreadsheetKeydown = function(e) {
-    const input = e.target;
-    if (!input.classList.contains('tp-mark-input')) return;
-    const row = parseInt(input.dataset.row);
-    const currentColKey = input.dataset.colKey;
-    const allInputs = Array.from(document.querySelectorAll('.tp-mark-input'));
-    if (allInputs.length === 0) return;
-    
-    const allCols = [...new Set(allInputs.map(inp => inp.dataset.colKey))];
-    const currentColIndex = allCols.indexOf(currentColKey);
-    
-    let nextRow = row, nextColIndex = currentColIndex;
-    if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); nextRow = row + 1; }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); nextRow = row - 1; }
-    else if (e.key === 'ArrowRight' && input.selectionStart === input.value.length) { e.preventDefault(); nextColIndex = currentColIndex + 1; nextRow = row; }
-    else if (e.key === 'ArrowLeft' && input.selectionStart === 0) { e.preventDefault(); nextColIndex = currentColIndex - 1; nextRow = row; }
-    else return;
-
-    const nextColKey = allCols[nextColIndex];
-    if (!nextColKey) return;
-    const nextInput = document.querySelector(`input[data-row="${nextRow}"][data-col-key="${nextColKey}"]`);
-    if (nextInput) { nextInput.focus(); nextInput.select(); }
-};
-
-window.saveTpMarks = async function() {
-    const dept = window._tpExamState.entryDept;
-    const className = window._tpExamState.entryClass;
-    const inputs = document.querySelectorAll('.tp-mark-input');
-    const currentExam = window._marksContext?.examType || 'term2';
-    const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
-    
-    const dataToSave = {};
-    let hasOverwrite = false;
-
-    inputs.forEach(inp => {
-        const sId = inp.dataset.studentId;
-        if (!sId) return;
-        const type = inp.dataset.colType;
-        const colKey = inp.dataset.colKey;
-        const rawVal = inp.value.trim();
-        let safeVal = rawVal === '' ? null : parseInt(rawVal);
-        if (rawVal !== '' && isNaN(safeVal)) safeVal = 0;
-
-        if (!dataToSave[sId]) dataToSave[sId] = { customMarks: {} };
-        dataToSave[sId].customMarks[colKey] = safeVal;
-
-        // চেক করা আগে ডাটা ছিল কি না
-        const s = studentsCache.find(x => x.id === sId);
-        if (s && safeVal !== null) {
-            let oldVal = '';
-            if (typeof getStudentTermMarks === 'function') {
-                const termMarks = getStudentTermMarks(s, academicYear, currentExam);
-                oldVal = termMarks.resultMarksObj?.[colKey] ?? termMarks.customMarks?.[colKey] ?? '';
-            }
-            if (oldVal === '') oldVal = s.resultMarksObj?.[colKey] ?? s.customMarks?.[colKey] ?? '';
-
-            if (oldVal !== '' && oldVal !== null && oldVal !== safeVal) {
-                hasOverwrite = true;
-            }
-        }
-    });
-
-    if (hasOverwrite) {
-        const proceed = confirm(
-            "⚠️ সতর্কতা!\n\n" +
-            "কিছু কিতাবে আগে থেকেই নাম্বার এন্ট্রি করা আছে। আপনি সেগুলো পরিবর্তন করতে যাচ্ছেন।\n\n" +
-            "আপনি কি নিশ্চিত যে আপনি পুরনো নাম্বার মুছে নতুন নাম্বার সেভ করতে চান?"
-        );
-        if (!proceed) {
-            showToast('❌ সেভ বাতিল করা হয়েছে।', 'info');
-            return;
-        }
-    }
-
-    showToast('💾 সেভ হচ্ছে...', 'info');
-    try {
-        const { doc, updateDoc } = window.fbFuncs;
-        let count = 0;
-        for (const sId of Object.keys(dataToSave)) {
-            const data = dataToSave[sId];
-            const rawDocId = String(sId).startsWith('admission_') ? String(sId).replace('admission_', '') : sId;
-            let isSaved = false;
-
-            const updateDataForStudent = {};
-            if (Object.keys(data.customMarks).length > 0) {
-                // ★★★ মেইন সেকশনের হুবহু সেভিং স্ট্রাকচার ★★★
-                updateDataForStudent[`examResults.${currentExam}.customMarks`] = data.customMarks;
-            }
-
-            if (Object.keys(updateDataForStudent).length > 0) {
-                try {
-                    await updateDoc(doc(window.fbDB, 'students', sId), updateDataForStudent);
-                    isSaved = true;
-                } catch (err) {
-                    if (err.code !== 'not-found' && !err.message.includes('No document to update')) throw err;
-                }
-            }
-
-            if (!isSaved) {
-                const updateDataForAdmission = {};
-                if (Object.keys(data.customMarks).length > 0) updateDataForAdmission[`data.examResults.${currentExam}.customMarks`] = data.customMarks;
-                
-                if (Object.keys(updateDataForAdmission).length > 0) {
-                    await updateDoc(doc(window.fbDB, 'admissionForms', rawDocId), updateDataForAdmission);
-                    isSaved = true;
-                }
-            }
-
-            if (isSaved) {
-                const s = studentsCache.find(x => x.id === sId);
-                if (s) {
-                    if (!s.examResults) s.examResults = {};
-                    if (!s.examResults[currentExam]) s.examResults[currentExam] = {};
-                    if (data.customMarks) s.examResults[currentExam].customMarks = { ...(s.examResults[currentExam].customMarks || {}), ...data.customMarks };
-                    if (!s.customMarks) s.customMarks = {};
-                    Object.assign(s.customMarks, data.customMarks);
-                }
-                count++;
-            }
-        }
-        
-        if (typeof loadStudentsFromFirestore === 'function') {
-            await loadStudentsFromFirestore();
-        }
-        showToast(`✅ ${count} জন ছাত্রের মার্কস সেভ হয়েছে`, 'success');
-        loadTpMarksEntryTable(); 
-    } catch (err) {
-        console.error('❌ saveTpMarks Error:', err);
-        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
-    }
-};
 
 // ★★★ অত্যন্ত সহজ ও নিখুঁত হেল্পার ★★★
 async function renderMainResultHTMLForDept(dept, className) {
@@ -61896,6 +61878,7 @@ async function startStudentsRealtimeListener() {
                     approvedAt: fd.approvedAt,
                     marksByTerm: fd.marksByTerm || {},
                     customMarksByTerm: fd.customMarksByTerm || {},
+                    marksMeta: fd.marksMeta || form.data?.marksMeta || {},
                     // ✅ মার্কস ফিল্ড যোগ
                     resultMarksObj: fd.examMarks || form.data?.examMarks || {},
                     customMarks: fd.customMarks || form.data?.customMarks || {}
@@ -61942,11 +61925,14 @@ async function startStudentsRealtimeListener() {
                     }
                 }
 
-                // ২.৩ "ফলাফল এন্ট্রি" খোলা থাকলে
-                if (window._tpExamState.sub === 'entry') {
-                    if (typeof loadTpMarksEntryTable === 'function') loadTpMarksEntryTable();
+                if (window._tpExamState.sub === 'entry' && window._tpCurrentBookState) {
+                    window.openTpBookMarksEntry(
+                        window._tpCurrentBookState.bookName, 
+                        window._tpCurrentBookState.className, 
+                        window._tpCurrentBookState.dept
+                    );
                 }
-                
+               
                 if (document.getElementById('teacher-portal-view')) {
                     if (typeof loadTpProfileStats === 'function') {
                         loadTpProfileStats();
@@ -76780,6 +76766,475 @@ async function loadTeacherAttStatuses(type, date) {
 
     console.log('✅ হাজিরা মডিউল লোড হয়েছে');
 })();
+
+// ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল — নির্দিষ্ট কিতাবের মার্কস এন্ট্রি পেজ ★★★
+// ═══════════════════════════════════════════════════════════════
+window.openTpBookMarksEntry = async function(bookName, className, dept) {
+    window._tpCurrentBookState = { bookName, className, dept };
+
+    const content = document.getElementById('tp-dynamic-content');
+    if (!content) return;
+
+    // ১. চলতি সেশন ও টার্ম বের করি
+    const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
+    const examType = window._marksContext?.examType || 'term2';
+    const examLabels = { term1: '১ম সাময়িক', term2: '২য় সাময়িক', model: 'মডেল টেস্ট', qurbani: 'কুরবানী', annual: 'বার্ষিক' };
+    const marksKey = (typeof buildMarksKey === 'function') 
+        ? buildMarksKey(academicYear, examType) 
+        : `${academicYear}::${examType}`;
+
+    // ২. পেজের স্কেলেটন (লোডিং অবস্থা)
+    content.innerHTML = `
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <button onclick="switchTpTab('exam')" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-blue-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg shadow-sm transition">
+                <i class="fa-solid fa-arrow-left"></i> ফিরে যান
+            </button>
+            <div class="flex items-center gap-2">
+                <span class="w-6 h-6 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-book-open"></i>
+                </span>
+                <h3 class="text-sm md:text-base font-bold text-slate-800 font-arabic">${bookName}</h3>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+            <!-- হেডার (ক্লাস, পরীক্ষা, সেশন) -->
+            <div class="bg-blue-50 border-2 border-blue-300 rounded-lg p-3 mb-4 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                <div>
+                    <span class="block text-blue-700 font-bold text-[10px]">শ্রেণি</span>
+                    <span class="font-arabic font-bold text-slate-800 text-sm">${className}</span>
+                </div>
+                <div>
+                    <span class="block text-blue-700 font-bold text-[10px]">পরীক্ষা</span>
+                    <span class="font-bold text-slate-800 text-sm">${examLabels[examType] || examType}</span>
+                </div>
+                <div>
+                    <span class="block text-blue-700 font-bold text-[10px]">শিক্ষাবর্ষ</span>
+                    <span class="font-bold text-slate-800 text-sm">${academicYear}</span>
+                </div>
+            </div>
+
+            <div id="tp-book-marks-area">
+                <div class="text-center py-10">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-blue-600"></i>
+                    <p class="text-xs mt-2 text-slate-500">ছাত্র লোড হচ্ছে...</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const area = document.getElementById('tp-book-marks-area');
+
+    try {
+        // ৩. ছাত্র ডাটা লোড (সবসময় ফ্রেশ ডাটা নিশ্চিত করি)
+        if (typeof loadStudentsFromFirestore === 'function') {
+            // পেজ রিলোড হলেও যাতে লেটেস্ট ডাটা আসে
+            await loadStudentsFromFirestore();
+        }
+
+        const excludedRemarks = ['বিদায়', 'বহিষ্কৃত', 'ভর্তির অনুপযুক্ত'];
+        const students = (window.studentsCache || []).filter(s => 
+            s.className === className && 
+            !excludedRemarks.includes((s.remark?.type || '').trim())
+        );
+
+        if (students.length === 0) {
+            area.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">এই শ্রেণিতে কোনো সক্রিয় ছাত্র নেই।</div>`;
+            return;
+        }
+
+        // ৪. এই কিতাবের জন্য কোন কলাম কি (colKey) সেটা বের করি
+        const allBooks = (configData?.books || {})[className] || [];
+        let bookIdx = allBooks.indexOf(bookName);
+        
+        // যদি সরাসরি না মেলে, ফাজি ম্যাচিং করি (ব্র্যাকেট বা স্পেস ইগনোর করে)
+        if (bookIdx < 0) {
+            const cleanStr = (str) => String(str || '').replace(/[^\u0980-\u09FF\u0600-\u06FFa-zA-Z0-9]/g, '').toLowerCase();
+            const targetClean = cleanStr(bookName);
+            bookIdx = allBooks.findIndex(b => {
+                const bClean = cleanStr(b);
+                return bClean && targetClean && (bClean === targetClean || bClean.includes(targetClean) || targetClean.includes(bClean));
+            });
+        }
+
+        let targetKey = '';
+        let targetType = 'custom';
+        let legacyTargetKey = '';
+        const cleanBk = bookName.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '');
+        const stableKey = `custom_book_${cleanBk}`;
+
+        // আগে কাস্টম কলামের সদস্যপদ দেখি। কারণ কাস্টম কলামে নির্বাচিত কিতাবও
+        // configData.books-এ থাকে; তাই default আগে পরীক্ষা করলে ভুল default_ key হবে।
+        const customCols = (_customMarksColumns[className] || []);
+        const customMatch = customCols.find(c => {
+            const cLabel = String(c.label || '').trim();
+            const configuredBooks = Array.isArray(c.books) ? c.books.map(x => String(x).trim()) : [];
+            return cLabel === bookName.trim()
+                || configuredBooks.includes(bookName.trim())
+                || cLabel.split(',').some(x => x.trim() === bookName.trim());
+        });
+
+        if (customMatch) {
+            targetKey = customMatch.key;
+            const cleanCustomLabel = String(customMatch.label || bookName).replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '');
+            legacyTargetKey = `custom_book_${cleanCustomLabel}`;
+        } else if (bookIdx >= 0) {
+            // কাস্টম কলামের অংশ না হলে তবেই ডিফল্ট কিতাব হিসেবে ধরব
+            targetKey = `default_${bookIdx}`;
+            targetType = 'default';
+        } else {
+            targetKey = stableKey;
+        }
+
+        // ৫. ছাত্রদের জন্য টেবিল তৈরি করি
+        let rowsHTML = students.map((s, i) => {
+            const termMarks = (typeof getStudentTermMarks === 'function') 
+                ? getStudentTermMarks(s, academicYear, examType) 
+                : { resultMarksObj: {}, customMarks: {} };
+
+            let val = '';
+            if (targetType === 'default') {
+                val = termMarks.resultMarksObj?.[targetKey] !== undefined ? termMarks.resultMarksObj[targetKey] : '';
+            } else {
+                val = termMarks.customMarks?.[targetKey] !== undefined ? termMarks.customMarks[targetKey] : '';
+                // আগের সংস্করণে label-ভিত্তিক key-তে সেভ করা নম্বরও পড়ি।
+                if ((val === '' || val === null) && legacyTargetKey && termMarks.customMarks?.[legacyTargetKey] !== undefined) {
+                    val = termMarks.customMarks[legacyTargetKey];
+                }
+                // পুরনো একক-কিতাব key থাকলে সেটিও fallback হিসেবে পড়ি।
+                if (val === '' || val === null) {
+                    const oldBookKey = `custom_book_${bookName.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '')}`;
+                    if (termMarks.customMarks?.[oldBookKey] !== undefined) val = termMarks.customMarks[oldBookKey];
+                }
+                // রুটিন কী (rtbook_...) থেকেও পুরনো নম্বর উদ্ধার করি।
+                if (val === '' || val === null) {
+                    const rtKey = `rtbook_${bookName.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '')}`;
+                    if (termMarks.customMarks?.[rtKey] !== undefined) val = termMarks.customMarks[rtKey];
+                }
+            }
+
+            // ★★★ লকিং সিস্টেম ★★★
+            // যদি এডমিন (by === 'admin') অথবা শিক্ষক আগেই (by === 'teacher') সেভ করে ফেলে, তবে লক হবে।
+            const cellMeta = (typeof getStudentMarkMeta === 'function')
+                ? (getStudentMarkMeta(s, marksKey, targetKey) || (legacyTargetKey ? getStudentMarkMeta(s, marksKey, legacyTargetKey) : null))
+                : null;
+            
+            // ★★★ নতুন ফিক্স: cellMeta.by না থাকলে বা null হলে লক হবে না ★★★
+            const isLocked = !!(cellMeta && cellMeta.by && cellMeta.by !== null);
+            const lockClass = isLocked ? 'bg-slate-100 cursor-not-allowed text-slate-500' : 'bg-white focus:ring-2 focus:ring-blue-500';
+            const lockAttr = isLocked ? `readonly title='লক করা আছে — পরিবর্তনের জন্য এডমিনের সাথে যোগাযোগ করুন'` : `onkeydown="handleTpBookMarksKeydown(event, ${i})"`;
+
+            // লক হলে আইকন দেখাই
+            const indicatorHTML = isLocked 
+                ? `<span class="absolute top-0 right-0 text-[8px] bg-slate-300 text-slate-700 px-1 rounded-bl font-bold"><i class="fa-solid fa-lock"></i></span>` 
+                : '';
+
+            return `
+                <tr class="border-b hover:bg-blue-50">
+                    <td class="p-2 text-center text-xs text-slate-500">${i + 1}</td>
+                    <td class="p-2 text-sm font-bold text-slate-800">${s.name || '—'}</td>
+                    <td class="p-2 text-center text-xs font-mono text-slate-600">${s.studentId || '—'}</td>
+                    <td class="p-2 text-center relative">
+                        <input type="number" min="0" max="100"
+                               id="tp-book-mark-${i}"
+                               value="${val !== null && val !== '' ? val : ''}"
+                               placeholder="নম্বর"
+                               data-row="${i}"
+                               data-student-id="${s.id}"
+                               class="tp-book-mark-input w-24 text-center text-sm p-2 border border-slate-300 rounded font-bold transition outline-none ${lockClass}"
+                               ${lockAttr}>
+                        ${indicatorHTML}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        // ৬. টেবিল ও সেভ বাটন রেন্ডার
+        area.innerHTML = `
+            <div class="mb-3 flex justify-between items-center flex-wrap gap-2">
+                <span class="badge bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-1"><i class="fa-solid fa-users"></i> মোট ${students.length} জন ছাত্র</span>
+                <p class="text-[10px] text-rose-600 font-bold"><i class="fa-solid fa-circle-info"></i> নম্বর একবার সেভ হলে আর পরিবর্তন করা যাবে না।</p>
+            </div>
+
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                <table class="w-full border-collapse text-xs" style="min-width:500px;">
+                    <thead class="bg-blue-600 text-white">
+                        <tr>
+                            <th class="p-2 text-[10px] text-center w-10">#</th>
+                            <th class="p-2 text-[10px] text-left">ছাত্রের নাম</th>
+                            <th class="p-2 text-[10px] text-center w-24">আইডি</th>
+                            <th class="p-2 text-[10px] text-center w-32">প্রাপ্ত নম্বর</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHTML}</tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 flex justify-end">
+                <button onclick="saveTpSingleBookMarks('${bookName.replace(/'/g, "\\'")}', '${className.replace(/'/g, "\\'")}', '${dept}', '${targetKey}', '${targetType}')" 
+                        class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow-md transition flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i> নম্বর সেভ করুন
+                </button>
+            </div>
+        `;
+
+    } catch (err) {
+        console.error('❌ openTpBookMarksEntry Error:', err);
+        area.innerHTML = `<div class="text-center py-10 text-red-500 font-bold">লোড ব্যর্থ: ${err.message}</div>`;
+    }
+};
+
+// ★★★ নতুন হেল্পার: এন্টার চাপলে নিচের ঘরে যাওয়ার জন্য ★★★
+window.handleTpBookMarksKeydown = function(event, currentIndex) {
+    if (event.key === 'Enter' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        const nextInput = document.getElementById(`tp-book-mark-${currentIndex + 1}`);
+        if (nextInput) {
+            nextInput.focus();
+            nextInput.select();
+        }
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        const prevInput = document.getElementById(`tp-book-mark-${currentIndex - 1}`);
+        if (prevInput) {
+            prevInput.focus();
+            prevInput.select();
+        }
+    }
+};
+// ═══════════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল — নির্দিষ্ট কিতাবের মার্কস সেভ ★★★
+// ═══════════════════════════════════════════════════════════════
+window.saveTpSingleBookMarks = async function(bookName, className, dept, colKey, colType) {
+    // ১. চলতি সেশন ও টার্ম বের করি
+    const academicYear = window._marksContext?.academicYear || (typeof getCurrentYear === 'function' ? getCurrentYear() : '');
+    const examType = window._marksContext?.examType || 'term2';
+    const marksKey = (typeof buildMarksKey === 'function') 
+        ? buildMarksKey(academicYear, examType) 
+        : `${academicYear}::${examType}`;
+
+    // ২. সব ইনপুট ফিল্ড থেকে ডাটা সংগ্রহ করি
+    const inputs = document.querySelectorAll('.tp-book-mark-input');
+    if (inputs.length === 0) {
+        return showToast('⚠️ কোনো ডাটা নেই', 'warn');
+    }
+
+    const teacherMeta = {
+        by: 'teacher',
+        byName: currentUserData?.teacherName || currentUserData?.name || 'শিক্ষক',
+        at: new Date().toISOString()
+    };
+
+    const studentDataToSave = {};
+    let skippedLockedCount = 0;
+    let hasInvalid = false;
+
+    inputs.forEach(inp => {
+        const sId = inp.dataset.studentId;
+        if (!sId) return;
+
+        // ★★★ চেক করা হচ্ছে ইনপুটটি লক কি না (readonly বা disable) ★★★
+        if (inp.hasAttribute('readonly') || inp.disabled) {
+            skippedLockedCount++;
+            return; // লক করা ঘর স্কিপ করি
+        }
+
+        const rawVal = inp.value.trim();
+        let safeVal = null;
+        
+        if (rawVal !== '') {
+            safeVal = parseInt(rawVal);
+            if (isNaN(safeVal)) safeVal = 0;
+            if (safeVal > 100) hasInvalid = true;
+        }
+
+        // যদি কিছুই না লেখা থাকে, তবে সেভ করার দরকার নেই (ইনপুট খালি)
+        if (safeVal === null && rawVal === '') return;
+
+        if (!studentDataToSave[sId]) {
+            studentDataToSave[sId] = {
+                marksByTerm: {},
+                customMarksByTerm: {},
+                marksMeta: {}
+            };
+        }
+        
+        if (!studentDataToSave[sId].marksByTerm[marksKey]) studentDataToSave[sId].marksByTerm[marksKey] = {};
+        if (!studentDataToSave[sId].customMarksByTerm[marksKey]) studentDataToSave[sId].customMarksByTerm[marksKey] = {};
+        if (!studentDataToSave[sId].marksMeta[marksKey]) studentDataToSave[sId].marksMeta[marksKey] = {};
+
+        // ডাটা রেডি করি
+        if (colType === 'default') {
+            studentDataToSave[sId].marksByTerm[marksKey][colKey] = safeVal;
+        } else {
+            studentDataToSave[sId].customMarksByTerm[marksKey][colKey] = safeVal;
+        }
+        studentDataToSave[sId].marksMeta[marksKey][colKey] = teacherMeta;
+    });
+
+    if (hasInvalid) {
+        return showToast('⚠️ কোনো নম্বর ১০০-এর বেশি হতে পারে না! ঠিক করুন।', 'error');
+    }
+
+    if (Object.keys(studentDataToSave).length === 0 && skippedLockedCount > 0) {
+        return showToast(`🔒 সব ঘরই লক করা আছে — পরিবর্তন করার কিছু নেই। (${skippedLockedCount}টি ঘর লকড)`, 'info');
+    }
+
+    if (Object.keys(studentDataToSave).length === 0) {
+        return showToast('⚠️ সেভ করার মতো কোনো নতুন নম্বর নেই', 'warn');
+    }
+
+    // ৩. সেভ বাটন ডিজেবল করি
+    const saveBtn = document.querySelector('button[onclick*="saveTpSingleBookMarks"]');
+    const origHTML = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> সেভ হচ্ছে...';
+    }
+
+    showToast('💾 নম্বর সেভ হচ্ছে...', 'info');
+
+    // ৪. ফায়ারবেসে সেভ করি
+    try {
+        const { doc, updateDoc } = window.fbFuncs;
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const sId of Object.keys(studentDataToSave)) {
+            const data = studentDataToSave[sId];
+            const rawDocId = String(sId).startsWith('admission_') 
+                ? String(sId).replace('admission_', '') 
+                : sId;
+
+            const studentUpdate = {};
+            const marksForTerm = data.marksByTerm[marksKey] || {};
+            const customForTerm = data.customMarksByTerm[marksKey] || {};
+            const metaForTerm = data.marksMeta[marksKey] || {};
+
+            // dot-notation পেলোড তৈরি (মূল সেকশনের মতো)
+            Object.keys(marksForTerm).forEach(k => {
+                studentUpdate[`marksByTerm.${marksKey}.${k}`] = marksForTerm[k];
+            });
+            Object.keys(customForTerm).forEach(k => {
+                studentUpdate[`customMarksByTerm.${marksKey}.${k}`] = customForTerm[k];
+            });
+            Object.keys(metaForTerm).forEach(k => {
+                studentUpdate[`marksMeta.${marksKey}.${k}`] = metaForTerm[k];
+            });
+
+            let saved = false;
+
+            // চেষ্টা ১: students কালেকশনে
+            if (Object.keys(studentUpdate).length > 0) {
+                try {
+                    await updateDoc(doc(window.fbDB, 'students', sId), studentUpdate);
+                    saved = true;
+                } catch (err) {
+                    if (err.code !== 'not-found' && !err.message.includes('No document to update')) {
+                        console.warn(`students/${sId} update failed:`, err.message);
+                    }
+                }
+            }
+
+            // চেষ্টা ২: admissionForms কালেকশনে (যদি students-এ না থাকে)
+            if (!saved) {
+                const admissionUpdate = {};
+                Object.keys(marksForTerm).forEach(k => {
+                    admissionUpdate[`data.examMarksByTerm.${marksKey}.${k}`] = marksForTerm[k];
+                });
+                Object.keys(customForTerm).forEach(k => {
+                    admissionUpdate[`data.customMarksByTerm.${marksKey}.${k}`] = customForTerm[k];
+                });
+                Object.keys(metaForTerm).forEach(k => {
+                    admissionUpdate[`data.marksMeta.${marksKey}.${k}`] = metaForTerm[k];
+                });
+
+                if (Object.keys(admissionUpdate).length > 0) {
+                    try {
+                        await updateDoc(doc(window.fbDB, 'admissionForms', rawDocId), admissionUpdate);
+                        saved = true;
+                    } catch (err) {
+                        console.warn(`admissionForms/${rawDocId} update failed:`, err.message);
+                    }
+                }
+            }
+
+            // লোকাল ক্যাশে ইনস্ট্যান্ট আপডেট
+            if (saved) {
+                const s = (window.studentsCache || []).find(x => x.id === sId);
+                if (s) {
+                    if (!s.marksByTerm) s.marksByTerm = {};
+                    if (!s.marksByTerm[marksKey]) s.marksByTerm[marksKey] = {};
+                    if (!s.customMarksByTerm) s.customMarksByTerm = {};
+                    if (!s.customMarksByTerm[marksKey]) s.customMarksByTerm[marksKey] = {};
+                    if (!s.marksMeta) s.marksMeta = {};
+                    if (!s.marksMeta[marksKey]) s.marksMeta[marksKey] = {};
+
+                    Object.assign(s.marksByTerm[marksKey], marksForTerm);
+                    Object.assign(s.customMarksByTerm[marksKey], customForTerm);
+                    Object.assign(s.marksMeta[marksKey], metaForTerm);
+                }
+                successCount++;
+            } else {
+                failCount++;
+            }
+        }
+
+        // ৫. রেজাল্ট দেখাই
+        if (successCount > 0) {
+            let msg = `✅ ${successCount} জন ছাত্রের নম্বর সেভ হয়েছে`;
+            if (failCount > 0) msg += ` (${failCount}টি ব্যর্থ)`;
+            if (skippedLockedCount > 0) msg += ` | 🔒 ${skippedLockedCount}টি লকড ঘর স্কিপ`;
+            showToast(msg, 'success');
+
+            // এডমিন প্যানেলের খোলা টেবিল থাকলে রিফ্রেশ করি
+            if (typeof renderMarksEntryTable === 'function' && document.getElementById('result-marks-entry-page') && !document.getElementById('result-marks-entry-page').classList.contains('hidden')) {
+                await renderMarksEntryTable();
+            }
+            
+            // সফলভাবে সেভ হওয়ার পর পেজটি রিফ্রেশ করে লক দেখাই
+            setTimeout(() => {
+                window.openTpBookMarksEntry(bookName, className, dept);
+            }, 300);
+
+        } else {
+            showToast('❌ কোন ডাটা সেভ হয়নি', 'error');
+        }
+
+    } catch (err) {
+        console.error('❌ saveTpSingleBookMarks Error:', err);
+        showToast('❌ সেভ ব্যর্থ: ' + err.message, 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = origHTML;
+        }
+    }
+};
+
+window.getStudentMarkMeta = function(student, marksKey, colKey) {
+    if (!student) return null;
+    
+    // ১. সরাসরি marksMeta চেক করি
+    if (student.marksMeta && student.marksMeta[marksKey] && student.marksMeta[marksKey][colKey]) {
+        const meta = student.marksMeta[marksKey][colKey];
+        // যদি 'DELETE' বা null থাকে, তবে লক হবে না
+        if (meta === 'DELETE' || meta === null || meta === undefined) {
+            return null;
+        }
+        return meta;
+    }
+    // ২. যদি অ্যাডমিশন ফরমের ভেতরে থাকে (ব্যাকআপ)
+    if (student.data && student.data.marksMeta && student.data.marksMeta[marksKey] && student.data.marksMeta[marksKey][colKey]) {
+        const meta = student.data.marksMeta[marksKey][colKey];
+        if (meta === 'DELETE' || meta === null || meta === undefined) {
+            return null;
+        }
+        return meta;
+    }
+    return null;
+};
 </script>
 </body>
 </html>
