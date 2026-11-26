@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>আল-জামিয়াহ</title>
-<!-- ★★★ PWA ম্যানিফেস্ট ও মোবাইল কনফিগ ★★★ -->
-<meta name="theme-color" content="#065f46">
+<!-- মোবাইল Status Bar ও App Theme -->
+<meta name="theme-color" content="#f0f9ff">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/kamaluddin43/Al-jamiah/c5630f58c5f79d6063a18becbe3d6a0e59c27fee/logo.png">
@@ -1813,6 +1813,122 @@ header button {
     }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   TEACHER + GUARDIAN PORTAL — SHARED LIGHT SKY-BLUE ISLAMIC HEADER
+   শুধু হেডারের ভিজ্যুয়াল স্টাইল; বিদ্যমান লেখা/ডাটা/ফাংশন অপরিবর্তিত
+═══════════════════════════════════════════════════════════════ */
+
+.portal-islamic-header {
+    position: sticky !important;
+    top: 0;
+    z-index: 50;
+    color: #164e63 !important;
+
+    background:
+        radial-gradient(circle at 12% 50%, rgba(186, 230, 253, .28) 0 2px, transparent 2.5px),
+        radial-gradient(circle at 88% 30%, rgba(186, 230, 253, .24) 0 2px, transparent 2.5px),
+        linear-gradient(115deg, #ffffff 0%, #f0f9ff 48%, #e0f2fe 100%) !important;
+
+    background-size: 34px 34px, 42px 42px, auto;
+    border: 0 !important;
+    border-bottom: 2px solid #d6ad50 !important;
+    box-shadow: 0 4px 16px rgba(56, 130, 170, .12) !important;
+    isolation: isolate;
+    overflow: visible !important;
+}
+
+.portal-islamic-header > div {
+    position: relative;
+    z-index: 1;
+}
+
+.portal-islamic-header .max-w-4xl {
+    min-height: 48px;
+}
+
+/* Logo box */
+.portal-islamic-header .max-w-4xl > div:first-child > div:first-child {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    border: 1.5px solid #d6ad50 !important;
+    color: #0284c7 !important;
+    box-shadow: 0 2px 7px rgba(14, 116, 144, .10);
+}
+
+.portal-islamic-header .max-w-4xl > div:first-child > div:first-child img {
+    border-radius: 7px;
+}
+
+/* Madrasa name */
+.portal-islamic-header h1 {
+    color: #075985 !important;
+    font-weight: 700 !important;
+    text-shadow: 0 1px 0 rgba(255,255,255,.8);
+}
+
+/* Portal title */
+.portal-islamic-header .max-w-4xl > div:first-child > div:last-child p {
+    color: #0284c7 !important;
+    font-weight: 600;
+}
+
+/* User information */
+.portal-islamic-header .max-w-4xl > div:last-child > div:first-child p:first-child {
+    color: #64748b !important;
+}
+
+.portal-islamic-header .max-w-4xl > div:last-child > div:first-child p:last-child {
+    color: #0c4a6e !important;
+}
+
+/* Dropdown button */
+.portal-islamic-header .max-w-4xl > div:last-child button {
+    color: #0369a1 !important;
+}
+
+.portal-islamic-header .max-w-4xl > div:last-child button:hover {
+    background: rgba(14, 165, 233, .10) !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+    .portal-islamic-header {
+        padding: .55rem .65rem !important;
+    }
+
+    .portal-islamic-header .max-w-4xl {
+        gap: .5rem;
+    }
+
+    .portal-islamic-header .max-w-4xl > div:first-child {
+        gap: .55rem !important;
+        min-width: 0;
+    }
+
+    .portal-islamic-header .max-w-4xl > div:first-child > div:first-child {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px;
+    }
+
+    .portal-islamic-header h1 {
+        font-size: .78rem !important;
+        line-height: 1.25 !important;
+    }
+
+    .portal-islamic-header .max-w-4xl > div:first-child > div:last-child p {
+        font-size: 9px !important;
+    }
+
+    .portal-islamic-header .max-w-4xl > div:last-child {
+        gap: .45rem !important;
+    }
+}
+
 </style>
     <!-- ★★★ ঠিক এখানে বসান (</head> এর ঠিক আগে) ★★★ -->
     <script>
@@ -1943,17 +2059,46 @@ header button {
         </div>
     </div>
 </div>
-<!-- ═══════════════════ LOADING SCREEN ═══════════════════ -->
-<div id="loading-screen" class="fixed inset-0 bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-900 z-[500] flex items-center justify-center">
+<!-- ═══════════════════ LIGHT SKY BLUE LOADING SCREEN ═══════════════════ -->
+<div id="loading-screen"
+     class="fixed inset-0 z-[500] flex items-center justify-center"
+     style="
+        background:
+            radial-gradient(circle at 15% 20%, rgba(186,230,253,.25) 0 2px, transparent 2.5px),
+            radial-gradient(circle at 85% 75%, rgba(186,230,253,.25) 0 2px, transparent 2.5px),
+            linear-gradient(115deg, #ffffff 0%, #f0f9ff 48%, #e0f2fe 100%);
+        background-size: 38px 38px, 44px 44px, auto;
+     ">
+
     <div class="text-center">
-        <div class="w-20 h-20 mx-auto bg-amber-500/20 rounded-2xl border-2 border-amber-400/40 flex items-center justify-center text-amber-400 text-4xl mb-4">
+
+        <!-- Logo / Icon -->
+        <div class="w-20 h-20 mx-auto bg-white rounded-2xl border-2 border-[#d6ad50]
+                    flex items-center justify-center text-[#0284c7] text-4xl mb-4
+                    shadow-lg">
             <i class="fa-solid fa-book-open-reader"></i>
         </div>
-        <h1 class="text-2xl font-bold text-white mb-2">আল-জামিয়া</h1>
-        <p class="text-sm text-emerald-200 mb-4">লোড হচ্ছে...</p>
-        <i class="fa-solid fa-circle-notch fa-spin text-amber-400 text-2xl"></i>
+
+        <!-- Madrasa Name -->
+        <h1 class="text-2xl font-bold mb-2"
+            style="color:#075985;">
+            আল-জামিয়া
+        </h1>
+
+        <!-- Loading Text -->
+        <p class="text-sm mb-4 font-semibold"
+           style="color:#0284c7;">
+            লোড হচ্ছে...
+        </p>
+
+        <!-- Loading Spinner -->
+        <i class="fa-solid fa-circle-notch fa-spin text-2xl"
+           style="color:#d6ad50;">
+        </i>
+
     </div>
 </div>
+
 <div id="login-screen" class="fixed inset-0 bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-900 z-[200] flex items-center justify-center p-4 hidden" style="width:100vw; height:100vh; top:0; left:0;">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         <div class="bg-emerald-900 text-white p-6 text-center">
@@ -7727,7 +7872,6 @@ function getDefaultMarksheetLang(dept) {
     return 'bn'; // সব বিভাগে বাংলা ডিফল্ট; শরীয়াহ চাইলে আরবি বেছে নেবে
 }
 
-// ═══════════════════ সর্বোচ্চ প্রাপ্ত নম্বর ক্যালকুলেটর ═══════════════════
 // ═══════════════════ সর্বোচ্চ প্রাপ্ত নম্বর ক্যালকুলেটর ═══════════════════
 function getHighestMarkInClass(dept, className, colKey) {
     if (!studentsCache || studentsCache.length === 0) return null;
@@ -34464,12 +34608,17 @@ async function cleanupOldHomeworkAndSuggestions() {
     try {
         const { collection, getDocs, query, where, deleteDoc, doc, Timestamp } = window.fbFuncs;
         
-        // ─── হোমওয়ার্ক ক্লিনআপ (৩ দিনের পুরনো) ───
-        const threeDaysAgo = new Date();
-        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-        const threeDaysAgoStr = threeDaysAgo.toISOString().split('T')[0];
-        
-        const hwQuery = query(collection(window.fbDB, 'homework'), where('date', '<', threeDaysAgoStr));
+        // ─── হোমওয়ার্ক ক্লিনআপ (৭ দিনের পুরনো) ───
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const sevenDaysAgoStr =
+            `${sevenDaysAgo.getFullYear()}-${String(sevenDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysAgo.getDate()).padStart(2, '0')}`;
+
+        const hwQuery = query(
+            collection(window.fbDB, 'homework'),
+            where('date', '<', sevenDaysAgoStr)
+        );
         const hwSnap = await getDocs(hwQuery);
         for (const d of hwSnap.docs) {
             await deleteDoc(doc(window.fbDB, 'homework', d.id));
@@ -54552,7 +54701,7 @@ window.showTeacherPortal = function() {
     const portalHTML = `
         <div id="teacher-portal-view" class="min-h-screen bg-slate-100 pb-20">
             <!-- হেডার -->
-            <header class="bg-teal-900 text-white p-3 sticky top-0 z-50 shadow-lg border-b border-teal-700">
+            <header class="portal-islamic-header p-3 sticky top-0 z-50">
                 <div class="max-w-4xl mx-auto flex justify-between items-center">
                     <!-- বাম: লোগো -->
                     <div class="flex items-center gap-3">
@@ -55256,6 +55405,43 @@ window.switchTpTab = async function(tab) {
             const content = document.getElementById('tp-dynamic-content');
             if (dashboard) dashboard.style.display = 'none';
             await renderTpPolicies(content);
+        
+        } else if (tab === 'admission') {
+            const dashboard = document.getElementById('tp-dashboard-area');
+            const content = document.getElementById('tp-dynamic-content');
+
+            if (dashboard) dashboard.style.display = 'none';
+
+            content.innerHTML = `
+                <button onclick="backToTpDashboard()"
+                    class="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-200 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+                    <h3 class="text-lg font-bold text-emerald-800">
+                        <i class="fa-solid fa-user-plus"></i> ভর্তি বিভাগের দায়িত্ব
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1">
+                        আপনার উপর অর্পিত ভর্তি কার্যক্রমের তালিকা
+                    </p>
+                </div>
+
+                <div id="tp-admission-duty-wrap" class="min-h-[300px]"></div>
+            `;
+
+            const wrap = document.getElementById('tp-admission-duty-wrap');
+
+            if (typeof renderMyAdmissionForms === 'function') {
+                await renderMyAdmissionForms(wrap);
+            } else {
+                wrap.innerHTML = `
+                    <div class="bg-red-50 text-red-600 p-5 rounded-xl text-center">
+                        ভর্তি দায়িত্ব মডিউল পাওয়া যায়নি।
+                    </div>
+                `;
+            }
+
         } else if (tab === 'accounting') {
             await renderTpStudentDuesAccounting(content);    
         } else if (tab === 'attendance') {
@@ -58467,7 +58653,7 @@ window.showGuardianPortal = function() {
     const portalHTML = `
         <div id="guardian-portal-view" class="min-h-screen bg-slate-100 pb-20">
             <!-- গার্ডিয়ান হেডার (মূল অ্যাপের কালার) -->
-            <header class="bg-emerald-900 text-white p-3 sticky top-0 z-50 shadow-lg border-b border-emerald-700">
+            <header class="portal-islamic-header p-3 sticky top-0 z-50">
                 <div class="max-w-4xl mx-auto flex justify-between items-center">
                     
                     <!-- বাম দিক: লোগো ও মাদরাসার নাম -->
@@ -60559,10 +60745,10 @@ async function renderGpLeaveApplication(container) {
         <div class="space-y-3 pb-10">
             <!-- হেডার -->
             <div class="bg-gradient-to-r from-teal-600 to-teal-800 rounded-xl p-4 shadow-md">
-                <h2 class="text-lg font-bold flex items-center gap-2">
+                <h2 class="text-lg font-bold flex items-center gap-2 text-white">
                     <i class="fa-solid fa-plane-departure"></i> ছুটির আবেদন
                 </h2>
-                <p class="text-xs opacity-90 mt-1">
+                <p class="text-xs opacity-90 mt-1 text-yellow-400">
                     <i class="fa-solid fa-user-graduate"></i> ${student.name} — ${student.className || ''}
                 </p>
             </div>
@@ -63641,7 +63827,7 @@ window.saveHomeworkEntries = async function() {
                 startPage: startPage || '',
                 endPage: endPage || '',
                 topic: topic || '',
-                createdAt: serverTimestamp(),
+                createdAt: window.fbFuncs.serverTimestamp(),
                 createdBy: currentUser?.uid || 'unknown'
             });
         }
@@ -63952,79 +64138,160 @@ window.viewSuggestionHistory = async function() {
 // ★★★ গার্ডিয়ান পোর্টালে হোমওয়ার্ক দেখানো ★★★
 // ═══════════════════════════════════════════════════════════════
 
-async function renderGpHomework(container) {
+async function renderGpHomework(container, selectedDate = '') {
     const student = _guardianSession;
     if (!student) return;
 
-    container.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>`;
+    // স্থানীয় তারিখ
+    const formatLocalDate = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
+
+    const today = formatLocalDate(new Date());
+    const targetDate = selectedDate || today;
+
+    container.innerHTML = `
+        <div class="text-center py-8 text-slate-400">
+            <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
+            <p class="text-xs mt-2">হোমওয়ার্ক লোড হচ্ছে...</p>
+        </div>
+    `;
 
     try {
         const { collection, getDocs, query, where } = window.fbFuncs;
-        const year = getCurrentYear();
-        const today = new Date().toISOString().split('T')[0];
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
-        // গত ২ দিনের হোমওয়ার্ক
+        // ★★★ FIX: className কোয়েরিতে যুক্ত করা হয়েছে, যাতে জাভাস্ক্রিপ্টে চেক করার প্রয়োজন না হয় ★★★
         const qHW = query(
             collection(window.fbDB, 'homework'),
-            where('academicYear', '==', year),
             where('dept', '==', student.dept),
-            where('className', '==', student.className),
-            where('date', 'in', [today, yesterday])
+            where('className', '==', student.className) 
         );
+
         const hwSnap = await getDocs(qHW);
         const homework = [];
-        hwSnap.forEach(d => homework.push(d.data()));
-        
+
+        hwSnap.forEach(d => {
+            const hw = d.data();
+            // শুধু নির্বাচিত তারিখের হোমওয়ার্ক ফিল্টার
+            if (hw.date === targetDate) {
+                homework.push(hw);
+            }
+        });
+
         // সাজেশন
         const qSugg = query(
             collection(window.fbDB, 'suggestions'),
             where('dept', '==', student.dept),
             where('className', '==', student.className)
         );
+
         const suggSnap = await getDocs(qSugg);
         const suggestions = [];
-        suggSnap.forEach(d => suggestions.push(d.data()));
-        
-        let homeworkHTML = `<p class="text-xs text-slate-400 text-center italic py-3">গত ২ দিনের কোনো হোমওয়ার্ক নেই</p>`;
-        if (homework.length > 0) {
-            homeworkHTML = homework.sort((a,b)=> b.date.localeCompare(a.date)).map(hw => {
-                const dateStr = hw.date === today ? 'আজ' : 'গতকাল';
-                return `
-                    <div class="border-l-4 border-amber-400 bg-amber-50 p-2 mb-2 rounded-r-lg text-xs">
-                        <p class="font-bold text-amber-800">${dateStr} — <span class="font-arabic">${hw.bookName}</span></p>
-                        <p class="text-slate-700">পৃষ্ঠা: ${hw.startPage} - ${hw.endPage} | বিষয়: ${hw.topic}</p>
-                        <p class="text-slate-500 text-[10px]">শিক্ষক: ${hw.teacherName}</p>
-                    </div>`;
-            }).join('');
-        }
 
-        let suggestionHTML = '';
-        if (suggestions.length > 0) {
-            suggestionHTML = suggestions.map(sugg => `
-                <div class="border border-blue-200 bg-blue-50 p-2 mb-2 rounded-r-lg text-xs">
-                    <p class="font-bold text-blue-800">${sugg.examType} সাজেশন</p>
-                    <div class="text-slate-700">${sugg.items.map(i => `<p>- ${i.book}: ${i.topic} ${i.points ? `(${i.points})` : ''}</p>`).join('')}</div>
+        suggSnap.forEach(d => suggestions.push(d.data()));
+
+        // হোমওয়ার্ক রেন্ডার
+        let homeworkHTML = `
+            <p class="text-xs text-slate-400 text-center italic py-5">
+                এই তারিখে কোনো হোমওয়ার্ক দেওয়া হয়নি।
+            </p>
+        `;
+
+        if (homework.length > 0) {
+            homeworkHTML = homework.map(hw => `
+                <div class="border-l-4 border-amber-400 bg-amber-50 p-3 mb-2 rounded-r-lg text-xs">
+                    <p class="font-bold text-amber-800">
+                        <span class="font-arabic">${hw.bookName || ''}</span>
+                    </p>
+                    <p class="text-slate-700 mt-1">
+                        পৃষ্ঠা: ${hw.startPage || ''} - ${hw.endPage || ''}
+                        | বিষয়: ${hw.topic || ''}
+                    </p>
+                    <p class="text-slate-500 text-[10px] mt-1">
+                        শিক্ষক: ${hw.teacherName || ''}
+                    </p>
                 </div>
             `).join('');
         }
 
+        // সাজেশন রেন্ডার
+        let suggestionHTML = '';
+        if (suggestions.length > 0) {
+            suggestionHTML = suggestions.map(sugg => `
+                <div class="border border-blue-200 bg-blue-50 p-2 mb-2 rounded-r-lg text-xs">
+                    <p class="font-bold text-blue-800">
+                        ${sugg.examType || ''} সাজেশন
+                    </p>
+                    <div class="text-slate-700">
+                        ${(sugg.items || []).map(i =>
+                            `<p>- ${i.book}: ${i.topic} ${i.points ? `(${i.points})` : ''}</p>`
+                        ).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // সম্পূর্ণ পেজ রেন্ডার
         container.innerHTML = `
-            <div class="space-y-4 pb-10">
+            <div data-gp-homework-root class="space-y-4 pb-10">
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                    <h3 class="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="fa-solid fa-book-open text-amber-500"></i> সাম্প্রতিক হোমওয়ার্ক</h3>
+                    <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-book-open text-amber-500"></i>
+                        হোমওয়ার্ক
+                    </h3>
+
+                    <div class="bg-sky-50 border border-sky-200 rounded-lg p-3 mb-4">
+                        <label class="block text-xs font-bold text-slate-700 mb-2">
+                            <i class="fa-solid fa-calendar-days text-sky-600"></i>
+                            হোমওয়ার্ক দেখার তারিখ নির্বাচন করুন
+                        </label>
+                        <input
+                            type="date"
+                            value="${targetDate}"
+                            onchange="renderGpHomework(this.closest('[data-gp-homework-root]'), this.value)"
+                            class="w-full border border-sky-300 rounded-lg p-2 text-sm bg-white text-slate-800"
+                        >
+                        <p class="text-[10px] text-slate-500 mt-2">
+                            অতীত, বর্তমান অথবা ভবিষ্যতের যেকোনো তারিখ নির্বাচন করতে পারবেন।
+                        </p>
+                    </div>
+
+                    <p class="text-xs font-bold text-slate-600 mb-3">
+                        নির্বাচিত তারিখ:
+                        ${new Date(targetDate + 'T00:00:00').toLocaleDateString('bn-BD', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        })}
+                    </p>
+
                     ${homeworkHTML}
                 </div>
-                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                    <h3 class="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="fa-solid fa-lightbulb text-blue-500"></i> সাজেশন</h3>
-                    ${suggestionHTML || '<p class="text-xs text-slate-400 text-center italic py-3">কোনো সাজেশন নেই</p>'}
+
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <h3 class="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-lightbulb text-blue-500"></i>
+                        সাজেশন
+                    </h3>
+                    ${suggestionHTML || `
+                        <p class="text-xs text-slate-400 text-center italic py-3">
+                            কোনো সাজেশন নেই
+                        </p>
+                    `}
                 </div>
             </div>
         `;
 
     } catch (err) {
         console.error('❌ renderGpHomework:', err);
-        container.innerHTML = `<p class="text-center text-red-500 py-6">হোমওয়ার্ক লোড ব্যর্থ হয়েছে</p>`;
+        container.innerHTML = `
+            <p class="text-center text-red-500 py-6">
+                হোমওয়ার্ক লোড ব্যর্থ হয়েছে: ${err.message}
+            </p>
+        `;
     }
 }
 
