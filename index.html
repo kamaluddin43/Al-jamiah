@@ -55256,6 +55256,8 @@ window.switchTpTab = async function(tab) {
             const content = document.getElementById('tp-dynamic-content');
             if (dashboard) dashboard.style.display = 'none';
             await renderTpPolicies(content);
+        } else if (tab === 'accounting') {
+            await renderTpStudentDuesAccounting(content);    
         } else if (tab === 'attendance') {
             const dashboard = document.getElementById('tp-dashboard-area');
             const content = document.getElementById('tp-dynamic-content');
@@ -56051,14 +56053,15 @@ window.switchTpRoutineSub = async function(sub) {
     wrap.innerHTML = `<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><p class="text-xs">রুটিন লোড হচ্ছে...</p></div>`;
 
     try {
-        // ফায়ারবেস থেকে লেটেস্ট রুটিন লোড করি
+        // বর্তমান শিক্ষাবর্ষ নির্ধারণ
         const year = getCurrentYear();
-        if (!routinesCache || routinesCache.length === 0) {
-            if (typeof loadRoutinesForYear === 'function') {
-                window.routineState = window.routineState || {};
-                window.routineState.academicYear = year;
-                await loadRoutinesForYear(); 
-            }
+
+        // ★ আসল routineState-এ বছর সেট করতে হবে
+        routineState.academicYear = year;
+
+        // Firebase থেকে রুটিন লোড
+        if (typeof loadRoutinesForYear === 'function') {
+            await loadRoutinesForYear();
         }
 
         // শিক্ষকের বিভাগ বের করি
@@ -65413,6 +65416,8 @@ window._acctNew = {
     budgetData: null,      // { columns: [], rows: [], yearId }
     incomeFilters: { from:'', to:'', category:'', donor:'' },
     expenseFilters:{ from:'', to:'', category:'' },
+    mahfilFilters: { from:'', to:'', category:'' },  
+    mahfilPage: 'income',
     accounts: [],          // [{ id, name, type, bankName, accNo, openingBalance, currentBalance }]
     auditLog: []
 };
@@ -65426,7 +65431,11 @@ const ACCT_FS = {
     DONORS:    'acctDonors',
     ACCOUNTS:  'acctAccounts',
     TRANSFERS: 'acctTransfers',
-    AUDIT:     'acctAudit'
+    AUDIT:     'acctAudit',
+    MAHFIL_INCOME_CATS:  'mahfilIncomeCategories',
+    MAHFIL_EXPENSE_CATS: 'mahfilExpenseCategories',
+    MAHFIL_INCOME:       'mahfilIncome',
+    MAHFIL_EXPENSE:      'mahfilExpense'
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -65448,6 +65457,7 @@ window.renderAccountingMainMenu = function() {
             ${[
                 { page:'budget',       label:' বাজেট',              icon:'fa-clipboard-list',      color:'indigo' },
                 { page:'studentdues',  label:' ছাত্রপ্রদেয়',          icon:'fa-user-graduate',       color:'violet' },
+                { page:'mahfil',       label:' মাহফিল',                icon:'fa-mosque',               color:'amber' },
                 { page:'income',       label:' আয়',                  icon:'fa-arrow-down',          color:'emerald' },
                 { page:'expense',      label:' ব্যয়',                 icon:'fa-arrow-up',            color:'rose' },
                 { page:'monthly',      label:' মাসিক রিপোর্ট',       icon:'fa-calendar',            color:'teal' },
@@ -65513,6 +65523,7 @@ window.openAcctPageNew = async function(page) {
 
     try {
         if (page === 'budget')  await renderAcctBudget(container);
+        else if (page === 'mahfil')  await renderAcctMahfil(container);
         else if (page === 'income')  await renderAcctIncome(container);
         else if (page === 'expense') await renderAcctExpenseNew(container);
         else if (page === 'monthly') await renderAcctMonthlyReport(container);
@@ -66224,26 +66235,603 @@ window.addEventListener('beforeunload', function (e) {
 console.log('✅ বাজেট মডিউল — সম্পূর্ণ নতুন বাগ-মুক্ত সংস্করণ লোড হয়েছে');
 
 // ═══════════════════════════════════════════════════════════════
-// 【 ২. আয় মডিউল 】
+// ★★★ ৩. মাহফিল মডিউল ★★★
+// ═══════════════════════════════════════════════════════════════
+
+// ডিফল্ট খাত (Firestore খালি থাকলে প্রথমবার seed হবে)
+const MAHFIL_DEFAULT_INCOME_CATS = [
+    'অভিভাবক দান', 'স্থানীয় কালেকশন', 'বাজার কালেকশন', 'ছাত্রদের দান',
+    'সুধী-সমাবেশে কালেকশন', 'মাঠ কালেকশন', 'খায়েরখাহ', 'অন্যান্য'
+];
+const MAHFIL_DEFAULT_EXPENSE_CATS = [
+    'সাউন্ড সিস্টেম', 'প্যান্ডেল', 'প্রচার', 'পোস্টার', 'হ্যান্ডবিল',
+    'ভিআইপি আপ্যায়ন', 'সাধারণ মেহমানদারী', 'বক্তাদের হাদিয়া',
+    'শিক্ষকদের মূল্যায়ন', 'অন্যান্য'
+];
+
+// ─── খাত লোড (না থাকলে seed) ───
+async function loadMahfilCategories(type) {
+    const fsKey = type === 'income' ? ACCT_FS.MAHFIL_INCOME_CATS : ACCT_FS.MAHFIL_EXPENSE_CATS;
+    const defaults = type === 'income' ? MAHFIL_DEFAULT_INCOME_CATS : MAHFIL_DEFAULT_EXPENSE_CATS;
+
+    try {
+        const { collection, getDocs, addDoc, serverTimestamp } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, fsKey));
+        if (snap.empty) {
+            // প্রথমবার: ডিফল্ট seed
+            for (const name of defaults) {
+                await addDoc(collection(window.fbDB, fsKey), {
+                    name, isActive: true,
+                    createdAt: serverTimestamp()
+                });
+            }
+            const snap2 = await getDocs(collection(window.fbDB, fsKey));
+            const cats = [];
+            snap2.forEach(d => cats.push({ id: d.id, ...d.data() }));
+            return cats.filter(c => c.isActive !== false);
+        }
+        const cats = [];
+        snap.forEach(d => cats.push({ id: d.id, ...d.data() }));
+        return cats.filter(c => c.isActive !== false)
+                   .sort((a, b) => String(a.name).localeCompare(String(b.name), 'bn'));
+    } catch (e) {
+        console.warn('loadMahfilCategories:', e);
+        return defaults.map((n, i) => ({ id: 'def_' + i, name: n }));
+    }
+}
+
+// ─── মাহফিল মূল রেন্ডার (সাব-ট্যাব সহ) ───
+async function renderAcctMahfil(container) {
+    const page = window._acctNew.mahfilPage || 'income';
+
+    container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <h3 class="text-base font-bold text-slate-800">
+                    <i class="fa-solid fa-mosque text-amber-600"></i> মাহফিল ব্যবস্থাপনা
+                </h3>
+            </div>
+
+            <!-- সাব-ট্যাব -->
+            <div class="flex gap-2 mb-4 border-b border-slate-200 pb-2 flex-wrap">
+                <button onclick="switchMahfilTab('income')"
+                        class="px-4 py-2 text-xs font-bold rounded-lg transition ${page === 'income' ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}">
+                    <i class="fa-solid fa-arrow-down"></i> আয়
+                </button>
+                <button onclick="switchMahfilTab('expense')"
+                        class="px-4 py-2 text-xs font-bold rounded-lg transition ${page === 'expense' ? 'bg-rose-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}">
+                    <i class="fa-solid fa-arrow-up"></i> ব্যয়
+                </button>
+                <button onclick="switchMahfilTab('summary')"
+                        class="px-4 py-2 text-xs font-bold rounded-lg transition ${page === 'summary' ? 'bg-amber-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}">
+                    <i class="fa-solid fa-scale-balanced"></i> সংক্ষিপ্ত আয়-ব্যয়
+                </button>
+            </div>
+
+            <div id="mahfil-tab-content"></div>
+        </div>
+    `;
+
+    if (page === 'income')       await renderMahfilIncomeTab();
+    else if (page === 'expense') await renderMahfilExpenseTab();
+    else if (page === 'summary') await renderMahfilSummaryTab();
+}
+
+window.switchMahfilTab = function(tab) {
+    window._acctNew.mahfilPage = tab;
+    openAcctPageNew('mahfil');
+};
+
+// ─── আয় ট্যাব ───
+async function renderMahfilIncomeTab() {
+    const target = document.getElementById('mahfil-tab-content');
+    if (!target) return;
+    target.innerHTML = `<div class="text-center py-8"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>`;
+
+    const [categories, incomes] = await Promise.all([
+        loadMahfilCategories('income'),
+        loadMahfilEntries('income')
+    ]);
+
+    const f = window._acctNew.mahfilFilters;
+    let filtered = incomes.slice();
+    if (f.from) filtered = filtered.filter(r => r.date >= f.from);
+    if (f.to)   filtered = filtered.filter(r => r.date <= f.to);
+    if (f.category) filtered = filtered.filter(r => r.category === f.category);
+    filtered.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+    const total = filtered.reduce((a, r) => a + (Number(r.amount) || 0), 0);
+
+    let rowsHTML = filtered.map((r, i) => `
+        <tr class="border-b hover:bg-emerald-50 text-xs">
+            <td class="p-2 text-center text-slate-500">${i + 1}</td>
+            <td class="p-2 text-center">${r.date || '—'}</td>
+            <td class="p-2 text-center font-mono">${r.receiptNo || '—'}</td>
+            <td class="p-2 font-bold text-emerald-800">${r.category || '—'}</td>
+            <td class="p-2">${r.donorName || '—'}</td>
+            <td class="p-2 text-right font-bold text-emerald-700">৳ ${(Number(r.amount) || 0).toLocaleString('bn-BD')}</td>
+            <td class="p-2 text-slate-600">${r.note || ''}</td>
+            <td class="p-2 text-center whitespace-nowrap">
+                <button onclick="editMahfilEntry('income','${r.id}')" class="text-blue-600 p-1" title="এডিট"><i class="fa-solid fa-pen text-xs"></i></button>
+                <button onclick="deleteMahfilEntry('income','${r.id}')" class="text-red-600 p-1" title="ডিলিট"><i class="fa-solid fa-trash text-xs"></i></button>
+            </td>
+        </tr>
+    `).join('') || `<tr><td colspan="8" class="p-6 text-center text-slate-400">কোন আয় নেই</td></tr>`;
+
+    target.innerHTML = `
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div class="text-xs text-slate-500">
+                মোট: <strong class="text-emerald-700 text-base">৳ ${total.toLocaleString('bn-BD')}</strong>
+                <span class="ml-2">(${filtered.length}টি রেকর্ড)</span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openMahfilCategoryManager('income')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg">
+                    <i class="fa-solid fa-tags"></i> খাত ব্যবস্থাপনা
+                </button>
+                <button onclick="openMahfilEntryForm('income')" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-lg shadow">
+                    <i class="fa-solid fa-plus"></i> নতুন আয়
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-slate-50 rounded-lg p-3 mb-3 grid grid-cols-2 md:grid-cols-3 gap-2">
+            <input type="date" value="${f.from}" onchange="_acctNew.mahfilFilters.from=this.value; openAcctPageNew('mahfil')" class="rounded border border-slate-300 p-1.5 text-xs">
+            <input type="date" value="${f.to}" onchange="_acctNew.mahfilFilters.to=this.value; openAcctPageNew('mahfil')" class="rounded border border-slate-300 p-1.5 text-xs">
+            <select onchange="_acctNew.mahfilFilters.category=this.value; openAcctPageNew('mahfil')" class="rounded border border-slate-300 p-1.5 text-xs">
+                <option value="">সব খাত</option>
+                ${categories.map(c => `<option value="${c.name}" ${f.category === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+            </select>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse" style="min-width:800px;">
+                <thead class="bg-emerald-700 text-white">
+                    <tr>
+                        <th class="p-2 text-[10px] text-center">#</th>
+                        <th class="p-2 text-[10px] text-center">তারিখ</th>
+                        <th class="p-2 text-[10px] text-center">রশিদ নং</th>
+                        <th class="p-2 text-[10px]">আয়ের খাত</th>
+                        <th class="p-2 text-[10px]">দাতা</th>
+                        <th class="p-2 text-[10px] text-right">পরিমাণ</th>
+                        <th class="p-2 text-[10px]">মন্তব্য</th>
+                        <th class="p-2 text-[10px] text-center">অ্যাকশন</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHTML}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+// ─── ব্যয় ট্যাব ───
+async function renderMahfilExpenseTab() {
+    const target = document.getElementById('mahfil-tab-content');
+    if (!target) return;
+    target.innerHTML = `<div class="text-center py-8"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>`;
+
+    const [categories, expenses] = await Promise.all([
+        loadMahfilCategories('expense'),
+        loadMahfilEntries('expense')
+    ]);
+
+    const f = window._acctNew.mahfilFilters;
+    let filtered = expenses.slice();
+    if (f.from) filtered = filtered.filter(r => r.date >= f.from);
+    if (f.to)   filtered = filtered.filter(r => r.date <= f.to);
+    if (f.category) filtered = filtered.filter(r => r.category === f.category);
+    filtered.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+    const total = filtered.reduce((a, r) => a + (Number(r.amount) || 0), 0);
+
+    let rowsHTML = filtered.map((r, i) => `
+        <tr class="border-b hover:bg-rose-50 text-xs">
+            <td class="p-2 text-center text-slate-500">${i + 1}</td>
+            <td class="p-2 text-center">${r.date || '—'}</td>
+            <td class="p-2 text-center font-mono">${r.voucherNo || '—'}</td>
+            <td class="p-2 font-bold text-rose-800">${r.category || '—'}</td>
+            <td class="p-2">${r.payee || '—'}</td>
+            <td class="p-2 text-right font-bold text-rose-700">৳ ${(Number(r.amount) || 0).toLocaleString('bn-BD')}</td>
+            <td class="p-2 text-slate-600">${r.note || ''}</td>
+            <td class="p-2 text-center whitespace-nowrap">
+                <button onclick="editMahfilEntry('expense','${r.id}')" class="text-blue-600 p-1" title="এডিট"><i class="fa-solid fa-pen text-xs"></i></button>
+                <button onclick="deleteMahfilEntry('expense','${r.id}')" class="text-red-600 p-1" title="ডিলিট"><i class="fa-solid fa-trash text-xs"></i></button>
+            </td>
+        </tr>
+    `).join('') || `<tr><td colspan="8" class="p-6 text-center text-slate-400">কোন ব্যয় নেই</td></tr>`;
+
+    target.innerHTML = `
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div class="text-xs text-slate-500">
+                মোট: <strong class="text-rose-700 text-base">৳ ${total.toLocaleString('bn-BD')}</strong>
+                <span class="ml-2">(${filtered.length}টি রেকর্ড)</span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openMahfilCategoryManager('expense')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg">
+                    <i class="fa-solid fa-tags"></i> খাত ব্যবস্থাপনা
+                </button>
+                <button onclick="openMahfilEntryForm('expense')" class="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold rounded-lg shadow">
+                    <i class="fa-solid fa-plus"></i> নতুন ব্যয়
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-slate-50 rounded-lg p-3 mb-3 grid grid-cols-2 md:grid-cols-3 gap-2">
+            <input type="date" value="${f.from}" onchange="_acctNew.mahfilFilters.from=this.value; openAcctPageNew('mahfil')" class="rounded border border-slate-300 p-1.5 text-xs">
+            <input type="date" value="${f.to}" onchange="_acctNew.mahfilFilters.to=this.value; openAcctPageNew('mahfil')" class="rounded border border-slate-300 p-1.5 text-xs">
+            <select onchange="_acctNew.mahfilFilters.category=this.value; openAcctPageNew('mahfil')" class="rounded border border-slate-300 p-1.5 text-xs">
+                <option value="">সব খাত</option>
+                ${categories.map(c => `<option value="${c.name}" ${f.category === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+            </select>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse" style="min-width:800px;">
+                <thead class="bg-rose-700 text-white">
+                    <tr>
+                        <th class="p-2 text-[10px] text-center">#</th>
+                        <th class="p-2 text-[10px] text-center">তারিখ</th>
+                        <th class="p-2 text-[10px] text-center">ভাউচার নং</th>
+                        <th class="p-2 text-[10px]">ব্যয়ের খাত</th>
+                        <th class="p-2 text-[10px]">প্রাপক</th>
+                        <th class="p-2 text-[10px] text-right">পরিমাণ</th>
+                        <th class="p-2 text-[10px]">মন্তব্য</th>
+                        <th class="p-2 text-[10px] text-center">অ্যাকশন</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHTML}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+// ─── ডেটা লোড হেল্পার ───
+async function loadMahfilEntries(type) {
+    const fsKey = type === 'income' ? ACCT_FS.MAHFIL_INCOME : ACCT_FS.MAHFIL_EXPENSE;
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, fsKey));
+        const arr = [];
+        snap.forEach(d => arr.push({ id: d.id, ...d.data() }));
+        return arr;
+    } catch (e) {
+        console.warn('loadMahfilEntries:', e);
+        return [];
+    }
+}
+
+// ─── এন্ট্রি ফরম (Add/Edit) ───
+window.openMahfilEntryForm = async function(type, editId = '') {
+    const isIncome = type === 'income';
+    const cats = await loadMahfilCategories(type);
+    let edit = {};
+    if (editId) {
+        try {
+            const { doc, getDoc } = window.fbFuncs;
+            const fsKey = isIncome ? ACCT_FS.MAHFIL_INCOME : ACCT_FS.MAHFIL_EXPENSE;
+            const s = await getDoc(doc(window.fbDB, fsKey, editId));
+            if (s.exists()) edit = { id: s.id, ...s.data() };
+        } catch (e) {}
+    }
+
+    document.getElementById('mahfil-entry-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'mahfil-entry-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] flex flex-col">
+            <div class="${isIncome ? 'bg-emerald-700' : 'bg-rose-700'} text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold">
+                    <i class="fa-solid fa-${editId ? 'pen' : 'plus'}"></i>
+                    ${isIncome ? 'মাহফিল আয়' : 'মাহফিল ব্যয়'} ${editId ? 'এডিট' : 'এন্ট্রি'}
+                </h3>
+                <button onclick="document.getElementById('mahfil-entry-modal').remove()" class="text-white text-2xl">×</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1 space-y-3">
+                <input type="hidden" id="mf-id" value="${edit.id || ''}">
+                <input type="hidden" id="mf-type" value="${type}">
+                <div>
+                    <label class="text-xs font-bold text-slate-700 block mb-1">তারিখ *</label>
+                    <input type="date" id="mf-date" value="${edit.date || new Date().toISOString().split('T')[0]}" class="w-full rounded border border-slate-300 p-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-700 block mb-1">${isIncome ? 'রশিদ নম্বর' : 'ভাউচার নম্বর'}</label>
+                    <input type="text" id="mf-no" value="${isIncome ? (edit.receiptNo || '') : (edit.voucherNo || '')}" class="w-full rounded border border-slate-300 p-2 text-sm font-mono">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-700 block mb-1">${isIncome ? 'আয়ের' : 'ব্যয়ের'} খাত *</label>
+                    <select id="mf-category" class="w-full rounded border border-slate-300 p-2 text-sm">
+                        ${cats.map(c => `<option value="${c.name}" ${edit.category === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-700 block mb-1">পরিমাণ (৳) *</label>
+                    <input type="number" id="mf-amount" value="${edit.amount || ''}" class="w-full rounded border border-slate-300 p-2 text-sm font-bold">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-700 block mb-1">${isIncome ? 'দাতার নাম (ঐচ্ছিক)' : 'প্রাপক/প্রতিষ্ঠান (ঐচ্ছিক)'}</label>
+                    <input type="text" id="mf-party" value="${isIncome ? (edit.donorName || '') : (edit.payee || '')}" class="w-full rounded border border-slate-300 p-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-700 block mb-1">মন্তব্য (ঐচ্ছিক)</label>
+                    <textarea id="mf-note" rows="2" class="w-full rounded border border-slate-300 p-2 text-sm resize-none">${edit.note || ''}</textarea>
+                </div>
+            </div>
+            <div class="p-3 bg-slate-50 border-t flex justify-end gap-2">
+                <button onclick="document.getElementById('mahfil-entry-modal').remove()" class="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded">বাতিল</button>
+                <button onclick="saveMahfilEntry()" class="px-5 py-2 ${isIncome ? 'bg-emerald-700' : 'bg-rose-700'} text-white text-xs font-bold rounded shadow">
+                    <i class="fa-solid fa-floppy-disk"></i> সেভ
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+
+window.saveMahfilEntry = async function() {
+    const type = document.getElementById('mf-type').value;
+    const isIncome = type === 'income';
+    const fsKey = isIncome ? ACCT_FS.MAHFIL_INCOME : ACCT_FS.MAHFIL_EXPENSE;
+    const id = document.getElementById('mf-id').value;
+    const date = document.getElementById('mf-date').value;
+    const no = document.getElementById('mf-no').value.trim();
+    const category = document.getElementById('mf-category').value;
+    const amount = parseFloat(document.getElementById('mf-amount').value) || 0;
+    const party = document.getElementById('mf-party').value.trim();
+    const note = document.getElementById('mf-note').value.trim();
+
+    // ─── ভ্যালিডেশন ───
+    if (!date) return showToast('⚠️ তারিখ দিন', 'warn');
+    if (amount <= 0) return showToast('⚠️ পরিমাণ দিন', 'warn');
+
+    // ★★★ অর্থবছর চেক — রিপোর্ট সমন্বয়ের জন্য অপরিহার্য ★★★
+    const year = window._acctNew.currentYear;
+    if (!year) return showToast('⚠️ প্রথমে অর্থবছর তৈরি করুন', 'warn');
+
+    // ★★★ yearId ও yearName যোগ করা হলো ★★★
+    const payload = {
+        date,
+        category,
+        amount,
+        note,
+        yearId: year.id,
+        yearName: year.name,
+        updatedAt: null
+    };
+
+    if (isIncome) {
+        payload.receiptNo = no;
+        payload.donorName = party;
+    } else {
+        payload.voucherNo = no;
+        payload.payee = party;
+    }
+
+    try {
+        const { addDoc, setDoc, doc, collection, serverTimestamp } = window.fbFuncs;
+        if (id) {
+            payload.updatedAt = serverTimestamp();
+            await setDoc(doc(window.fbDB, fsKey, id), payload, { merge: true });
+            showToast('✅ আপডেট হয়েছে', 'success');
+        } else {
+            payload.createdAt = serverTimestamp();
+            payload.createdBy = currentUser?.uid || 'unknown';
+            await addDoc(collection(window.fbDB, fsKey), payload);
+            showToast('✅ সংরক্ষিত হয়েছে', 'success');
+        }
+        document.getElementById('mahfil-entry-modal')?.remove();
+        openAcctPageNew('mahfil');
+    } catch (err) {
+        showToast('❌ ' + err.message, 'error');
+    }
+};
+
+window.editMahfilEntry = async function(type, id) {
+    window.openMahfilEntryForm(type, id);
+};
+
+window.deleteMahfilEntry = async function(type, id) {
+    if (!confirm('এই রেকর্ডটি মুছে ফেলবেন?')) return;
+    const fsKey = type === 'income' ? ACCT_FS.MAHFIL_INCOME : ACCT_FS.MAHFIL_EXPENSE;
+    try {
+        const { deleteDoc, doc } = window.fbFuncs;
+        await deleteDoc(doc(window.fbDB, fsKey, id));
+        showToast('🗑️ মুছে ফেলা হয়েছে', 'info');
+        openAcctPageNew('mahfil');
+    } catch (err) { showToast('❌ ' + err.message, 'error'); }
+};
+
+// ─── খাত ব্যবস্থাপনা ───
+window.openMahfilCategoryManager = async function(type) {
+    const cats = await loadMahfilCategories(type);
+    const fsKey = type === 'income' ? ACCT_FS.MAHFIL_INCOME_CATS : ACCT_FS.MAHFIL_EXPENSE_CATS;
+    const title = type === 'income' ? 'আয়ের খাত' : 'ব্যয়ের খাত';
+
+    document.getElementById('mahfil-cat-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'mahfil-cat-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] flex flex-col">
+            <div class="bg-slate-800 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold"><i class="fa-solid fa-tags"></i> ${title} ব্যবস্থাপনা</h3>
+                <button onclick="document.getElementById('mahfil-cat-modal').remove()" class="text-white text-2xl">×</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1 space-y-2">
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="mf-new-cat" placeholder="নতুন খাতের নাম" class="flex-1 rounded border border-slate-300 p-2 text-sm">
+                    <button onclick="addMahfilCategory('${type}')" class="px-3 py-2 bg-emerald-700 text-white text-xs font-bold rounded">যোগ</button>
+                </div>
+                <div id="mf-cat-list" class="space-y-1">
+                    ${cats.map(c => `
+                        <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded p-2">
+                            <span class="text-sm font-bold">${c.name}</span>
+                            <div class="flex gap-1">
+                                <button onclick="renameMahfilCategory('${type}','${c.id}','${c.name.replace(/'/g,"\\'")}')" class="text-blue-600 p-1"><i class="fa-solid fa-pen text-xs"></i></button>
+                                <button onclick="deleteMahfilCategory('${type}','${c.id}')" class="text-red-600 p-1"><i class="fa-solid fa-trash text-xs"></i></button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+
+window.addMahfilCategory = async function(type) {
+    const name = document.getElementById('mf-new-cat').value.trim();
+    if (!name) return showToast('⚠️ নাম দিন', 'warn');
+    const fsKey = type === 'income' ? ACCT_FS.MAHFIL_INCOME_CATS : ACCT_FS.MAHFIL_EXPENSE_CATS;
+    try {
+        const { addDoc, collection, serverTimestamp } = window.fbFuncs;
+        await addDoc(collection(window.fbDB, fsKey), { name, isActive: true, createdAt: serverTimestamp() });
+        showToast('✅ খাত যোগ হয়েছে', 'success');
+        document.getElementById('mahfil-cat-modal')?.remove();
+        openMahfilCategoryManager(type);
+    } catch (e) { showToast('❌ ' + e.message, 'error'); }
+};
+
+window.renameMahfilCategory = async function(type, id, oldName) {
+    const newName = prompt('নতুন নাম:', oldName);
+    if (!newName || newName === oldName) return;
+    const fsKey = type === 'income' ? ACCT_FS.MAHFIL_INCOME_CATS : ACCT_FS.MAHFIL_EXPENSE_CATS;
+    try {
+        const { updateDoc, doc } = window.fbFuncs;
+        await updateDoc(doc(window.fbDB, fsKey, id), { name: newName.trim() });
+        showToast('✅ নাম পরিবর্তিত', 'success');
+        document.getElementById('mahfil-cat-modal')?.remove();
+        openMahfilCategoryManager(type);
+    } catch (e) { showToast('❌ ' + e.message, 'error'); }
+};
+
+window.deleteMahfilCategory = async function(type, id) {
+    if (!confirm('এই খাতটি মুছে ফেলবেন? পুরনো এন্ট্রির রিপোর্ট অক্ষত থাকবে।')) return;
+    const fsKey = type === 'income' ? ACCT_FS.MAHFIL_INCOME_CATS : ACCT_FS.MAHFIL_EXPENSE_CATS;
+    try {
+        const { deleteDoc, doc } = window.fbFuncs;
+        await deleteDoc(doc(window.fbDB, fsKey, id));
+        showToast('🗑️ খাত মুছে ফেলা হয়েছে', 'info');
+        document.getElementById('mahfil-cat-modal')?.remove();
+        openMahfilCategoryManager(type);
+    } catch (e) { showToast('❌ ' + e.message, 'error'); }
+};
+
+// ─── সংক্ষিপ্ত আয়-ব্যয় ট্যাব ───
+async function renderMahfilSummaryTab() {
+    const target = document.getElementById('mahfil-tab-content');
+    if (!target) return;
+    target.innerHTML = `<div class="text-center py-8"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>`;
+
+    const [incomes, expenses] = await Promise.all([
+        loadMahfilEntries('income'),
+        loadMahfilEntries('expense')
+    ]);
+
+    const incByCat = {}, expByCat = {};
+    let totalIncome = 0, totalExpense = 0;
+    incomes.forEach(r => {
+        const a = Number(r.amount) || 0;
+        totalIncome += a;
+        incByCat[r.category || 'অন্যান্য'] = (incByCat[r.category || 'অন্যান্য'] || 0) + a;
+    });
+    expenses.forEach(r => {
+        const a = Number(r.amount) || 0;
+        totalExpense += a;
+        expByCat[r.category || 'অন্যান্য'] = (expByCat[r.category || 'অন্যান্য'] || 0) + a;
+    });
+    const surplus = totalIncome - totalExpense;
+
+    const incRows = Object.keys(incByCat).sort().map(k => {
+        const v = incByCat[k];
+        const pct = totalIncome > 0 ? ((v / totalIncome) * 100).toFixed(1) : 0;
+        return `<tr class="border-b"><td class="p-2 text-xs">${k}</td><td class="p-2 text-xs text-right font-mono">৳ ${v.toLocaleString('bn-BD')}</td><td class="p-2 text-xs text-right">${pct}%</td></tr>`;
+    }).join('') || `<tr><td colspan="3" class="p-4 text-center text-slate-400 text-xs">কোন আয় নেই</td></tr>`;
+
+    const expRows = Object.keys(expByCat).sort().map(k => {
+        const v = expByCat[k];
+        const pct = totalExpense > 0 ? ((v / totalExpense) * 100).toFixed(1) : 0;
+        return `<tr class="border-b"><td class="p-2 text-xs">${k}</td><td class="p-2 text-xs text-right font-mono">৳ ${v.toLocaleString('bn-BD')}</td><td class="p-2 text-xs text-right">${pct}%</td></tr>`;
+    }).join('') || `<tr><td colspan="3" class="p-4 text-center text-slate-400 text-xs">কোন ব্যয় নেই</td></tr>`;
+
+    target.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <div class="bg-emerald-50 border border-emerald-300 rounded-lg p-4 text-center">
+                <p class="text-[10px] font-bold text-emerald-800">সর্বমোট আয়</p>
+                <p class="text-2xl font-bold text-emerald-900">৳ ${totalIncome.toLocaleString('bn-BD')}</p>
+            </div>
+            <div class="bg-rose-50 border border-rose-300 rounded-lg p-4 text-center">
+                <p class="text-[10px] font-bold text-rose-800">সর্বমোট ব্যয়</p>
+                <p class="text-2xl font-bold text-rose-900">৳ ${totalExpense.toLocaleString('bn-BD')}</p>
+            </div>
+            <div class="${surplus >= 0 ? 'bg-cyan-50 border-cyan-300' : 'bg-red-50 border-red-300'} border rounded-lg p-4 text-center">
+                <p class="text-[10px] font-bold ${surplus >= 0 ? 'text-cyan-800' : 'text-red-800'}">${surplus >= 0 ? 'উদ্বৃত্ত' : 'ঘাটতি'}</p>
+                <p class="text-2xl font-bold ${surplus >= 0 ? 'text-cyan-900' : 'text-red-900'}">৳ ${Math.abs(surplus).toLocaleString('bn-BD')}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="border border-emerald-200 rounded-lg overflow-hidden">
+                <div class="bg-emerald-700 text-white p-2 text-xs font-bold">খাতওয়ারী আয়</div>
+                <table class="w-full">
+                    <thead><tr class="bg-emerald-100"><th class="p-2 text-[10px] text-left">খাত</th><th class="p-2 text-[10px] text-right">পরিমাণ</th><th class="p-2 text-[10px] text-right">অবদান</th></tr></thead>
+                    <tbody>${incRows}</tbody>
+                    <tfoot><tr class="bg-emerald-100 font-bold"><td class="p-2 text-xs">মোট</td><td class="p-2 text-xs text-right">৳ ${totalIncome.toLocaleString('bn-BD')}</td><td class="p-2 text-xs text-right">100%</td></tr></tfoot>
+                </table>
+            </div>
+            <div class="border border-rose-200 rounded-lg overflow-hidden">
+                <div class="bg-rose-700 text-white p-2 text-xs font-bold">খাতওয়ারী ব্যয়</div>
+                <table class="w-full">
+                    <thead><tr class="bg-rose-100"><th class="p-2 text-[10px] text-left">খাত</th><th class="p-2 text-[10px] text-right">পরিমাণ</th><th class="p-2 text-[10px] text-right">অবদান</th></tr></thead>
+                    <tbody>${expRows}</tbody>
+                    <tfoot><tr class="bg-rose-100 font-bold"><td class="p-2 text-xs">মোট</td><td class="p-2 text-xs text-right">৳ ${totalExpense.toLocaleString('bn-BD')}</td><td class="p-2 text-xs text-right">100%</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-4 text-right">
+            <button onclick="window.print()" class="px-4 py-2 bg-amber-700 text-white text-xs font-bold rounded-lg"><i class="fa-solid fa-print"></i> প্রিন্ট</button>
+        </div>
+    `;
+}
+
+console.log('✅ মাহফিল মডিউল লোড হয়েছে');
+
+// ═══════════════════════════════════════════════════════════════
+// 【 ৪. আয় মডিউল 】
 // ═══════════════════════════════════════════════════════════════
 async function renderAcctIncome(container) {
     const year = window._acctNew.currentYear;
-    
-    // ডাটা লোড
+
+    // ─── সাধারণ আয় লোড ───
     let incomes = [];
     try {
         const { collection, getDocs, query, where } = window.fbFuncs;
-        const q = year 
+        const q = year
             ? query(collection(window.fbDB, ACCT_FS.INCOME), where('yearId', '==', year.id))
             : collection(window.fbDB, ACCT_FS.INCOME);
         const snap = await getDocs(q);
-        snap.forEach(d => incomes.push({ id: d.id, ...d.data() }));
+        snap.forEach(d => incomes.push({ id: d.id, ...d.data(), _source: 'general' }));
         incomes.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     } catch (e) { console.warn('income load:', e); }
 
-    // ফিল্টার
+    // ─── ★★★ মাহফিল আয় লোড (read-only) ★★★ ───
+    let mahfilIncomes = [];
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        const q = year
+            ? query(collection(window.fbDB, ACCT_FS.MAHFIL_INCOME), where('yearId', '==', year.id))
+            : collection(window.fbDB, ACCT_FS.MAHFIL_INCOME);
+        const snap = await getDocs(q);
+        snap.forEach(d => mahfilIncomes.push({ id: d.id, ...d.data(), _source: 'mahfil' }));
+        mahfilIncomes.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    } catch (e) { console.warn('mahfil income load:', e); }
+
+    // ─── একত্রিত তালিকা ───
+    const allIncomes = [...incomes, ...mahfilIncomes];
+
+    // ─── ফিল্টার ───
     const f = window._acctNew.incomeFilters;
-    let filtered = incomes.slice();
+    let filtered = allIncomes.slice();
     if (f.from) filtered = filtered.filter(r => r.date >= f.from);
     if (f.to)   filtered = filtered.filter(r => r.date <= f.to);
     if (f.category) filtered = filtered.filter(r => r.category === f.category);
@@ -66251,28 +66839,43 @@ async function renderAcctIncome(container) {
         const q = f.donor.toLowerCase();
         filtered = filtered.filter(r => (r.donorName || '').toLowerCase().includes(q));
     }
+    filtered.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
 
-    const total = filtered.reduce((a, r) => a + (Number(r.amount)||0), 0);
+    const total = filtered.reduce((a, r) => a + (Number(r.amount) || 0), 0);
+    const totalGeneral = filtered.filter(r => r._source === 'general').reduce((a, r) => a + (Number(r.amount) || 0), 0);
+    const totalMahfil  = filtered.filter(r => r._source === 'mahfil').reduce((a, r) => a + (Number(r.amount) || 0), 0);
 
-    // ক্যাটাগরি লিস্ট
-    const catSet = new Set(incomes.map(r => r.category).filter(Boolean));
+    // ─── ক্যাটাগরি লিস্ট (সাধারণ + মাহফিল) ───
+    const catSet = new Set(allIncomes.map(r => r.category).filter(Boolean));
 
-    let rowsHTML = filtered.map((r, i) => `
-        <tr class="border-b hover:bg-emerald-50 text-xs">
-            <td class="p-2 text-center text-slate-500">${i+1}</td>
-            <td class="p-2 text-center">${r.date || '—'}</td>
-            <td class="p-2 font-bold text-emerald-800">${r.category || '—'}</td>
-            <td class="p-2">${r.donorName || '—'}</td>
-            <td class="p-2 text-center font-mono">${r.receiptNo || '—'}</td>
-            <td class="p-2 text-center">${r.method || 'cash'}</td>
-            <td class="p-2 text-right font-bold text-emerald-700">${(Number(r.amount)||0).toLocaleString('bn-BD')}</td>
-            <td class="p-2 text-center whitespace-nowrap">
+    // ─── টেবিল সারি ───
+    let rowsHTML = filtered.map((r, i) => {
+        const isMahfil = r._source === 'mahfil';
+        const rowBg = isMahfil ? 'hover:bg-amber-50' : 'hover:bg-emerald-50';
+        const catColor = isMahfil ? 'text-amber-800' : 'text-emerald-800';
+        const badge = isMahfil
+            ? `<span class="inline-block bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded ml-1"><i class="fa-solid fa-mosque"></i> মাহফিল</span>`
+            : '';
+        const actions = isMahfil
+            ? `<span class="text-[10px] text-amber-700 italic">মাহফিল মডিউলে</span>`
+            : `
                 <button onclick="editAcctIncome('${r.id}')" class="text-blue-600 p-1" title="এডিট"><i class="fa-solid fa-pen text-xs"></i></button>
                 <button onclick="printAcctIncomeReceipt('${r.id}')" class="text-emerald-600 p-1" title="রসিদ প্রিন্ট"><i class="fa-solid fa-print text-xs"></i></button>
                 <button onclick="deleteAcctIncome('${r.id}')" class="text-red-600 p-1" title="ডিলিট"><i class="fa-solid fa-trash text-xs"></i></button>
-            </td>
-        </tr>
-    `).join('') || `<tr><td colspan="8" class="p-6 text-center text-slate-400">কোন আয় নেই</td></tr>`;
+              `;
+        return `
+            <tr class="border-b ${rowBg} text-xs ${isMahfil ? 'bg-amber-50/30' : ''}">
+                <td class="p-2 text-center text-slate-500">${i + 1}</td>
+                <td class="p-2 text-center">${r.date || '—'}</td>
+                <td class="p-2 font-bold ${catColor}">${r.category || '—'}${badge}</td>
+                <td class="p-2">${r.donorName || '—'}</td>
+                <td class="p-2 text-center font-mono">${r.receiptNo || '—'}</td>
+                <td class="p-2 text-center">${r.method || 'cash'}</td>
+                <td class="p-2 text-right font-bold ${isMahfil ? 'text-amber-700' : 'text-emerald-700'}">${(Number(r.amount) || 0).toLocaleString('bn-BD')}</td>
+                <td class="p-2 text-center whitespace-nowrap">${actions}</td>
+            </tr>
+        `;
+    }).join('') || `<tr><td colspan="8" class="p-6 text-center text-slate-400">কোন আয় নেই</td></tr>`;
 
     const catOptions = ['ছাত্রদের মাসিক বেতন','ভর্তি ফি','সেশন ফি','পরীক্ষার ফি','আবাসিক ফি','খাবার ফি','কিতাব বিক্রয়','সাধারণ দান','মাসিক দান','বিশেষ অনুদান','যাকাত','ফিতরা','কুরবানি','ওয়াকফ','সম্পত্তি ভাড়া','সরকারি অনুদান','অন্যান্য আয়'];
 
@@ -66281,7 +66884,7 @@ async function renderAcctIncome(container) {
             <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <div>
                     <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-arrow-down text-emerald-600"></i> আয় ব্যবস্থাপনা</h3>
-                    <p class="text-xs text-slate-500 mt-1">${year?.name || 'সব অর্থবছর'}</p>
+                    <p class="text-xs text-slate-500 mt-1">${year?.name || 'সব অর্থবছর'} — সাধারণ + মাহফিল</p>
                 </div>
                 <div class="flex gap-2 flex-wrap">
                     <button onclick="exportAcctIncomeCSV()" class="px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold rounded-lg">
@@ -66293,18 +66896,22 @@ async function renderAcctIncome(container) {
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-2 mb-3">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
                 <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
-                    <p class="text-[10px] font-bold text-emerald-800">মোট আয়</p>
-                    <p class="text-xl font-bold text-emerald-900">৳ ${total.toLocaleString('bn-BD')}</p>
+                    <p class="text-[10px] font-bold text-emerald-800">সর্বমোট আয়</p>
+                    <p class="text-lg font-bold text-emerald-900">৳ ${total.toLocaleString('bn-BD')}</p>
+                </div>
+                <div class="bg-teal-50 border border-teal-200 rounded-lg p-3 text-center">
+                    <p class="text-[10px] font-bold text-teal-800">সাধারণ</p>
+                    <p class="text-lg font-bold text-teal-900">৳ ${totalGeneral.toLocaleString('bn-BD')}</p>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
+                    <p class="text-[10px] font-bold text-amber-800"><i class="fa-solid fa-mosque"></i> মাহফিল</p>
+                    <p class="text-lg font-bold text-amber-900">৳ ${totalMahfil.toLocaleString('bn-BD')}</p>
                 </div>
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
                     <p class="text-[10px] font-bold text-blue-800">মোট রেকর্ড</p>
-                    <p class="text-xl font-bold text-blue-900">${filtered.length}</p>
-                </div>
-                <div class="bg-slate-100 border border-slate-300 rounded-lg p-3 text-center">
-                    <p class="text-[10px] font-bold text-slate-700">ক্যাটাগরি</p>
-                    <p class="text-xl font-bold text-slate-900">${catSet.size}</p>
+                    <p class="text-lg font-bold text-blue-900">${filtered.length}</p>
                 </div>
             </div>
 
@@ -66319,7 +66926,7 @@ async function renderAcctIncome(container) {
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full border-collapse" style="min-width:800px;">
+                <table class="w-full border-collapse" style="min-width:850px;">
                     <thead class="bg-emerald-700 text-white">
                         <tr>
                             <th class="p-2 text-[10px] text-center">#</th>
@@ -66335,6 +66942,13 @@ async function renderAcctIncome(container) {
                     <tbody>${rowsHTML}</tbody>
                 </table>
             </div>
+
+            ${totalMahfil > 0 ? `
+                <div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[10px] text-amber-800 text-center">
+                    <i class="fa-solid fa-info-circle"></i> 
+                    <strong>মাহফিলের আয়</strong> এখানে শুধু <strong>দেখা</strong> যাচ্ছে — সম্পাদনা/মুছে ফেলতে <strong>মাহফিল → আয়</strong> মডিউলে যান।
+                </div>
+            ` : ''}
         </div>
     `;
 }
@@ -66545,51 +67159,83 @@ window.exportAcctIncomeCSV = async function() {
 // ═══════════════════════════════════════════════════════════════
 async function renderAcctExpenseNew(container) {
     const year = window._acctNew.currentYear;
+
+    // ─── সাধারণ ব্যয় লোড ───
     let expenses = [];
     try {
         const { collection, getDocs, query, where } = window.fbFuncs;
-        const q = year ? query(collection(window.fbDB, ACCT_FS.EXPENSE), where('yearId', '==', year.id)) : collection(window.fbDB, ACCT_FS.EXPENSE);
+        const q = year
+            ? query(collection(window.fbDB, ACCT_FS.EXPENSE), where('yearId', '==', year.id))
+            : collection(window.fbDB, ACCT_FS.EXPENSE);
         const snap = await getDocs(q);
-        snap.forEach(d => expenses.push({ id: d.id, ...d.data() }));
+        snap.forEach(d => expenses.push({ id: d.id, ...d.data(), _source: 'general' }));
         expenses.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     } catch (e) { console.warn('expense load:', e); }
 
+    // ─── ★★★ মাহফিল ব্যয় লোড (read-only) ★★★ ───
+    let mahfilExpenses = [];
+    try {
+        const { collection, getDocs, query, where } = window.fbFuncs;
+        const q = year
+            ? query(collection(window.fbDB, ACCT_FS.MAHFIL_EXPENSE), where('yearId', '==', year.id))
+            : collection(window.fbDB, ACCT_FS.MAHFIL_EXPENSE);
+        const snap = await getDocs(q);
+        snap.forEach(d => mahfilExpenses.push({ id: d.id, ...d.data(), _source: 'mahfil' }));
+        mahfilExpenses.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    } catch (e) { console.warn('mahfil expense load:', e); }
+
+    // ─── একত্রিত তালিকা ───
+    const allExpenses = [...expenses, ...mahfilExpenses];
+
+    // ─── ফিল্টার ───
     const f = window._acctNew.expenseFilters;
-    let filtered = expenses.slice();
+    let filtered = allExpenses.slice();
     if (f.from) filtered = filtered.filter(r => r.date >= f.from);
     if (f.to)   filtered = filtered.filter(r => r.date <= f.to);
     if (f.category) filtered = filtered.filter(r => r.category === f.category);
+    filtered.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
 
-    const total = filtered.reduce((a, r) => a + (Number(r.amount)||0), 0);
+    const total = filtered.reduce((a, r) => a + (Number(r.amount) || 0), 0);
+    const totalGeneral = filtered.filter(r => r._source === 'general').reduce((a, r) => a + (Number(r.amount) || 0), 0);
+    const totalMahfil  = filtered.filter(r => r._source === 'mahfil').reduce((a, r) => a + (Number(r.amount) || 0), 0);
 
     const catOptions = ['শিক্ষক-কর্মচারী বেতন','খাবার','বিদ্যুৎ বিল','গ্যাস বিল','পানি বিল','ভবন ভাড়া','চিকিৎসা','শিক্ষা উপকরণ','অফিস','ভবন মেরামত','পরিবহন','আপ্যায়ন','অনুষ্ঠান','পরিচ্ছন্নতা','ইন্টারনেট','আসবাবপত্র','সম্পত্তি','অন্যান্য ব্যয়'];
 
-    let rowsHTML = filtered.map((r, i) => `
-        <tr class="border-b hover:bg-rose-50 text-xs">
-            <td class="p-2 text-center text-slate-500">${i+1}</td>
-            <td class="p-2 text-center">${r.date || '—'}</td>
-            <td class="p-2 font-bold text-rose-800">${r.category || '—'}</td>
-            <td class="p-2">
-                ${r.payee || '—'}
-                ${r.receiptData ? `<i class="fa-solid fa-paperclip text-emerald-600 text-[10px]" title="বিল/রসিদ সংযুক্ত"></i>` : ''}
-            </td>
-            <td class="p-2 text-center font-mono">${r.voucherNo || '—'}</td>
-            <td class="p-2 text-right font-bold text-rose-700">${(Number(r.amount)||0).toLocaleString('bn-BD')}</td>
-            <td class="p-2 text-center whitespace-nowrap">
+    // ─── টেবিল সারি ───
+    let rowsHTML = filtered.map((r, i) => {
+        const isMahfil = r._source === 'mahfil';
+        const rowBg = isMahfil ? 'hover:bg-amber-50' : 'hover:bg-rose-50';
+        const catColor = isMahfil ? 'text-amber-800' : 'text-rose-800';
+        const badge = isMahfil
+            ? `<span class="inline-block bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded ml-1"><i class="fa-solid fa-mosque"></i> মাহফিল</span>`
+            : '';
+        const actions = isMahfil
+            ? `<span class="text-[10px] text-amber-700 italic">মাহফিল মডিউলে</span>`
+            : `
                 <button onclick="editAcctExpenseNew('${r.id}')" class="text-blue-600 p-1" title="এডিট"><i class="fa-solid fa-pen text-xs"></i></button>
                 <button onclick="printAcctExpenseVoucher('${r.id}')" class="text-emerald-600 p-1" title="ভাউচার প্রিন্ট"><i class="fa-solid fa-print text-xs"></i></button>
-                ${r.receiptData ? `<button onclick="viewExpenseReceipt('${r.id}')" class="text-amber-600 p-1" title="বিল/রসিদ দেখুন"><i class="fa-solid fa-paperclip text-xs"></i></button>` : ''}
+                ${r.receiptData ? `<button onclick="viewExpenseReceipt('${r.id}')" class="text-amber-600 p-1" title="বিল/রসিদ"><i class="fa-solid fa-paperclip text-xs"></i></button>` : ''}
                 <button onclick="deleteAcctExpenseNew('${r.id}')" class="text-red-600 p-1" title="ডিলিট"><i class="fa-solid fa-trash text-xs"></i></button>
-            </td>
-        </tr>
-    `).join('') || `<tr><td colspan="7" class="p-6 text-center text-slate-400">কোন ব্যয় নেই</td></tr>`;
+              `;
+        return `
+            <tr class="border-b ${rowBg} text-xs ${isMahfil ? 'bg-amber-50/30' : ''}">
+                <td class="p-2 text-center text-slate-500">${i + 1}</td>
+                <td class="p-2 text-center">${r.date || '—'}</td>
+                <td class="p-2 font-bold ${catColor}">${r.category || '—'}${badge}</td>
+                <td class="p-2">${r.payee || '—'}</td>
+                <td class="p-2 text-center font-mono">${r.voucherNo || '—'}</td>
+                <td class="p-2 text-right font-bold ${isMahfil ? 'text-amber-700' : 'text-rose-700'}">${(Number(r.amount) || 0).toLocaleString('bn-BD')}</td>
+                <td class="p-2 text-center whitespace-nowrap">${actions}</td>
+            </tr>
+        `;
+    }).join('') || `<tr><td colspan="7" class="p-6 text-center text-slate-400">কোন ব্যয় নেই</td></tr>`;
 
     container.innerHTML = `
         <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
             <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <div>
                     <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-arrow-up text-rose-600"></i> ব্যয় ব্যবস্থাপনা</h3>
-                    <p class="text-xs text-slate-500 mt-1">${year?.name || 'সব অর্থবছর'}</p>
+                    <p class="text-xs text-slate-500 mt-1">${year?.name || 'সব অর্থবছর'} — সাধারণ + মাহফিল</p>
                 </div>
                 <div class="flex gap-2 flex-wrap">
                     <button onclick="exportAcctExpenseCSV()" class="px-3 py-2 bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-bold rounded-lg">
@@ -66601,18 +67247,22 @@ async function renderAcctExpenseNew(container) {
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-2 mb-3">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
                 <div class="bg-rose-50 border border-rose-200 rounded-lg p-3 text-center">
-                    <p class="text-[10px] font-bold text-rose-800">মোট ব্যয়</p>
-                    <p class="text-xl font-bold text-rose-900">৳ ${total.toLocaleString('bn-BD')}</p>
+                    <p class="text-[10px] font-bold text-rose-800">সর্বমোট ব্যয়</p>
+                    <p class="text-lg font-bold text-rose-900">৳ ${total.toLocaleString('bn-BD')}</p>
+                </div>
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+                    <p class="text-[10px] font-bold text-orange-800">সাধারণ</p>
+                    <p class="text-lg font-bold text-orange-900">৳ ${totalGeneral.toLocaleString('bn-BD')}</p>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
+                    <p class="text-[10px] font-bold text-amber-800"><i class="fa-solid fa-mosque"></i> মাহফিল</p>
+                    <p class="text-lg font-bold text-amber-900">৳ ${totalMahfil.toLocaleString('bn-BD')}</p>
                 </div>
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
                     <p class="text-[10px] font-bold text-blue-800">মোট রেকর্ড</p>
-                    <p class="text-xl font-bold text-blue-900">${filtered.length}</p>
-                </div>
-                <div class="bg-slate-100 border border-slate-300 rounded-lg p-3 text-center">
-                    <p class="text-[10px] font-bold text-slate-700">অর্থবছর</p>
-                    <p class="text-sm font-bold text-slate-900">${year?.name || '—'}</p>
+                    <p class="text-lg font-bold text-blue-900">${filtered.length}</p>
                 </div>
             </div>
 
@@ -66626,7 +67276,7 @@ async function renderAcctExpenseNew(container) {
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full border-collapse" style="min-width:700px;">
+                <table class="w-full border-collapse" style="min-width:750px;">
                     <thead class="bg-rose-700 text-white">
                         <tr>
                             <th class="p-2 text-[10px] text-center">#</th>
@@ -66641,6 +67291,13 @@ async function renderAcctExpenseNew(container) {
                     <tbody>${rowsHTML}</tbody>
                 </table>
             </div>
+
+            ${totalMahfil > 0 ? `
+                <div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[10px] text-amber-800 text-center">
+                    <i class="fa-solid fa-info-circle"></i> 
+                    <strong>মাহফিলের ব্যয়</strong> এখানে শুধু <strong>দেখা</strong> যাচ্ছে — সম্পাদনা/মুছে ফেলতে <strong>মাহফিল → ব্যয়</strong> মডিউলে যান।
+                </div>
+            ` : ''}
         </div>
     `;
 }
@@ -67168,62 +67825,139 @@ async function renderAcctMonthlyReport(container) {
     const year = window._acctNew.currentYear;
     const curMonth = new Date().getMonth() + 1;
     const curYear = new Date().getFullYear();
-
     const monthKey = `${curYear}-${String(curMonth).padStart(2, '0')}`;
 
-    let income = 0, expense = 0, incomeByCat = {}, expenseByCat = {};
+    let income = 0, expense = 0;
+    let generalIncome = 0, generalExpense = 0;
+    let mahfilIncome = 0, mahfilExpense = 0;
+    let incomeByCat = {}, expenseByCat = {};
+
     try {
         const { collection, getDocs, query, where } = window.fbFuncs;
-        
+
         if (year) {
-            const [incSnap, expSnap] = await Promise.all([
-                getDocs(query(collection(window.fbDB, ACCT_FS.INCOME), where('yearId', '==', year.id))),
-                getDocs(query(collection(window.fbDB, ACCT_FS.EXPENSE), where('yearId', '==', year.id)))
+            // সাধারণ + মাহফিল — সব একসাথে, সবগুলোতেই yearId ফিল্টার
+            const [incSnap, expSnap, mIncSnap, mExpSnap] = await Promise.all([
+                getDocs(query(collection(window.fbDB, ACCT_FS.INCOME),         where('yearId', '==', year.id))),
+                getDocs(query(collection(window.fbDB, ACCT_FS.EXPENSE),        where('yearId', '==', year.id))),
+                getDocs(query(collection(window.fbDB, ACCT_FS.MAHFIL_INCOME),  where('yearId', '==', year.id))),
+                getDocs(query(collection(window.fbDB, ACCT_FS.MAHFIL_EXPENSE), where('yearId', '==', year.id)))
             ]);
 
+            // ─── সাধারণ আয় ───
             incSnap.forEach(d => {
                 const r = d.data();
                 if (String(r.date || '').startsWith(monthKey)) {
-                    income += Number(r.amount) || 0;
-                    incomeByCat[r.category] = (incomeByCat[r.category] || 0) + (Number(r.amount) || 0);
+                    const amt = Number(r.amount) || 0;
+                    generalIncome += amt;
+                    incomeByCat[r.category || 'অন্যান্য'] =
+                        (incomeByCat[r.category || 'অন্যান্য'] || 0) + amt;
                 }
             });
+
+            // ─── সাধারণ ব্যয় ───
             expSnap.forEach(d => {
                 const r = d.data();
                 if (String(r.date || '').startsWith(monthKey)) {
-                    expense += Number(r.amount) || 0;
-                    expenseByCat[r.category] = (expenseByCat[r.category] || 0) + (Number(r.amount) || 0);
+                    const amt = Number(r.amount) || 0;
+                    generalExpense += amt;
+                    expenseByCat[r.category || 'অন্যান্য'] =
+                        (expenseByCat[r.category || 'অন্যান্য'] || 0) + amt;
                 }
             });
+
+            // ─── মাহফিল আয় ───
+            mIncSnap.forEach(d => {
+                const r = d.data();
+                if (String(r.date || '').startsWith(monthKey)) {
+                    const amt = Number(r.amount) || 0;
+                    mahfilIncome += amt;
+                    const key = 'মাহফিল: ' + (r.category || 'অন্যান্য');
+                    incomeByCat[key] = (incomeByCat[key] || 0) + amt;
+                }
+            });
+
+            // ─── মাহফিল ব্যয় ───
+            mExpSnap.forEach(d => {
+                const r = d.data();
+                if (String(r.date || '').startsWith(monthKey)) {
+                    const amt = Number(r.amount) || 0;
+                    mahfilExpense += amt;
+                    const key = 'মাহফিল: ' + (r.category || 'অন্যান্য');
+                    expenseByCat[key] = (expenseByCat[key] || 0) + amt;
+                }
+            });
+
+            // ─── সর্বমোট = সাধারণ + মাহফিল ───
+            income  = generalIncome  + mahfilIncome;
+            expense = generalExpense + mahfilExpense;
         }
     } catch (e) { console.warn('monthly report:', e); }
 
     const balance = income - expense;
+    const hasMahfil = (mahfilIncome > 0 || mahfilExpense > 0);
 
-    let incRows = Object.keys(incomeByCat).map(k => `<tr class="border-b"><td class="p-2 text-xs">${k}</td><td class="p-2 text-xs text-right font-bold text-emerald-700">৳ ${incomeByCat[k].toLocaleString('bn-BD')}</td></tr>`).join('') || '<tr><td colspan="2" class="p-4 text-center text-slate-400">কোন আয় নেই</td></tr>';
-    let expRows = Object.keys(expenseByCat).map(k => `<tr class="border-b"><td class="p-2 text-xs">${k}</td><td class="p-2 text-xs text-right font-bold text-rose-700">৳ ${expenseByCat[k].toLocaleString('bn-BD')}</td></tr>`).join('') || '<tr><td colspan="2" class="p-4 text-center text-slate-400">কোন ব্যয় নেই</td></tr>';
+    let incRows = Object.keys(incomeByCat).map(k => 
+        `<tr class="border-b"><td class="p-2 text-xs ${k.startsWith('মাহফিল:') ? 'text-amber-800 font-bold' : ''}">${k}</td><td class="p-2 text-xs text-right font-bold text-emerald-700">৳ ${incomeByCat[k].toLocaleString('bn-BD')}</td></tr>`
+    ).join('') || '<tr><td colspan="2" class="p-4 text-center text-slate-400 text-xs">কোন আয় নেই</td></tr>';
+
+    let expRows = Object.keys(expenseByCat).map(k => 
+        `<tr class="border-b"><td class="p-2 text-xs ${k.startsWith('মাহফিল:') ? 'text-amber-800 font-bold' : ''}">${k}</td><td class="p-2 text-xs text-right font-bold text-rose-700">৳ ${expenseByCat[k].toLocaleString('bn-BD')}</td></tr>`
+    ).join('') || '<tr><td colspan="2" class="p-4 text-center text-slate-400 text-xs">কোন ব্যয় নেই</td></tr>';
 
     container.innerHTML = `
         <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
             <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-calendar text-teal-600"></i> মাসিক রিপোর্ট — ${monthKey}</h3>
-                <button onclick="printAcctMonthlyReport()" class="px-3 py-2 bg-emerald-700 text-white text-xs font-bold rounded-lg"><i class="fa-solid fa-print"></i> প্রিন্ট</button>
+                <h3 class="text-base font-bold text-slate-800">
+                    <i class="fa-solid fa-calendar text-teal-600"></i> মাসিক রিপোর্ট — ${monthKey}
+                    <span class="text-xs font-normal text-slate-500 block mt-0.5">${year?.name || 'সব অর্থবছর'}</span>
+                </h3>
+                <button onclick="printAcctMonthlyReport()" class="px-3 py-2 bg-emerald-700 text-white text-xs font-bold rounded-lg">
+                    <i class="fa-solid fa-print"></i> প্রিন্ট
+                </button>
             </div>
 
             <div class="grid grid-cols-3 gap-3 mb-4">
                 <div class="bg-emerald-50 border border-emerald-300 rounded-lg p-4 text-center">
                     <p class="text-[10px] font-bold text-emerald-800">মাসিক আয়</p>
                     <p class="text-2xl font-bold text-emerald-900">৳ ${income.toLocaleString('bn-BD')}</p>
+                    ${hasMahfil ? `<p class="text-[9px] text-amber-700 mt-1">এর মধ্যে মাহফিল: ৳${mahfilIncome.toLocaleString('bn-BD')}</p>` : ''}
                 </div>
                 <div class="bg-rose-50 border border-rose-300 rounded-lg p-4 text-center">
                     <p class="text-[10px] font-bold text-rose-800">মাসিক ব্যয়</p>
                     <p class="text-2xl font-bold text-rose-900">৳ ${expense.toLocaleString('bn-BD')}</p>
+                    ${hasMahfil ? `<p class="text-[9px] text-amber-700 mt-1">এর মধ্যে মাহফিল: ৳${mahfilExpense.toLocaleString('bn-BD')}</p>` : ''}
                 </div>
                 <div class="bg-${balance >= 0 ? 'cyan' : 'red'}-50 border border-${balance >= 0 ? 'cyan' : 'red'}-300 rounded-lg p-4 text-center">
                     <p class="text-[10px] font-bold text-${balance >= 0 ? 'cyan' : 'red'}-800">মাসিক ${balance >= 0 ? 'উদ্বৃত্ত' : 'ঘাটতি'}</p>
                     <p class="text-2xl font-bold text-${balance >= 0 ? 'cyan' : 'red'}-900">৳ ${Math.abs(balance).toLocaleString('bn-BD')}</p>
                 </div>
             </div>
+
+            ${hasMahfil ? `
+            <!-- ★★★ মাহফিলের আলাদা ব্রেকডাউন ★★★ -->
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <h4 class="text-xs font-bold text-amber-900 mb-2">
+                    <i class="fa-solid fa-mosque"></i> মাহফিলের অবদান (উপরের মোটের অন্তর্ভুক্ত)
+                </h4>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-white border border-emerald-200 rounded p-2">
+                        <p class="text-[9px] font-bold text-emerald-700">মাহফিল আয়</p>
+                        <p class="text-sm font-bold text-emerald-900">৳ ${mahfilIncome.toLocaleString('bn-BD')}</p>
+                    </div>
+                    <div class="bg-white border border-rose-200 rounded p-2">
+                        <p class="text-[9px] font-bold text-rose-700">মাহফিল ব্যয়</p>
+                        <p class="text-sm font-bold text-rose-900">৳ ${mahfilExpense.toLocaleString('bn-BD')}</p>
+                    </div>
+                    <div class="bg-white border border-amber-300 rounded p-2">
+                        <p class="text-[9px] font-bold text-amber-800">মাহফিল ${mahfilIncome - mahfilExpense >= 0 ? 'উদ্বৃত্ত' : 'ঘাটতি'}</p>
+                        <p class="text-sm font-bold ${(mahfilIncome - mahfilExpense) >= 0 ? 'text-emerald-900' : 'text-red-900'}">
+                            ৳ ${Math.abs(mahfilIncome - mahfilExpense).toLocaleString('bn-BD')}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="border border-emerald-200 rounded-lg overflow-hidden">
@@ -67267,27 +68001,46 @@ async function renderAcctAnnualReport(container) {
         return;
     }
 
-    // বাজেট লোড
+    // বাজেট + সাধারণ আয়/ব্যয় + মাহফিল — সব একসাথে লোড
     let budget = null;
     let actualIncome = 0, actualExpense = 0;
+    let generalIncome = 0, generalExpense = 0;
+    let mahfilIncome = 0, mahfilExpense = 0;
+
     try {
         const { collection, getDocs, query, where } = window.fbFuncs;
-        
-        const [bSnap, iSnap, eSnap] = await Promise.all([
-            getDocs(query(collection(window.fbDB, ACCT_FS.BUDGETS), where('yearId', '==', year.id))),
-            getDocs(query(collection(window.fbDB, ACCT_FS.INCOME), where('yearId', '==', year.id))),
-            getDocs(query(collection(window.fbDB, ACCT_FS.EXPENSE), where('yearId', '==', year.id)))
+
+        const [bSnap, iSnap, eSnap, mIncSnap, mExpSnap] = await Promise.all([
+            getDocs(query(collection(window.fbDB, ACCT_FS.BUDGETS),        where('yearId', '==', year.id))),
+            getDocs(query(collection(window.fbDB, ACCT_FS.INCOME),         where('yearId', '==', year.id))),
+            getDocs(query(collection(window.fbDB, ACCT_FS.EXPENSE),        where('yearId', '==', year.id))),
+            getDocs(query(collection(window.fbDB, ACCT_FS.MAHFIL_INCOME),  where('yearId', '==', year.id))),
+            getDocs(query(collection(window.fbDB, ACCT_FS.MAHFIL_EXPENSE), where('yearId', '==', year.id)))
         ]);
 
         if (!bSnap.empty) budget = { id: bSnap.docs[0].id, ...bSnap.docs[0].data() };
-        iSnap.forEach(d => actualIncome += Number(d.data().amount) || 0);
-        eSnap.forEach(d => actualExpense += Number(d.data().amount) || 0);
+
+        // সাধারণ আয়/ব্যয়
+        iSnap.forEach(d => generalIncome  += Number(d.data().amount) || 0);
+        eSnap.forEach(d => generalExpense += Number(d.data().amount) || 0);
+
+        // মাহফিল আয়/ব্যয় (একই yearId নিয়মে)
+        mIncSnap.forEach(d => mahfilIncome  += Number(d.data().amount) || 0);
+        mExpSnap.forEach(d => mahfilExpense += Number(d.data().amount) || 0);
+
+        // মোট প্রকৃত হিসাব = সাধারণ + মাহফিল
+        actualIncome  = generalIncome  + mahfilIncome;
+        actualExpense = generalExpense + mahfilExpense;
+
     } catch (e) { console.warn('annual:', e); }
 
-    const budgetIncome = budget ? (Number(budget.totalIncome) || 0) : 0;
+    const budgetIncome  = budget ? (Number(budget.totalIncome)  || 0) : 0;
     const budgetExpense = budget ? (Number(budget.totalExpense) || 0) : 0;
     const budgetSurplus = budgetIncome - budgetExpense;
     const actualSurplus = actualIncome - actualExpense;
+
+    // মাহফিলের অংশ আলাদাভাবে প্রদর্শনের জন্য
+    const hasMahfil = (mahfilIncome > 0 || mahfilExpense > 0);
 
     container.innerHTML = `
         <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 md:p-6">
@@ -67335,6 +68088,36 @@ async function renderAcctAnnualReport(container) {
                     </tbody>
                 </table>
             </div>
+
+            ${hasMahfil ? `
+            <!-- ★★★ মাহফিলের আলাদা ব্রেকডাউন ★★★ -->
+            <div class="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <h4 class="text-sm font-bold text-amber-900 mb-2">
+                    <i class="fa-solid fa-mosque"></i> মাহফিলের অবদান (মোট প্রকৃত হিসাবের অন্তর্ভুক্ত)
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="bg-white border border-emerald-200 rounded-lg p-3 text-center">
+                        <p class="text-[10px] font-bold text-emerald-700">মাহফিল আয়</p>
+                        <p class="text-lg font-bold text-emerald-900">৳ ${mahfilIncome.toLocaleString('bn-BD')}</p>
+                    </div>
+                    <div class="bg-white border border-rose-200 rounded-lg p-3 text-center">
+                        <p class="text-[10px] font-bold text-rose-700">মাহফিল ব্যয়</p>
+                        <p class="text-lg font-bold text-rose-900">৳ ${mahfilExpense.toLocaleString('bn-BD')}</p>
+                    </div>
+                    <div class="bg-white border border-amber-300 rounded-lg p-3 text-center">
+                        <p class="text-[10px] font-bold text-amber-800">মাহফিল উদ্বৃত্ত/ঘাটতি</p>
+                        <p class="text-lg font-bold ${(mahfilIncome - mahfilExpense) >= 0 ? 'text-emerald-900' : 'text-red-900'}">
+                            ৳ ${Math.abs(mahfilIncome - mahfilExpense).toLocaleString('bn-BD')}
+                            ${(mahfilIncome - mahfilExpense) >= 0 ? '(উদ্বৃত্ত)' : '(ঘাটতি)'}
+                        </p>
+                    </div>
+                </div>
+                <p class="text-[10px] text-amber-800 mt-2 text-center">
+                    <i class="fa-solid fa-info-circle"></i>
+                    সাধারণ হিসাব: আয় ৳${generalIncome.toLocaleString('bn-BD')} | ব্যয় ৳${generalExpense.toLocaleString('bn-BD')} — মাহফিলসহ সর্বমোট উপরে দেখানো হয়েছে।
+                </p>
+            </div>
+            ` : ''}
 
             <div class="mt-4 bg-slate-50 rounded-lg p-4">
                 <h4 class="text-sm font-bold text-slate-700 mb-2">বাজেট অগ্রগতি</h4>
@@ -69790,191 +70573,62 @@ window.switchStudentDuesPaymentTab = function(tab) {
     openStudentDuesPage('payment');
 };
 
-async function loadStudentDuesPaymentTable() {
-    const content = document.getElementById('student-dues-payment-content');
-    if (!content) return;
-    
-    const state = window._studentDuesState;
-    const config = window._studentDuesConfig;
-    
-    // ছাত্র ফিল্টার
-    let students = (studentsCache||[]).filter(s => {
-        if (state.paymentDept && s.dept !== state.paymentDept) return false;
-        if (state.paymentClass && s.className !== state.paymentClass) return false;
-        return !['বিদায়','বহিষ্কৃত','ভর্তির অনুপযুক্ত'].includes((s.remark?.type || '').trim());
-    });
-
-    if (students.length === 0) {
-        content.innerHTML = `<p class="text-center text-slate-400 py-6">এই ফিল্টারে কোন ছাত্র নেই</p>`;
-        return;
-    }
-
-    // ডাটা লোড
-    const duesData = await loadStudentDuesData(students);
-    const isOnetime = state.paymentTab === 'onetime';
-    const isPartial = state.paymentTab === 'partial';
-    const typeStr = isOnetime ? 'onetime' : (isPartial ? 'partial' : 'monthly');
-    const payments = await loadStudentDuesPayments(students.map(s => s.id), state.paymentTab);
-    
-    // প্রস্তুত টেবিল
-    const items = isOnetime ? config.onetime.items : (isPartial ? (config.partial?.items || []) : config.monthly.items);
-    const monthKey = state.paymentMonth;
-    
-    // হেডার
-    const headers = items.map(item => `
-        <th class="p-2 text-[10px] text-center ${isOnetime ? 'bg-blue-700' : (isPartial ? 'bg-amber-700' : 'bg-teal-700')} text-white" style="min-width:110px;">
-            ${item.label}
-        </th>
-    `).join('');
-    
-    // প্রতিটি সারি
-    let rowsHTML = students.map((s, i) => {
-        const studentDues = isOnetime 
-            ? (duesData.onetime[s.id]?.items || {}) 
-            : (isPartial ? (duesData.partial?.[s.id]?.[monthKey]?.items || {}) : (duesData.monthly[s.id]?.[monthKey]?.items || {}));
-        
-        const cells = items.map(item => {
-            const dueAmount = Number(studentDues[item.key] || 0);
-            
-            // ★★★ এককালীন হলে yearMonth ফাঁকা, মাসিক হলে সিলেক্ট করা মাস ★★★
-            const targetYearMonth = isOnetime ? '' : (monthKey || '');
-            const pKey = `${s.id}::${isOnetime ? 'onetime' : (isPartial ? 'partial' : 'monthly')}::${item.key}::${isOnetime ? '' : monthKey}`;
-            
-            const payment = payments[paymentKey];
-            const paidAmount = payment ? Number(payment.amount) : 0;
-            
-            // ★★★ ০.০১ পার্থক্য থাকলেও যেন পরিশোধিত ধরে (রাউন্ডিং ইস্যু এড়াতে) ★★★
-            const isPaid = dueAmount > 0 && (paidAmount + 0.01) >= dueAmount;
-            const isPartial = paidAmount > 0 && !isPaid;
-            
-            let cellClass = 'bg-slate-50 border-slate-300';
-            let dueColor = 'text-slate-600';
-            let inputColor = 'text-slate-400';
-            
-            if (isPaid) { 
-                cellClass = 'bg-emerald-50 border-emerald-500'; 
-                dueColor = 'text-emerald-700';
-            } else if (isPartial) { 
-                cellClass = 'bg-amber-50 border-amber-500'; 
-                dueColor = 'text-amber-700';
-            } else if (dueAmount > 0) { 
-                cellClass = 'bg-red-50 border-red-400'; 
-                dueColor = 'text-red-700';
-            }
-            
-            return `
-                <td class="p-2 border-2 ${cellClass}" data-payment-cell="${s.id}-${item.key}">
-                    <div class="text-center flex flex-col items-center justify-center min-h-[85px]">
-                        <!-- প্রদেয় লেখা (স্পষ্ট) -->
-                        <div class="text-xs font-bold ${dueColor} mb-1.5 whitespace-nowrap">
-                            প্রদেয়: ৳${dueAmount.toLocaleString('bn-BD')}
-                        </div>
-                        
-                        <!-- পরিশোধিত হলে সবুজ লেবেল + লাল ক্রস বাটন, না হলে ইনপুট -->
-                        ${isPaid ? `
-                            <div class="flex items-center justify-center gap-1 w-full">
-                                <div class="flex-1 py-2 bg-emerald-600 text-white text-[11px] font-bold rounded shadow-sm text-center">
-                                    <i class="fa-solid fa-check-circle"></i> ✓ পরিশোধিত
-                                </div>
-                                <!-- ★★★ নতুন: ভুল হলে বাতিল করার লাল ক্রস বাটন ★★★ -->
-                                <button onclick="undoStudentPayment('${payment.id}')" 
-                                        class="py-2 px-2 bg-red-100 hover:bg-red-600 text-red-600 hover:text-white rounded shadow-sm transition"
-                                        title="ভুল হলে বাতিল করুন">
-                                    <i class="fa-solid fa-xmark text-sm"></i>
-                                </button>
-                            </div>
-                            <div class="text-[11px] text-emerald-800 font-bold mt-1">
-                                ৳${paidAmount.toLocaleString('bn-BD')}
-                            </div>
-                        ` : `
-                            <input type="number" 
-                                   value="${paidAmount || ''}"
-                                   placeholder="৳ পরিমাণ"
-                                   onchange="onStudentPaymentAmountChange('${s.id}', '${typeStr}', '${item.key}', '${targetYearMonth}', this)"
-                                   class="w-full text-center text-xs p-1.5 border-2 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-md font-bold mb-1">
-                            
-                            ${dueAmount > 0 ? `
-                                <button onclick="toggleStudentPayment('${s.id}', '${isOnetime ? 'onetime' : (state.paymentTab === 'partial' ? 'partial' : 'monthly')}', '${item.key}', '${targetYearMonth}', ${dueAmount})" 
-                                        class="w-full py-1.5 ${isPartial ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'} text-white text-[11px] font-bold rounded shadow-sm transition">
-                                    ${isPartial ? 'বাকি পরিশোধ' : 'পরিশোধ করুন'}
-                                </button>
-                            ` : '<div class="text-[10px] text-slate-400 italic py-1">প্রদেয় নেই</div>'}
-                        `}
-                    </div>
-                </td>
-            `;
-        }).join('');
-        
-        return `
-            <tr class="border-b hover:bg-slate-50">
-                <td class="p-2 text-xs text-center">${i + 1}</td>
-                <td class="p-2 text-xs font-bold">${s.name || '—'}</td>
-                <td class="p-2 text-xs font-mono text-center">${s.studentId || '—'}</td>
-                <td class="p-2 text-xs text-center font-arabic">${s.className || '—'}</td>
-                ${cells}
-            </tr>
-        `;
-    }).join('');
-    
-    content.innerHTML = `
-        <div class="overflow-x-auto">
-            <table class="w-full border-collapse text-xs" style="min-width:${400 + items.length * 120}px;">
-                <thead>
-                    <tr>
-                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">#</th>
-                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">নাম</th>
-                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">আইডি</th>
-                        <th class="p-2 text-[10px] text-center bg-slate-700 text-white">শ্রেণি</th>
-                        ${headers}
-                    </tr>
-                </thead>
-                <tbody>${rowsHTML}</tbody>
-            </table>
-        </div>
-    `;
-}
-
 // ─── পেমেন্ট ডাটা লোড ───
+
 async function loadStudentDuesPayments(studentIds, type) {
     const result = {};
+
     if (!studentIds || studentIds.length === 0) return result;
 
     try {
         const { collection, getDocs } = window.fbFuncs;
-        const snap = await getDocs(collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS));
-        
-        // ডিবাগ করার জন্য কনসোল লগ
+        const snap = await getDocs(
+            collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS)
+        );
+
         console.log(`🔍 Loading payments for type: ${type}. Found ${snap.size} total payments in DB.`);
 
         snap.forEach(d => {
             const data = d.data();
-            
-            // ১. টাইপ মিলছে কিনা (onetime / monthly)
+
             if (data.type !== type) return;
-            
-            // ২. স্টুডেন্ট আইডি মিলছে কিনা 
-            const isStudentMatch = studentIds.some(id => String(id) === String(data.studentDbId));
+
+            const isStudentMatch = studentIds.some(
+                id => String(id) === String(data.studentDbId)
+            );
+
             if (!isStudentMatch) return;
 
-            // ৩. কি (Key) তৈরি 
             const safeYearMonth = String(data.yearMonth || '').trim();
             const key = `${data.studentDbId}::${data.type}::${data.itemKey}::${safeYearMonth}`;
-            
-            // ★★★ ফিক্স: এখানে d.id যুক্ত করা হলো, যাতে Undo (ডিলিট) করা যায় ★★★
-            result[key] = { id: d.id, ...data };
+
+            // একই খাতের আগের পেমেন্ট থাকলে তার সঙ্গে যোগ
+            if (!result[key]) {
+                result[key] = {
+                    id: d.id,
+                    ...data,
+                    amount: 0,
+                    paymentIds: [],
+                    paymentCount: 0
+                };
+            }
+
+            result[key].amount += Number(data.amount || 0);
+            result[key].paymentIds.push(d.id);
+            result[key].paymentCount++;
         });
-    } catch (err) { 
-        console.error('❌ loadStudentDuesPayments error:', err); 
+
+    } catch (err) {
+        console.error('❌ loadStudentDuesPayments error:', err);
     }
-    
-    // ★★★ ফিক্স: ক্যাশে সংরক্ষণ ★★★
+
     window._studentDuesState.paymentsCache = Object.values(result);
-    
+
     return result;
 }
 
 // ─── পরিশোধ টগল ───
-window.toggleStudentPayment = async function(studentId, type, itemKey, yearMonth, dueAmount) {
+window.toggleStudentPayment = async function(studentId, type, itemKey, yearMonth, totalDue, payAmount) {
     if (!confirm('এই পরিশোধ নিশ্চিত করবেন?')) return;
     
     try {
@@ -69997,9 +70651,26 @@ window.toggleStudentPayment = async function(studentId, type, itemKey, yearMonth
         );
         const dupSnap = await getDocs(dupQ);
         
-        if (!dupSnap.empty) {
-            showToast('ℹ️ এই বাবদ ইতিমধ্যে পরিশোধ করা হয়েছে', 'info');
-            await loadStudentDuesPaymentTable(); // UI রিফ্রেশ
+        // আগের সব কিস্তির টাকা যোগ
+        let alreadyPaid = 0;
+
+        dupSnap.forEach(doc => {
+            alreadyPaid += Number(doc.data().amount || 0);
+        });
+
+        // বাকি টাকা হিসাব
+        const remaining = Math.max(0, Number(totalDue) - alreadyPaid);
+
+        // এবারের পরিশোধের পরিমাণ যাচাই
+        payAmount = Number(payAmount);
+
+        if (payAmount <= 0) {
+            showToast('⚠️ পরিশোধের পরিমাণ সঠিক নয়', 'warn');
+            return;
+        }
+
+        if (payAmount > remaining + 0.01) {
+            showToast(`⚠️ ইতোমধ্যে ৳${alreadyPaid} পরিশোধ হয়েছে। বাকি ৳${remaining}।`, 'warn');
             return;
         }
         
@@ -70017,8 +70688,8 @@ window.toggleStudentPayment = async function(studentId, type, itemKey, yearMonth
             type: type,
             itemKey: itemKey,
             yearMonth: currentYM,
-            amount: dueAmount,
-            dueAmount: dueAmount,
+            amount: payAmount,
+            dueAmount: totalDue,
             receiptNo: receiptNo,
             yearId: year.id,
             yearName: year.name,
@@ -70038,7 +70709,7 @@ window.toggleStudentPayment = async function(studentId, type, itemKey, yearMonth
             category: 'ছাত্রদের মাসিক বেতন',
             donorName: student.name,
             mobile: student.mobile1 || '',
-            amount: dueAmount,
+            amount: payAmount,
             method: 'cash',
             receiptNo: receiptNo,
             note: `ছাত্রপ্রদেয়: ${type === 'onetime' ? 'এককালীন' : 'মাসিক'} — ${itemKey}`,
@@ -70047,7 +70718,7 @@ window.toggleStudentPayment = async function(studentId, type, itemKey, yearMonth
             _fromStudentDues: true
         });
         
-        showToast(`✅ ৳${dueAmount} পরিশোধ নিশ্চিত + আয় যোগ`, 'success');
+        showToast(`✅ ৳${payAmount} পরিশোধ নিশ্চিত + আয় যোগ`, 'success');
         
         // ক্যাশে পেমেন্ট যোগ করে সরাসরি UI আপডেট
         if (!window._studentDuesState.paymentsCache) {
@@ -70476,15 +71147,15 @@ async function loadStudentDuesPaymentTable() {
     
     // প্রস্তুত টেবিল
     const isOnetime = state.paymentTab === 'onetime';
-    const isPartial = state.paymentTab === 'partial';
+    const isPartialTab = state.paymentTab === 'partial'; // ★ গ্লোবাল স্টেটের নাম পরিবর্তন
     
     // ★★★ ৩ ধরনের টাইপ হ্যান্ডেল করার জন্য ★★★
-    const typeStr = isOnetime ? 'onetime' : (isPartial ? 'partial' : 'monthly');
-    const items = isOnetime ? config.onetime.items : (isPartial ? (config.partial?.items || []) : config.monthly.items);
+    const typeStr = isOnetime ? 'onetime' : (isPartialTab ? 'partial' : 'monthly');
+    const items = isOnetime ? config.onetime.items : (isPartialTab ? (config.partial?.items || []) : config.monthly.items);
     const monthKey = state.paymentMonth;
     
     // হেডার কালার
-    const headerBg = isOnetime ? 'bg-blue-700' : (isPartial ? 'bg-amber-700' : 'bg-teal-700');
+    const headerBg = isOnetime ? 'bg-blue-700' : (isPartialTab ? 'bg-amber-700' : 'bg-teal-700');
     
     // হেডার
     const headers = items.map(item => `
@@ -70499,7 +71170,7 @@ async function loadStudentDuesPaymentTable() {
         let studentDues = {};
         if (isOnetime) {
             studentDues = duesData.onetime[s.id]?.items || {};
-        } else if (isPartial) {
+        } else if (isPartialTab) {
             studentDues = duesData.partial?.[s.id]?.[monthKey]?.items || {};
         } else {
             studentDues = duesData.monthly[s.id]?.[monthKey]?.items || {};
@@ -70508,16 +71179,16 @@ async function loadStudentDuesPaymentTable() {
         const cells = items.map(item => {
             const dueAmount = Number(studentDues[item.key] || 0);
             
-            // ★★★ পেমেন্ট কি (Payment Key) তৈরি ★★★
+            // ★★★ পেমেন্ট কি (Payment Key) তৈরি — এটাই ফায়ারবেসের আসল কি ★★★
             const targetYearMonth = isOnetime ? '' : (monthKey || '');
             const paymentKey = `${s.id}::${typeStr}::${item.key}::${targetYearMonth}`;
             
             const payment = payments[paymentKey];
             const paidAmount = payment ? Number(payment.amount) : 0;
             
-            // ★★★ ০.০১ পার্থক্য থাকলেও যেন পরিশোধিত ধরে ★★★
+            // ★★★ ০.০১ পার্থক্য থাকলেও যেন পরিশোধিত ধরে (রাউন্ডিং ইস্যু এড়াতে) ★★★
             const isPaid = dueAmount > 0 && (paidAmount + 0.01) >= dueAmount;
-            const isPartiallyPaid = paidAmount > 0 && !isPaid;
+            const isPartiallyPaid = paidAmount > 0 && !isPaid; // ★ লোকাল ভেরিয়েবলের নাম পরিবর্তন
             
             let cellClass = 'bg-slate-50 border-slate-300';
             let dueColor = 'text-slate-600';
@@ -70541,35 +71212,50 @@ async function loadStudentDuesPaymentTable() {
                             প্রদেয়: ৳${dueAmount.toLocaleString('bn-BD')}
                         </div>
                         
-                        <!-- পরিশোধিত হলে সবুজ লেবেল + লাল ক্রস বাটন, না হলে ইনপুট -->
-                        ${isPaid ? `
+                        ${isPaid || isPartiallyPaid ? `
                             <div class="flex items-center justify-center gap-1 w-full">
-                                <div class="flex-1 py-2 bg-emerald-600 text-white text-[11px] font-bold rounded shadow-sm text-center">
-                                    <i class="fa-solid fa-check-circle"></i> ✓ পরিশোধিত
-                                </div>
-                                <button onclick="undoStudentPayment('${payment.id}')" 
+                                ${isPaid ? `
+                                    <div class="flex-1 py-2 bg-emerald-600 text-white text-[11px] font-bold rounded shadow-sm text-center">
+                                        <i class="fa-solid fa-check-circle"></i> ✓ পরিশোধিত
+                                    </div>
+                                ` : `
+                                    <div class="flex-1 py-2 bg-amber-100 text-amber-800 text-[11px] font-bold rounded text-center">
+                                        আংশিক পরিশোধ
+                                    </div>
+                                `}
+                                <button onclick="undoStudentPayment('${payment.id}')"
                                         class="py-2 px-2 bg-red-100 hover:bg-red-600 text-red-600 hover:text-white rounded shadow-sm transition"
-                                        title="ভুল হলে বাতিল করুন">
+                                        title="পরিশোধের এন্ট্রি বাতিল করুন">
                                     <i class="fa-solid fa-xmark text-sm"></i>
                                 </button>
                             </div>
-                            <div class="text-[11px] text-emerald-800 font-bold mt-1">
+                            <div class="text-[11px] ${isPaid ? 'text-emerald-800' : 'text-amber-800'} font-bold mt-1">
                                 ৳${paidAmount.toLocaleString('bn-BD')}
                             </div>
+                            ${!isPaid ? `
+                                <input type="number"
+                                    value=""
+                                    placeholder="বাকি: ৳${(dueAmount - paidAmount).toLocaleString('bn-BD')}"
+                                    class="w-full text-center text-xs p-1.5 border-2 border-slate-300 rounded-md font-bold mb-1">
+                                <button onclick="toggleStudentPayment('${s.id}', '${typeStr}', '${item.key}', '${targetYearMonth}', ${dueAmount}, (this.parentElement.querySelector('input').value.trim() === '' ? ${dueAmount - paidAmount} : Number(this.parentElement.querySelector('input').value)))"
+                                        class="w-full py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded shadow-sm transition">
+                                    বাকি পরিশোধ
+                                </button>
+                            ` : ''}
                         ` : `
-                            <input type="number" 
-                                   value="${paidAmount || ''}"
-                                   placeholder="৳ পরিমাণ"
-                                   onchange="onStudentPaymentAmountChange('${s.id}', '${typeStr}', '${item.key}', '${targetYearMonth}', this)"
-                                   class="w-full text-center text-xs p-1.5 border-2 border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-md font-bold mb-1">
-                            
+                            <input type="number"
+                                value=""
+                                placeholder="৳ পরিমাণ"
+                                class="w-full text-center text-xs p-1.5 border-2 border-slate-300 rounded-md font-bold mb-1">
+
                             ${dueAmount > 0 ? `
-                                <button onclick="toggleStudentPayment('${s.id}', '${typeStr}', '${item.key}', '${targetYearMonth}', ${dueAmount})" 
-                                        class="w-full py-1.5 ${isPartiallyPaid ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'} text-white text-[11px] font-bold rounded shadow-sm transition">
-                                    ${isPartiallyPaid ? 'বাকি পরিশোধ' : 'পরিশোধ করুন'}
+                                <button onclick="toggleStudentPayment('${s.id}', '${typeStr}', '${item.key}', '${targetYearMonth}', ${dueAmount}, (this.parentElement.querySelector('input').value.trim() === '' ? ${dueAmount} : Number(this.parentElement.querySelector('input').value)))"
+                                        class="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded shadow-sm transition">
+                                    পরিশোধ করুন
                                 </button>
                             ` : '<div class="text-[10px] text-slate-400 italic py-1">প্রদেয় নেই</div>'}
                         `}
+
                     </div>
                 </td>
             `;
@@ -71401,7 +72087,8 @@ window.onTpBookSelect = async function(idx) {
 // ৩. ক্লাসের ভেতরের হাজিরা পেজ
 // ═══════════════════════════════════════════════════════════════
 async function renderTpClassAttendancePage() {
-    const content = document.getElementById('tp-dynamic-content');
+    const content = document.getElementById('tp-attendance-page-content')
+                 || document.getElementById('tp-dynamic-content');
     if (!content) return;
 
     const state = window._tpClassState;
@@ -71497,7 +72184,10 @@ async function renderTpClassAttendancePage() {
 window.backToTpClassList = function() {
     window._tpClassState.selectedClass = '';
     window._tpClassState.statuses = {};
-    renderTpClassAttendance(document.getElementById('tp-dynamic-content'));
+    renderTpClassAttendance(
+        document.getElementById('tp-attendance-page-content')
+        || document.getElementById('tp-dynamic-content')
+    );
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -77235,6 +77925,311 @@ window.getStudentMarkMeta = function(student, marksKey, colKey) {
     }
     return null;
 };
+
+// ═══════════════════════════════════════════════════════════
+// ★★★ শিক্ষক পোর্টাল — সীমিত ছাত্রপ্রদেয় হিসাব ★★★
+// শুধু নিজের Assigned ক্লাসের পরিশোধ ও বাকি তথ্য
+// ═══════════════════════════════════════════════════════════
+
+window._tpDuesPortalState = window._tpDuesPortalState || {
+    view: 'payment'
+};
+
+window._tpDuesAllowedClasses = [];
+
+// ─── মূল পেজ ───
+window.renderTpStudentDuesAccounting = async function(container) {
+    if (!container) return;
+
+    try {
+        // শিক্ষক ছাড়া অন্য কেউ এই পেজ ব্যবহার করবে না
+        if (currentUserData?.role !== 'teacher') {
+            container.innerHTML = `
+                <div class="bg-white rounded-xl p-8 text-center text-red-600">
+                    এই পেজটি শুধু শিক্ষকদের জন্য।
+                </div>`;
+            return;
+        }
+
+        // প্রয়োজনীয় ডাটা লোড
+        await loadStudentDuesConfig();
+
+        if (!window.studentsCache?.length &&
+            typeof loadStudentsFromFirestore === 'function') {
+            await loadStudentsFromFirestore();
+        }
+
+        if (typeof loadCurrentAcctYear === 'function') {
+            await loadCurrentAcctYear();
+        }
+
+        // শিক্ষকের Assigned ক্লাস
+        const allowed = getTeacherAllowedClasses() || [];
+
+        const classes = allowed.map(key => {
+            const parts = key.split('::');
+            return {
+                dept: parts[0],
+                className: parts[1]
+            };
+        }).filter(x => x.dept && x.className);
+
+        window._tpDuesAllowedClasses = classes;
+
+        if (classes.length === 0) {
+            container.innerHTML = `
+                <button onclick="backToTpDashboard()"
+                    class="bg-slate-200 px-3 py-2 rounded-lg text-xs font-bold mb-4">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+                <div class="bg-white rounded-xl p-8 text-center">
+                    <i class="fa-solid fa-user-slash text-4xl text-slate-300 mb-3"></i>
+                    <p class="font-bold text-slate-700">
+                        আপনার কোনো শ্রেণি নির্ধারিত নেই।
+                    </p>
+                    <p class="text-xs text-slate-500 mt-1">
+                        এডমিনের সাথে যোগাযোগ করুন।
+                    </p>
+                </div>`;
+            return;
+        }
+
+        const state = window._studentDuesState;
+        const portal = window._tpDuesPortalState;
+
+        // আগে নির্বাচিত ক্লাস অনুমোদিত কি না যাচাই
+        let selected = classes.find(c =>
+            c.dept === state.paymentDept &&
+            c.className === state.paymentClass
+        );
+
+        if (!selected) {
+            selected = classes[0];
+        }
+
+        state.paymentDept = selected.dept;
+        state.paymentClass = selected.className;
+
+        if (!state.paymentMonth) {
+            state.paymentMonth = new Date().toISOString().slice(0, 7);
+        }
+
+        if (!state.paymentYear && window._acctNew?.currentYear?.id) {
+            state.paymentYear = window._acctNew.currentYear.id;
+        }
+
+        // বর্তমান ভিউ
+        const isPayment = portal.view === 'payment';
+
+        // Assigned ক্লাসের তালিকা
+        const classOptions = classes.map((c, i) => {
+            const deptName =
+                configData?.departments?.find(d => d.key === c.dept)?.name
+                || c.dept;
+
+            const selectedClass =
+                c.dept === selected.dept &&
+                c.className === selected.className;
+
+            return `
+                <option value="${i}" ${selectedClass ? 'selected' : ''}>
+                    ${deptName} — ${c.className}
+                </option>
+            `;
+        }).join('');
+
+        container.innerHTML = `
+            <button onclick="backToTpDashboard()"
+                class="flex items-center gap-1.5 text-xs font-bold text-slate-600
+                bg-slate-200 hover:bg-slate-300 px-3 py-2 rounded-lg mb-4">
+                <i class="fa-solid fa-arrow-left"></i> মেনু
+            </button>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
+
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-10 h-10 rounded-lg bg-sky-100 text-sky-700
+                        flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800">
+                            হিসাব বিভাগ
+                        </h3>
+                        <p class="text-[10px] text-slate-500">
+                            আপনার দায়িত্বপ্রাপ্ত শ্রেণির হিসাব
+                        </p>
+                    </div>
+                </div>
+
+                <!-- শুধু Assigned ক্লাস -->
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">
+                        দায়িত্বপ্রাপ্ত শ্রেণি
+                    </label>
+
+                    <select onchange="tpDuesChangeClass(this.value)"
+                        class="w-full rounded-lg border border-slate-300 p-2 text-sm">
+                        ${classOptions}
+                    </select>
+                </div>
+
+                <!-- পরিশোধ ও বাকি -->
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button onclick="tpDuesSetView('payment')"
+                        class="py-3 rounded-lg text-sm font-bold
+                        ${isPayment
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-100 text-slate-700'}">
+                        <i class="fa-solid fa-money-bill-wave"></i>
+                        পরিশোধ তথ্য
+                    </button>
+
+                    <button onclick="tpDuesSetView('pending')"
+                        class="py-3 rounded-lg text-sm font-bold
+                        ${!isPayment
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-slate-100 text-slate-700'}">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        বাকি তথ্য
+                    </button>
+                </div>
+
+                <!-- এককালীন, মাসিক, খণ্ডকালীন -->
+                <div class="flex gap-2 mb-3">
+                    <button onclick="tpDuesSetType('onetime')"
+                        class="flex-1 py-2 rounded-lg text-xs font-bold
+                        ${state.paymentTab === 'onetime'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-600'}">
+                        এককালীন
+                    </button>
+
+                    <button onclick="tpDuesSetType('monthly')"
+                        class="flex-1 py-2 rounded-lg text-xs font-bold
+                        ${state.paymentTab === 'monthly'
+                            ? 'bg-teal-600 text-white'
+                            : 'bg-slate-100 text-slate-600'}">
+                        মাসিক
+                    </button>
+
+                    <button onclick="tpDuesSetType('partial')"
+                        class="flex-1 py-2 rounded-lg text-xs font-bold
+                        ${state.paymentTab === 'partial'
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-slate-100 text-slate-600'}">
+                        খণ্ডকালীন
+                    </button>
+                </div>
+
+                <!-- মাস নির্বাচন -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">
+                        মাস নির্বাচন
+                    </label>
+                    <input type="month"
+                        value="${state.paymentMonth}"
+                        onchange="tpDuesSetMonth(this.value)"
+                        class="w-full rounded-lg border border-slate-300 p-2 text-sm">
+                </div>
+            </div>
+
+            <!-- মূল তথ্য এখানে দেখাবে -->
+            <div id="tp-dues-result"
+                class="bg-white rounded-xl border border-slate-200 p-2 min-h-[250px]">
+                <div class="text-center py-8">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
+                    <p class="text-xs mt-2">হিসাব লোড হচ্ছে...</p>
+                </div>
+            </div>
+        `;
+
+        // বিদ্যমান মেইন সেকশনের ফাংশন ব্যবহার
+        const result = document.getElementById('tp-dues-result');
+
+        if (isPayment) {
+            result.innerHTML = `
+                <div id="student-dues-payment-content"></div>
+            `;
+            await loadStudentDuesPaymentTable();
+
+        } else {
+            result.innerHTML = `
+                <div id="student-dues-pending-content"></div>
+            `;
+            await loadStudentDuesPendingTable();
+        }
+
+    } catch (err) {
+        console.error('Teacher Dues Portal:', err);
+        container.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-xl p-5 text-center">
+                <p class="font-bold text-red-700">হিসাব লোড করা যায়নি</p>
+                <p class="text-xs text-red-600 mt-2">${err.message}</p>
+            </div>
+        `;
+    }
+};
+
+
+// ─── শ্রেণি পরিবর্তন ───
+window.tpDuesChangeClass = async function(index) {
+    const selected = window._tpDuesAllowedClasses[Number(index)];
+    if (!selected) return;
+
+    const state = window._studentDuesState;
+
+    // কেবল Assigned শ্রেণি গ্রহণ
+    const allowed = getTeacherAllowedClasses() || [];
+    const key = selected.dept + '::' + selected.className;
+
+    if (!allowed.includes(key)) {
+        showToast('এই শ্রেণি দেখার অনুমতি নেই', 'error');
+        return;
+    }
+
+    state.paymentDept = selected.dept;
+    state.paymentClass = selected.className;
+
+    await renderTpStudentDuesAccounting(
+        document.getElementById('tp-dynamic-content')
+    );
+};
+
+
+// ─── পরিশোধ / বাকি পেজ পরিবর্তন ───
+window.tpDuesSetView = async function(view) {
+    window._tpDuesPortalState.view = view;
+    await renderTpStudentDuesAccounting(
+        document.getElementById('tp-dynamic-content')
+    );
+};
+
+
+// ─── এককালীন / মাসিক / খণ্ডকালীন পরিবর্তন ───
+window.tpDuesSetType = async function(type) {
+    const state = window._studentDuesState;
+
+    state.paymentTab = type;
+    state.pendingTab = type;
+
+    await renderTpStudentDuesAccounting(
+        document.getElementById('tp-dynamic-content')
+    );
+};
+
+
+// ─── মাস পরিবর্তন ───
+window.tpDuesSetMonth = async function(month) {
+    if (!month) return;
+
+    window._studentDuesState.paymentMonth = month;
+
+    await renderTpStudentDuesAccounting(
+        document.getElementById('tp-dynamic-content')
+    );
+};
+
 </script>
 </body>
 </html>
