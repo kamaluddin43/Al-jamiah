@@ -58907,21 +58907,53 @@ window.showGuardianPortal = function() {
             <div id="gp-student-profile-bar" class="max-w-4xl mx-auto px-4 pt-6">
                 <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 flex items-center gap-4 relative overflow-hidden">
                     <div class="absolute top-0 right-0 w-24 h-24 bg-violet-50 rounded-bl-full -z-0"></div>
-                    
-                    <!-- ★ ছবি দেখানোর নতুন লজিক -->
+
+                    <!-- ★ মূল ছবি: অপরিবর্তিত -->
                     <div class="w-16 h-16 bg-violet-100 text-violet-600 rounded-full flex items-center justify-center text-3xl flex-shrink-0 z-10 overflow-hidden border-2 border-violet-300">
-                        ${student.photo ? 
-                            `<img src="${student.photo}" alt="${student.name}" class="w-full h-full object-cover">` : 
+                        ${student.photo ?
+                            `<img src="${student.photo}" alt="${student.name}" class="w-full h-full object-cover">` :
                             `<i class="fa-solid fa-user-graduate"></i>`
                         }
                     </div>
 
-                    <div class="z-10 flex-1">
+                    <!-- ★ মূল পরিচিতি: অপরিবর্তিত -->
+                    <div class="z-10 flex-1 min-w-0">
                         <h2 class="text-xl font-bold text-slate-800">${student.name}</h2>
                         <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-slate-600 font-semibold">
                             <span><i class="fa-solid fa-id-card"></i> ${student.studentId || '—'}</span>
                             <span class="font-arabic"><i class="fa-solid fa-school"></i> ${student.className || '—'}</span>
                         </div>
+                    </div>
+
+                    <!-- ★ ডান পাশে নতুন তথ্য -->
+                    <div id="gp-profile-extra-info"
+                        class="z-10 flex-shrink-0 border-l border-slate-200 pl-3 ml-auto
+                                text-[11px] sm:text-xs space-y-2 min-w-[135px]">
+
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-check text-emerald-600"></i>
+                            <div>
+                                <span class="text-slate-500">আজকের হাজিরা:</span>
+                                <strong id="gp-profile-attendance" class="text-emerald-700">লোড হচ্ছে...</strong>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-award text-amber-600"></i>
+                            <div>
+                                <span class="text-slate-500">সর্বশেষ ফলাফল:</span>
+                                <strong id="gp-profile-result" class="text-slate-700">লোড হচ্ছে...</strong>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-wallet text-rose-600"></i>
+                            <div>
+                                <span class="text-slate-500">প্রদেয় বাকি:</span>
+                                <strong id="gp-profile-due" class="text-rose-700">লোড হচ্ছে...</strong>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -58944,6 +58976,225 @@ window.showGuardianPortal = function() {
 
     document.body.insertAdjacentHTML('beforeend', portalHTML);
     switchGpTab('dashboard'); // ★ ডিফল্টভাবে মেইন ড্যাশবোর্ড খুলবে
+    loadGpProfileAttendance();
+    loadGpProfileResult();
+    loadGpProfileDue();
+};
+
+
+// ═══════════════════════════════════════════════
+// গার্ডিয়ান প্রোফাইল: আজকের হাজিরা
+// ═══════════════════════════════════════════════
+window.loadGpProfileAttendance = async function() {
+    const box = document.getElementById('gp-profile-attendance');
+    if (!box) return;
+
+    const student = window._guardianSession;
+    if (!student?.id) {
+        box.textContent = 'তথ্য নেই';
+        return;
+    }
+
+    // স্থানীয় তারিখ (UTC নয়)
+    const now = new Date();
+    const today = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0')
+    ].join('-');
+
+    try {
+        const records = await getGpStudentAttendance(student.id, {
+            fromDate: today,
+            toDate: today,
+            type: 'daily'
+        });
+
+        // কোনো রেকর্ড না থাকলে ডিফল্ট উপস্থিত
+        const status = records.length
+            ? records[0].status || 'present'
+            : 'present';
+
+        const statusMap = {
+            present: ['উপস্থিত', 'text-emerald-700'],
+            absent: ['অনুপস্থিত', 'text-red-700'],
+            leave: ['ছুটি', 'text-amber-700'],
+            sick: ['অসুস্থ', 'text-orange-700'],
+            late: ['বিলম্ব', 'text-purple-700']
+        };
+
+        const result = statusMap[status] || ['উপস্থিত', 'text-emerald-700'];
+
+        box.textContent = result[0];
+        box.className = result[1];
+
+    } catch (error) {
+        console.error('প্রোফাইল হাজিরা:', error);
+        box.textContent = 'লোড হয়নি';
+    }
+};
+
+
+// ═══════════════════════════════════════════════
+// গার্ডিয়ান প্রোফাইল: মোট প্রদেয় বাকি
+// ═══════════════════════════════════════════════
+window.loadGpProfileDue = async function() {
+    const box = document.getElementById('gp-profile-due');
+    if (!box) return;
+
+    const student = window._guardianSession;
+
+    if (!student?.id) {
+        box.textContent = 'তথ্য নেই';
+        return;
+    }
+
+    box.textContent = 'লোড হচ্ছে...';
+
+    try {
+        // প্রদেয় কনফিগ লোড
+        await loadStudentDuesConfig();
+
+        const { collection, getDocs, query, where } = window.fbFuncs;
+
+        const studentId = student.id;
+        const config = window._studentDuesConfig;
+
+        // ১. এককালীন প্রদেয় লোড
+        const onetimeQ = query(
+            collection(window.fbDB, STUDENT_DUES_FS.ONETIME),
+            where('studentDbId', '==', studentId)
+        );
+
+        const onetimeSnap = await getDocs(onetimeQ);
+
+        let onetimeDues = {};
+
+        if (!onetimeSnap.empty) {
+            onetimeDues = onetimeSnap.docs[0].data().items || {};
+        } else {
+            onetimeDues = {
+                admissionForm: Number(student.admissionFormFee) || 0,
+                admissionFee: Number(student.admissionFee) || 0,
+                sessionFee: Number(student.sessionFee) || 0
+            };
+        }
+
+        // ২. সব মাসের প্রদেয় লোড
+        const monthlyQ = query(
+            collection(window.fbDB, STUDENT_DUES_FS.MONTHLY),
+            where('studentDbId', '==', studentId)
+        );
+
+        const monthlySnap = await getDocs(monthlyQ);
+
+        // ৩. সব পরিশোধের তথ্য লোড
+        const paymentsQ = query(
+            collection(window.fbDB, STUDENT_DUES_FS.PAYMENTS),
+            where('studentDbId', '==', studentId)
+        );
+
+        const paymentsSnap = await getDocs(paymentsQ);
+
+        // প্রতিটি খাতের পরিশোধিত টাকা একত্র করা
+        const paidMap = {};
+
+        paymentsSnap.forEach(d => {
+            const p = d.data();
+
+            const key =
+                `${p.type}::${p.itemKey}::${p.yearMonth || ''}`;
+
+            paidMap[key] = (paidMap[key] || 0) +
+                (Number(p.amount) || 0);
+        });
+
+        let totalDue = 0;
+        let totalPaid = 0;
+
+        // ৪. এককালীন বাকি হিসাব
+        (config.onetime?.items || []).forEach(item => {
+            const due = Math.max(0, Number(onetimeDues[item.key]) || 0);
+
+            const key = `onetime::${item.key}::`;
+            const paid = paidMap[key] || 0;
+
+            totalDue += due;
+            totalPaid += Math.min(due, paid);
+        });
+
+        // ৫. সব মাসের বাকি হিসাব
+        const monthlyItems = config.monthly?.items || [];
+
+        if (!monthlySnap.empty) {
+
+            monthlySnap.forEach(d => {
+                const data = d.data();
+                const items = data.items || {};
+                const yearMonth = data.yearMonth || '';
+
+                monthlyItems.forEach(item => {
+                    const due = Math.max(0, Number(items[item.key]) || 0);
+
+                    const key =
+                        `monthly::${item.key}::${yearMonth}`;
+
+                    const paid = paidMap[key] || 0;
+
+                    totalDue += due;
+                    totalPaid += Math.min(due, paid);
+                });
+            });
+
+        } else {
+            // পুরোনো শিক্ষার্থীর তথ্য থেকে মাসিক প্রদেয়
+            const legacyMonthly = {
+                food: Number(student.monthlyFood) || 0,
+                salary: Number(student.monthlySalary) || 0,
+                hostel: Number(student.hostelFee) || 0,
+                electricity: 0,
+                iron: 0
+            };
+
+            const now = new Date();
+            const currentMonth =
+                `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+            monthlyItems.forEach(item => {
+                const due = Math.max(
+                    0,
+                    Number(legacyMonthly[item.key]) || 0
+                );
+
+                const key =
+                    `monthly::${item.key}::${currentMonth}`;
+
+                const paid = paidMap[key] || 0;
+
+                totalDue += due;
+                totalPaid += Math.min(due, paid);
+            });
+        }
+
+        // ৬. মোট বাকি
+        const remaining = Math.max(0, totalDue - totalPaid);
+
+        if (remaining <= 0) {
+            box.textContent = 'পরিশোধিত';
+            box.className = 'text-emerald-700 font-bold';
+        } else {
+            box.textContent =
+                '৳' + remaining.toLocaleString('bn-BD');
+
+            box.className = 'text-rose-700 font-bold';
+        }
+
+    } catch (error) {
+        console.error('Guardian profile due error:', error);
+
+        box.textContent = 'লোড হয়নি';
+        box.className = 'text-red-600';
+    }
 };
 
 window.logoutGuardian = function() {
@@ -62389,10 +62640,42 @@ async function renderGpResults(container) {
         return;
     }
 
-    // ★★★ পাবলিশ চেক ★★★
-    // ★★★ নতুন: শিক্ষাবর্ষ ও পরীক্ষার কনটেক্সট ★★★
-    const ctxYear = window._marksContext?.academicYear || getCurrentYear();
-    const ctxExam = window._marksContext?.examType ?? 'term2';
+    // ★★★ গার্ডিয়ান শিক্ষার্থীর বিভাগ অনুযায়ী শিক্ষাবর্ষ ও ডিফল্ট পরীক্ষা ★★★
+    const wantType = student.dept === 'non_res' ? 'gregorian' : 'hijri';
+
+    const gpYears = (academicYears || [])
+        .filter(y => !y.type || y.type === wantType)
+        .sort((a, b) => {
+            const getYearNumber = y => {
+                const matches = String(y.name).match(/\d{4}/g);
+                return matches ? Number(matches[matches.length - 1]) : 0;
+            };
+            return getYearNumber(b) - getYearNumber(a);
+        });
+
+    const latestGpYear = gpYears[0]?.name || getCurrentYear();
+
+    // নতুন শিক্ষার্থীর ক্ষেত্রে সর্বশেষ বছর ও বার্ষিক পরীক্ষা ডিফল্ট হবে
+    const guardianId = String(student.id || student.studentId || '');
+
+    if (window._gpResultContextStudentId !== guardianId) {
+        window._gpResultContextStudentId = guardianId;
+        window._marksContext = {
+            ...(window._marksContext || {}),
+            academicYear: latestGpYear,
+            examType: 'annual'
+        };
+    } else {
+        if (!gpYears.some(y => y.name === window._marksContext?.academicYear)) {
+            window._marksContext.academicYear = latestGpYear;
+        }
+        if (!window._marksContext?.examType) {
+            window._marksContext.examType = 'annual';
+        }
+    }
+
+    let ctxYear = window._marksContext?.academicYear || '';
+    let ctxExam = window._marksContext?.examType || '';
     
     // পাবলিশ চেক (শুধু চলতি পরীক্ষার জন্য, আগেরগুলো সবসময় দেখা যাবে)
     const isCurrentExam = (ctxExam === 'term2'); // আপনার চলতি পরীক্ষা যদি term2 হয়
@@ -62604,7 +62887,7 @@ async function renderGpResults(container) {
         if (!window._gpResultTab) window._gpResultTab = 'my';
 
         // ★★★ নতুন: শিক্ষাবর্ষ ও পরীক্ষা সিলেক্টর ★★★
-        const yearOptions = (academicYears || []).map(y => 
+        const yearOptions = gpYears.map(y =>
             `<option value="${y.name}" ${y.name === ctxYear ? 'selected' : ''}>${y.name}${y.isCurrent ? ' (বর্তমান)' : ''}</option>`
         ).join('');
 
@@ -62872,7 +63155,7 @@ function buildGpClassResultPreview(myStudent, loadedClassmates = null) {
         }
     });
 
-// ★ সেভ করা অর্ডার অনুযায়ী সাজাই
+    // ★ সেভ করা অর্ডার অনুযায়ী সাজাই
     const savedOrder = _marksColumnOrder[className] || [];
     let orderedCols = [];
     savedOrder.forEach(key => {
@@ -63444,6 +63727,477 @@ async function renderGpNotices(container) {
         container.innerHTML = `<p class="text-center text-red-500 py-6">নোটিশ লোড ব্যর্থ হয়েছে</p>`;
     }
 }
+
+
+// ═══════════════════════════════════════════════════════════
+// গার্ডিয়ান প্রোফাইল: সর্বশেষ পূর্ণাঙ্গ পরীক্ষার ফলাফল
+// ═══════════════════════════════════════════════════════════
+
+window.loadGpProfileResult = async function() {
+    const box = document.getElementById('gp-profile-result');
+    if (!box) return;
+
+    const student = window._guardianSession;
+
+    if (!student) {
+        box.textContent = 'তথ্য নেই';
+        return;
+    }
+
+    box.textContent = 'লোড হচ্ছে...';
+
+    try {
+        // ১. Publish Status যাচাই
+        if (typeof loadPublishStatusForGuardian === 'function') {
+            await loadPublishStatusForGuardian();
+        }
+
+        if (_examPublishStatus !== true) {
+            box.textContent = 'আনপাবলিশড';
+            box.className = 'text-red-600 font-bold';
+            return;
+        }
+
+        // ২. শিক্ষার্থীর বিভাগ নির্ধারণ
+        const isNonRes = student.dept === 'non_res';
+        const wantedType = isNonRes ? 'gregorian' : 'hijri';
+
+        // ৩. শিক্ষাবর্ষ লোড
+        if (!Array.isArray(academicYears) || academicYears.length === 0) {
+            if (typeof loadAcademicYears === 'function') {
+                await loadAcademicYears();
+            }
+        }
+
+        // বিভাগ অনুযায়ী শিক্ষাবর্ষ আলাদা করা
+        const deptYears = (academicYears || []).filter(y => {
+            const name = String(y.name || '').replace(/\s+/g, '');
+
+            // নামের মধ্যে আবাসিক/অনাবাসিক পরিচয় থাকলে সেটিই চূড়ান্ত
+            if (name.includes('(অনাবাসিক)')) {
+                return isNonRes;
+            }
+
+            if (name.includes('(আবাসিক)')) {
+                return !isNonRes;
+            }
+
+            // পুরোনো শিক্ষাবর্ষে নামের সঙ্গে পরিচয় না থাকলে type দেখবে
+            if (y.type) {
+                return y.type === wantedType;
+            }
+
+            // পুরোনো সাধারণ শিক্ষাবর্ষের জন্য fallback
+            return true;
+        });
+
+        if (deptYears.length === 0) {
+            box.textContent = 'শিক্ষাবর্ষ পাওয়া যায়নি';
+            box.className = 'text-slate-500';
+            return;
+        }
+
+        // ৪. কনফিগ লোড
+        if (!configData || !configData.books) {
+            await loadConfigFromFirestore();
+        }
+
+        // মার্কস কলাম কনফিগ
+        const { doc, getDoc, collection, getDocs } = window.fbFuncs;
+
+        try {
+            const configSnap = await getDoc(
+                doc(window.fbDB, 'config', 'marksColumnsConfig')
+            );
+
+            if (configSnap.exists()) {
+                const data = configSnap.data();
+
+                _customMarksColumns = data.custom || {};
+                _deletedMarksColumns = data.deleted || {};
+                _marksColumnOrder = data.order || {};
+            }
+        } catch (e) {
+            console.warn('Marks columns load:', e);
+        }
+
+        // ৫. সব শিক্ষার্থীর তথ্য লোড
+
+        // গুরুত্বপূর্ণ: collection ও getDocs আগেই উপরে ঘোষণা করা হয়েছে।
+        // তাই এখানে পুনরায় const দিয়ে ঘোষণা করা যাবে না।
+
+        // দুই রেকর্ড একই শিক্ষার্থীর কি না যাচাই
+        const isSameStudent = (a, b) => {
+            const idA = String(a?.id || '').trim();
+            const idB = String(b?.id || '').trim();
+
+            if (idA && idB && idA === idB) return true;
+
+            const sidA = String(a?.studentId || '').trim();
+            const sidB = String(b?.studentId || '').trim();
+
+            return Boolean(sidA && sidB && sidA === sidB);
+        };
+
+        // marksByTerm ও customMarksByTerm-এর তথ্য নিরাপদে একত্র করা
+        const mergeTermData = (oldData, newData) => {
+            const result = { ...(oldData || {}) };
+
+            Object.entries(newData || {}).forEach(([termKey, termValue]) => {
+                const oldValue = result[termKey];
+
+                if (
+                    oldValue && typeof oldValue === 'object' &&
+                    !Array.isArray(oldValue) &&
+                    termValue && typeof termValue === 'object' &&
+                    !Array.isArray(termValue)
+                ) {
+                    result[termKey] = {
+                        ...oldValue,
+                        ...termValue
+                    };
+                } else if (termValue !== undefined && termValue !== null) {
+                    result[termKey] = termValue;
+                }
+            });
+
+            return result;
+        };
+
+        // শিক্ষার্থীর সাধারণ তথ্য ও মার্কস একত্র করা
+        const mergeStudentData = (oldStudent, newStudent) => {
+            const oldData = oldStudent || {};
+            const newData = newStudent || {};
+
+            return {
+                ...oldData,
+                ...newData,
+
+                marksByTerm: mergeTermData(
+                    oldData.marksByTerm,
+                    newData.marksByTerm
+                ),
+
+                customMarksByTerm: mergeTermData(
+                    oldData.customMarksByTerm,
+                    newData.customMarksByTerm
+                )
+            };
+        };
+
+        // প্রথমে ক্যাশের শিক্ষার্থীদের নেওয়া
+        const allStudents = Array.isArray(window.studentsCache)
+            ? window.studentsCache.map(s => ({ ...s }))
+            : [];
+
+        // এরপর Firestore থেকে সর্বশেষ তথ্য নেওয়া
+        const studentsSnap = await getDocs(
+            collection(window.fbDB, 'students')
+        );
+
+        studentsSnap.forEach(d => {
+            const firestoreStudent = {
+                ...d.data(),
+                id: d.id
+            };
+
+            const index = allStudents.findIndex(s =>
+                isSameStudent(s, firestoreStudent)
+            );
+
+            if (index >= 0) {
+                allStudents[index] = mergeStudentData(
+                    allStudents[index],
+                    firestoreStudent
+                );
+            } else {
+                allStudents.push(firestoreStudent);
+            }
+        });
+
+        // নিজের শিক্ষার্থীকে খোঁজা
+        const ownIndex = allStudents.findIndex(s =>
+            isSameStudent(s, student)
+        );
+
+        let freshStudent;
+
+        if (ownIndex >= 0) {
+            freshStudent = mergeStudentData(
+                student,
+                allStudents[ownIndex]
+            );
+
+            allStudents[ownIndex] = freshStudent;
+        } else {
+            freshStudent = { ...student };
+            allStudents.push(freshStudent);
+        }
+
+        // সর্বশেষ তথ্য ক্যাশেও সংরক্ষণ
+        if (Array.isArray(window.studentsCache)) {
+            const cacheIndex = window.studentsCache.findIndex(s =>
+                isSameStudent(s, freshStudent)
+            );
+
+            if (cacheIndex >= 0) {
+                window.studentsCache[cacheIndex] = mergeStudentData(
+                    window.studentsCache[cacheIndex],
+                    freshStudent
+                );
+            } else {
+                window.studentsCache.push({ ...freshStudent });
+            }
+        }
+
+        // ৬. জামাতের কলাম নির্ধারণ
+        const cleanStr = str => String(str || '')
+            .replace(/\(.*?\)/g, '')
+            .replace(/\s+/g, '')
+            .trim()
+            .toLowerCase();
+
+        const className = freshStudent.className;
+
+        const booksConfig = configData?.books || {};
+
+        // জামাতের নাম না মিললে স্বাভাবিকীকৃত নামে খুঁজবে
+        let matchedClass = Object.keys(booksConfig).find(k =>
+            cleanStr(k) === cleanStr(className)
+        );
+
+        matchedClass = matchedClass || className;
+
+        const books = booksConfig[matchedClass] || [];
+
+        const customCols =
+            _customMarksColumns[matchedClass] ||
+            _customMarksColumns[className] || [];
+
+        const deletedCols =
+            _deletedMarksColumns[matchedClass] ||
+            _deletedMarksColumns[className] || [];
+
+        const savedOrder =
+            _marksColumnOrder[matchedClass] ||
+            _marksColumnOrder[className] || [];
+
+        let activeCols = [];
+
+        books.forEach((book, idx) => {
+            const key = `default_${idx}`;
+
+            if (!deletedCols.includes(key)) {
+                activeCols.push({
+                    key,
+                    type: 'default',
+                    label: book
+                });
+            }
+        });
+
+        customCols.forEach(col => {
+            if (!deletedCols.includes(col.key)) {
+                activeCols.push({
+                    key: col.key,
+                    type: 'custom',
+                    label: col.label
+                });
+            }
+        });
+
+        // সংরক্ষিত কলাম অর্ডার বজায় রাখা
+        if (savedOrder.length) {
+            const ordered = [];
+
+            savedOrder.forEach(key => {
+                const found = activeCols.find(c => c.key === key);
+                if (found) ordered.push(found);
+            });
+
+            activeCols.forEach(col => {
+                if (!ordered.some(c => c.key === col.key)) {
+                    ordered.push(col);
+                }
+            });
+
+            activeCols = ordered;
+        }
+
+        if (!activeCols.length) {
+            box.textContent = 'মার্কস কলাম পাওয়া যায়নি';
+            return;
+        }
+
+        // ৭. পরীক্ষা ও নাম
+        const examOrder = [
+            'term1',
+            'term2',
+            'model',
+            'qurbani',
+            'annual'
+        ];
+
+        const examLabels = {
+            term1: '১ম সাময়িক',
+            term2: '২য় সাময়িক',
+            model: 'মডেল টেস্ট',
+            qurbani: 'কুরবানী পরীক্ষা',
+            annual: 'বার্ষিক পরীক্ষা'
+        };
+
+        // কোনো পরীক্ষার সব প্রয়োজনীয় কলামে নম্বর আছে কি না
+        const isCompleteResult = marks => {
+            if (!marks || !activeCols.length) return false;
+
+            const defaultMarks = marks.resultMarksObj || {};
+            const customMarks = marks.customMarks || {};
+
+            return activeCols.every(col => {
+                const value = col.type === 'default'
+                    ? defaultMarks[col.key]
+                    : customMarks[col.key];
+
+                return value !== null &&
+                       value !== undefined &&
+                       value !== '' &&
+                       Number.isFinite(Number(value));
+            });
+        };
+
+        // ৮. সর্বশেষ শিক্ষাবর্ষ ও সর্বশেষ পূর্ণাঙ্গ পরীক্ষা খোঁজা
+        let selectedYear = '';
+        let selectedExam = '';
+        let ownMarks = null;
+
+        for (const yearObj of deptYears) {
+
+            const year = yearObj.name;
+
+            // সর্বশেষ পরীক্ষা থেকে পিছনের দিকে খুঁজবে
+            for (let i = examOrder.length - 1; i >= 0; i--) {
+
+                const exam = examOrder[i];
+
+                const marks = getStudentTermMarks(
+                    freshStudent,
+                    year,
+                    exam
+                );
+
+                // সব সক্রিয় কলামের নম্বর থাকলেই গ্রহণ
+                if (isCompleteResult(marks)) {
+                    selectedYear = year;
+                    selectedExam = exam;
+                    ownMarks = marks;
+                    break;
+                }
+            }
+
+            if (selectedYear) break;
+        }
+
+        // কোনো পূর্ণাঙ্গ ফলাফল পাওয়া যায়নি
+        if (!selectedYear || !selectedExam) {
+            box.textContent = 'ফলাফল নেই';
+            box.className = 'text-slate-500';
+            return;
+        }
+
+        // ৯. একই বিভাগ ও জামাতের শিক্ষার্থীদের নম্বর প্রস্তুত
+        const classmates = allStudents.filter(s =>
+            cleanStr(s.dept) === cleanStr(freshStudent.dept) &&
+            cleanStr(s.className) === cleanStr(freshStudent.className)
+        );
+
+        classmates.forEach(s => {
+            const marks = getStudentTermMarks(
+                s,
+                selectedYear,
+                selectedExam
+            );
+
+            s.resultMarksObj = marks.resultMarksObj || {};
+            s.customMarks = marks.customMarks || {};
+            s.examMarks = {};
+            s.resultMarks = [];
+        });
+
+        // ১০. সন্তানের ফলাফল তৈরি
+        const temporarySession = {
+            ...freshStudent,
+            resultMarksObj: ownMarks.resultMarksObj || {},
+            customMarks: ownMarks.customMarks || {}
+        };
+
+        const oldSession = window._guardianSession;
+
+        const oldYear = window._marksContext?.academicYear;
+        const oldExam = window._marksContext?.examType;
+
+        try {
+            window._guardianSession = temporarySession;
+
+            if (!window._marksContext) {
+                window._marksContext = {};
+            }
+
+            window._marksContext.academicYear = selectedYear;
+            window._marksContext.examType = selectedExam;
+
+            const resultHTML = buildGpClassResultPreview(
+                temporarySession,
+                classmates
+            );
+
+            const temp = document.createElement('div');
+            temp.innerHTML = resultHTML;
+
+            const myRow = Array.from(
+                temp.querySelectorAll('tbody tr')
+            ).find(row =>
+                row.classList.contains('bg-yellow-100')
+            );
+
+            if (!myRow) {
+                box.textContent = 'মেধাক্রম পাওয়া যায়নি';
+                box.className = 'text-slate-500';
+                return;
+            }
+
+            const cells = myRow.querySelectorAll('td');
+
+            const grade = cells.length >= 2
+                ? cells[cells.length - 2].textContent.trim()
+                : '—';
+
+            const rank = cells.length >= 1
+                ? cells[cells.length - 1].textContent.trim()
+                : '—';
+
+            // ১১. স্ট্যাটাসবারে ফলাফল
+            box.textContent = `${grade}-${rank}`;
+
+            box.className = 'text-slate-700 font-bold';
+
+            box.title = `বিভাগ: ${isNonRes ? 'অনাবাসিক' : 'আবাসিক'}`;
+
+        } finally {
+            window._guardianSession = oldSession;
+
+            if (window._marksContext) {
+                window._marksContext.academicYear = oldYear;
+                window._marksContext.examType = oldExam;
+            }
+        }
+
+    } catch (error) {
+        console.error('Guardian profile result error:', error);
+
+        box.textContent = 'লোড হয়নি';
+        box.className = 'text-red-600';
+    }
+};
 
 // নোটিশ কার্ড বানানোর হেল্পার ফাংশন (গার্ডিয়ান পোর্টালের জন্য)
 function buildNoticeCardHTML(data, isRecent) {
