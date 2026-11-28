@@ -10,7 +10,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#e0f2fe">
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/kamaluddin43/Al-jamiah/c5630f58c5f79d6063a18becbe3d6a0e59c27fee/logo.png">
 <link rel="icon" href="https://raw.githubusercontent.com/kamaluddin43/Al-jamiah/c5630f58c5f79d6063a18becbe3d6a0e59c27fee/logo.png" type="image/png">
 <link rel="shortcut icon" href="https://raw.githubusercontent.com/kamaluddin43/Al-jamiah/c5630f58c5f79d6063a18becbe3d6a0e59c27fee/logo.png" type="image/png">
@@ -1172,6 +1171,15 @@ header button {
     color: #fff;
 }
 
+/* ★★★ রিপোর্ট বাটনের প্যাটার্ন — নতুন যুক্ত ★★★ */
+#tab-btn-report::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%2310b981' stroke-width='1'%3E%3Ccircle cx='30' cy='30' r='20' stroke-dasharray='2 4'/%3E%3Ccircle cx='30' cy='30' r='10' stroke-dasharray='1 3'/%3E%3Ccircle cx='30' cy='30' r='2' fill='%2310b981' fill-opacity='0.4' stroke='none'/%3E%3C/g%3E%3C/svg%3E") !important;
+}
+#tab-btn-report i {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+}
+
 /* সেটিংস — রোজ */
 #tab-btn-settings::before {
     background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23f43f5e' stroke-width='1'%3E%3Ccircle cx='30' cy='30' r='20' stroke-dasharray='2 4'/%3E%3Ccircle cx='30' cy='30' r='10' stroke-dasharray='1 3'/%3E%3Ccircle cx='30' cy='30' r='2' fill='%23f43f5e' fill-opacity='0.4' stroke='none'/%3E%3C/g%3E%3C/svg%3E") !important;
@@ -1180,6 +1188,29 @@ header button {
 /* এডমিন — রেড */
 #tab-btn-admin::before {
     background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23dc2626' stroke-width='1'%3E%3Ccircle cx='30' cy='30' r='20' stroke-dasharray='2 4'/%3E%3Ccircle cx='30' cy='30' r='10' stroke-dasharray='1 3'/%3E%3Ccircle cx='30' cy='30' r='2' fill='%23dc2626' fill-opacity='0.4' stroke='none'/%3E%3C/g%3E%3C/svg%3E") !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* ★★★ রিপোর্টের সাব-বাটন প্যাটার্ন (নতুন) ★★★ */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* শিক্ষক রিপোর্ট সাব-বাটন — আকাশি */
+#subtab-btn-teacher::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%230ea5e9' stroke-width='1'%3E%3Ccircle cx='30' cy='30' r='20' stroke-dasharray='2 4'/%3E%3Ccircle cx='30' cy='30' r='10' stroke-dasharray='1 3'/%3E%3Ccircle cx='30' cy='30' r='2' fill='%230ea5e9' fill-opacity='0.4' stroke='none'/%3E%3C/g%3E%3C/svg%3E") !important;
+}
+
+/* শিক্ষার্থী রিপোর্ট সাব-বাটন — ফুশিয়া */
+#subtab-btn-student::before {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23d946ef' stroke-width='1'%3E%3Ccircle cx='30' cy='30' r='20' stroke-dasharray='2 4'/%3E%3Ccircle cx='30' cy='30' r='10' stroke-dasharray='1 3'/%3E%3Ccircle cx='30' cy='30' r='2' fill='%23d946ef' fill-opacity='0.4' stroke='none'/%3E%3C/g%3E%3C/svg%3E") !important;
+}
+
+#subtab-btn-teacher i {
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    color: #fff;
+}
+#subtab-btn-student i {
+    background: linear-gradient(135deg, #d946ef, #a21caf);
+    color: #fff;
 }
 
 
@@ -3217,6 +3248,13 @@ header button {
                 <span class="btn-label text-xs md:text-base leading-tight text-center">হাজিরা</span>
             </button>
 
+            <!-- ★★★ ১০.৭. রিপোর্ট — নতুন যুক্ত ★★★ -->
+            <button onclick="switchTab('report')" id="tab-btn-report" data-tab="report"
+                    class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px]">
+                <i class="fa-solid fa-chart-line"></i>
+                <span class="btn-label text-xs md:text-base leading-tight text-center">রিপোর্ট</span>
+            </button>
+
             <!-- ১০. সেটিংস (এডমিন only) -->
             <button onclick="switchTab('settings')" id="tab-btn-settings" data-tab="settings"
                     class="tab-btn pattern-btn rounded-2xl p-3 md:p-6 shadow-md flex flex-col items-center justify-center gap-2 md:gap-3 min-h-[100px] md:min-h-[160px] hidden">
@@ -4421,6 +4459,53 @@ header button {
     </div>
 
     <div id="att-content" class="hidden"></div>
+</section>
+
+<!-- ★★★ রিপোর্ট ট্যাব কন্টেন্ট ★★★ -->
+<section id="tab-report" class="tab-content hidden">
+    <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-10">
+
+        <button onclick="switchTab('home')"
+            class="px-3 py-2 bg-white border rounded-lg text-sm font-bold text-slate-600">
+            <i class="fa-solid fa-arrow-left"></i> হোম
+        </button>
+
+        <h3 class="text-lg md:text-xl font-bold text-slate-800 mb-5 text-center">রিপোর্ট</h3>
+
+        <!-- সাব-বাটন দুইটা -->
+        <div class="flex flex-wrap justify-center gap-3 md:gap-4">
+
+            <button type="button" onclick="openReportModule('teacher')"
+                id="subtab-btn-teacher"
+                class="subtab-btn pattern-btn rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-md flex items-center gap-2 md:gap-3">
+                <i class="fa-solid fa-chalkboard-user"></i>
+                <span class="text-xs md:text-base font-semibold">শিক্ষক রিপোর্ট</span>
+            </button>
+
+            <button type="button" onclick="openReportModule('student')"
+                id="subtab-btn-student"
+                class="subtab-btn pattern-btn rounded-xl px-4 py-3 md:px-6 md:py-4 shadow-md flex items-center gap-2 md:gap-3">
+                <i class="fa-solid fa-user-graduate"></i>
+                <span class="text-xs md:text-base font-semibold">শিক্ষার্থী রিপোর্ট</span>
+            </button>
+
+        </div>
+
+    </div>
+</section>
+
+<!-- রিপোর্টের বিস্তারিত পেজ -->
+<section id="report-management-page" class="hidden space-y-4">
+    <div class="flex items-center gap-2">
+        <button onclick="closeReportModule()"
+            class="px-3 py-2 bg-white border rounded-lg text-sm font-bold">
+            <i class="fa-solid fa-arrow-left"></i> রিপোর্ট
+        </button>
+        <h2 id="report-management-title"
+            class="font-bold text-lg text-slate-800">শিক্ষক রিপোর্ট</h2>
+    </div>
+
+    <div id="report-management-content"></div>
 </section>
 
 <!-- ═══════════════════ TAB 5: SETTINGS ═══════════════════ -->
@@ -35197,6 +35282,7 @@ window.DEFAULT_ADMISSION_FORM_CONFIG = {
 
 function applyConfig(data) {
     configData = data;
+    window.configData = data;
     
     // Global config variables আপডেট
     if (data.terms) {
@@ -48271,6 +48357,22 @@ window.getContactSignature = function(roleKey) {
 // ★★★ অ্যাপ থিম কালার ম্যানেজমেন্ট ★★★
 // ═══════════════════════════════════════════════════════════════
 const APP_THEMES = {
+    lightSky: {
+        name: 'হালকা আকাশি',
+        bg: '#f8fcff',
+        colors: {
+            50: '#f8fcff',
+            100: '#f0f9ff',
+            200: '#e0f2fe',
+            300: '#bae6fd',
+            400: '#7dd3fc',
+            500: '#38bdf8',
+            600: '#0ea5e9',
+            700: '#0284c7',
+            800: '#0369a1',
+            900: '#075985'
+        }
+    },
     emerald: {
         name: 'সবুজ (ডিফল্ট)',
         bg: '#f0fdf4', // হালকা সবুজ ব্যাকগ্রাউন্ড
@@ -48325,7 +48427,7 @@ const APP_THEMES = {
 
 // ১. থিম লোড ও প্রয়োগ করার ফাংশন
 window.applyAppTheme = function(themeKey) {
-    const theme = APP_THEMES[themeKey] || APP_THEMES.emerald;
+    const theme = APP_THEMES[themeKey] || APP_THEMES.lightSky;
     const root = document.documentElement;
     
     // CSS ভেরিয়েবল আপডেট করা
@@ -48371,7 +48473,7 @@ window.renderThemePicker = function() {
     const container = document.getElementById('theme-color-picker');
     if (!container) return;
     
-    const currentTheme = localStorage.getItem('madrasa_app_theme') || 'emerald';
+    const currentTheme = localStorage.getItem('madrasa_app_theme') || 'lightSky';
     
     container.innerHTML = Object.keys(APP_THEMES).map(key => {
         const t = APP_THEMES[key];
@@ -48395,7 +48497,7 @@ window.renderThemePicker = function() {
 
 // ৩. পেইজ লোড হওয়ার সময় থিম লোড করা
 window.addEventListener('DOMContentLoaded', () => {
-    const savedTheme = localStorage.getItem('madrasa_app_theme') || 'emerald';
+    const savedTheme = localStorage.getItem('madrasa_app_theme') || 'lightSky';
     applyAppTheme(savedTheme);
 });
 
@@ -55086,7 +55188,14 @@ window.showTeacherPortal = function() {
                     <!-- ১১. নোটিশ (কমলা) -->
                     <button onclick="switchTpTab('notice')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md transition">
                         <i class="fa-solid fa-bullhorn text-white bg-orange-600 rounded-xl w-10 h-10 flex items-center justify-center text-xl"></i>
-                        <span class="text-sm font-bold text-slate-700">নোটিশ</span>
+                        <span class="text-sm font-bold text-slate-700">নোটিশ/বিজ্ঞপ্তি</span>
+                    </button>
+
+                    <!-- শিক্ষক রিপোর্ট -->
+                    <button onclick="switchTpTab('report')"
+                        class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md transition">
+                        <i class="fa-solid fa-file-circle-exclamation text-white bg-rose-500 rounded-xl w-10 h-10 flex items-center justify-center text-xl"></i>
+                        <span class="text-sm font-bold text-slate-700">আমার রিপোর্ট</span>
                     </button>
 
                     <!-- ১২. নীতিমালা (ভায়োলেট) -->
@@ -55417,7 +55526,39 @@ window.switchTpTab = async function(tab) {
     const teacherName = currentUserData?.teacherName || currentUserData?.name;
     
     try {
-        if (tab === 'routine') {
+
+        if (tab === 'report') {
+            content.innerHTML = `
+                <button onclick="backToTpDashboard()"
+                    class="px-3 py-2 bg-slate-200 rounded-lg text-xs font-bold mb-4">
+                    <i class="fa-solid fa-arrow-left"></i> মেনু
+                </button>
+
+                <div class="bg-white rounded-xl border p-3 mb-4">
+                    <h3 class="font-bold text-base text-slate-800 mb-3">
+                        <i class="fa-solid fa-file-circle-exclamation text-rose-500"></i>
+                        রিপোর্ট
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="switchTeacherPortalReportView('received')"
+                            class="bg-sky-600 text-white rounded-lg p-3 text-xs font-bold">
+                            প্রাপ্ত রিপোর্ট
+                        </button>
+
+                        <button onclick="switchTeacherPortalReportView('send')"
+                            class="bg-emerald-600 text-white rounded-lg p-3 text-xs font-bold">
+                            রিপোর্ট প্রেরণ
+                        </button>
+                    </div>
+                </div>
+
+                <div id="tp-report-content"></div>
+            `;
+
+            switchTeacherPortalReportView('received');
+
+        } else if (tab === 'routine') {
             content.innerHTML = `
                 <button onclick="backToTpDashboard()" class="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-lg w-max mb-4 shadow-sm transition">
                     <i class="fa-solid fa-arrow-left"></i> মেনু
@@ -59313,7 +59454,7 @@ window.switchGpTab = async function(tab) {
         renderGpLeaveApplication(pageBody);
     }
     else if (tab === 'moral-report') {
-        pageBody.innerHTML = comingSoonHTML;
+        await renderGpMoralReport(pageBody);
     }
     else if (tab === 'homework') {
         await renderGpHomework(pageBody);
@@ -79581,6 +79722,1886 @@ window.tpDuesSetMonth = async function(month) {
     await renderTpStudentDuesAccounting(
         document.getElementById('tp-dynamic-content')
     );
+};
+
+/* =========================================================
+   TEACHER REPORT MANAGEMENT
+   Firestore Collection: teacherReports
+========================================================= */
+
+window._teacherReportView = 'send';
+
+
+window.openReportModule = async function(type) {
+    document.querySelectorAll('.tab-content').forEach(el =>
+        el.classList.add('hidden')
+    );
+
+    document.getElementById('report-management-page')
+        .classList.remove('hidden');
+
+    window._reportModule = type;
+
+    const root = document.getElementById('report-management-content');
+
+    root.innerHTML = '<div class="text-center p-8">ডাটা প্রস্তুত হচ্ছে...</div>';
+
+    try {
+        if (!window.configData || !window.configData.teachers) {
+            if (typeof loadConfigFromFirestore === 'function') {
+                await loadConfigFromFirestore();
+            }
+        }
+
+        if (type === 'student') {
+            if (typeof loadStudentsFromFirestore === 'function') {
+                await loadStudentsFromFirestore();
+            }
+
+            await renderStudentReportManager();
+        } else {
+            renderTeacherReportManager();
+        }
+
+    } catch (err) {
+        root.innerHTML = `<p class="text-red-500 p-4">${err.message}</p>`;
+    }
+};
+
+window.closeReportModule = function() {
+    document.getElementById('report-management-page')
+        .classList.add('hidden');
+
+    switchTab('report');
+};
+
+function reportToday() {
+    const d = new Date();
+    return [
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, '0'),
+        String(d.getDate()).padStart(2, '0')
+    ].join('-');
+}
+
+function getReportTeachers() {
+    return (window.configData?.teachers || [])
+        .filter(t => !t.remark?.type && t.name)
+        .map(t => ({
+            name: t.name.trim(),
+            dept: (t.dept || '').trim() || 'বিভাগ নেই',
+            card: t.card || '',
+            post: t.post || ''
+        }));
+}
+
+function getReportSignature(roleKey) {
+    return window.configData?.contacts?.[roleKey]?.signature || '';
+}
+
+function getReportSenderName(roleKey) {
+    return window.configData?.contacts?.[roleKey]?.name || '';
+}
+
+const REPORT_TITLES = [
+    'নোটিশ',
+    'কারণ দর্শানোর নোটিশ',
+    'দায়িত্বে অবহেলা',
+    'নেগরানী না করা',
+    'সবাইকে লেইট করা',
+    'ছাত্রকে প্রহার করা',
+    'যথাসময়ে প্রদেয় জমা না করা',
+    'সতর্কীকরণ',
+    'প্রশংসাপত্র',
+    'অন্যান্য'
+];
+
+window.renderTeacherReportManager = function() {
+    const root = document.getElementById('report-management-content');
+
+    root.innerHTML = `
+        <div class="bg-white rounded-xl border p-3 shadow-sm">
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="switchTeacherReportAdminView('send')"
+                    id="tra-send-btn"
+                    class="px-2 py-3 rounded-lg text-xs font-bold bg-sky-600 text-white">
+                    শিক্ষককে রিপোর্ট করুন
+                </button>
+
+                <button onclick="switchTeacherReportAdminView('history')"
+                    id="tra-history-btn"
+                    class="px-2 py-3 rounded-lg text-xs font-bold bg-slate-100 text-slate-700">
+                    হিস্টরি
+                </button>
+
+                <button onclick="switchTeacherReportAdminView('incoming')"
+                    id="tra-incoming-btn"
+                    class="px-2 py-3 rounded-lg text-xs font-bold bg-slate-100 text-slate-700">
+                    শিক্ষক প্রেরিত
+                </button>
+            </div>
+        </div>
+
+        <div id="teacher-report-admin-body" class="mt-4"></div>
+    `;
+
+    switchTeacherReportAdminView(window._teacherReportView || 'send');
+};
+
+window.switchTeacherReportAdminView = async function(view) {
+    window._teacherReportView = view;
+
+    ['send', 'history', 'incoming'].forEach(v => {
+        const b = document.getElementById('tra-' + v + '-btn');
+        if (!b) return;
+
+        b.className = v === view
+            ? 'px-2 py-3 rounded-lg text-xs font-bold bg-sky-600 text-white'
+            : 'px-2 py-3 rounded-lg text-xs font-bold bg-slate-100 text-slate-700';
+    });
+
+    if (view === 'send') {
+        renderTeacherReportSendForm();
+    } else {
+        await renderTeacherReportList(view);
+    }
+};
+
+window.renderTeacherReportSendForm = function() {
+    const root = document.getElementById('teacher-report-admin-body');
+    const teachers = getReportTeachers();
+
+    // ★ ডাটা না থাকলে
+    if (!teachers.length) {
+        root.innerHTML = `
+            <div class="bg-white border rounded-xl p-8 text-center">
+                <i class="fa-solid fa-user-slash text-3xl text-slate-300 mb-3"></i>
+                <p class="text-sm font-bold text-slate-700">কোনো শিক্ষক পাওয়া যায়নি</p>
+                <p class="text-xs text-slate-500 mt-1">শিক্ষক তালিকা লোড হয়নি বা খালি।</p>
+                <button onclick="reloadTeacherReportData()"
+                    class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold">
+                    <i class="fa-solid fa-rotate-right"></i> রিফ্রেশ করুন
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    const depts = [...new Set(teachers.map(t => t.dept).filter(Boolean))];
+
+    const roleOptions = [
+        ['principal', 'প্রিন্সিপাল'],
+        ['vice_principal', 'ভাইস প্রিন্সিপাল'],
+        ['edu_sec', 'শিক্ষাসচিব'],
+        ['nazem', 'নাযেমে দারুল ইকামা'],
+        ['accountant', 'হিসাব রক্ষক']
+    ];
+
+    root.innerHTML = `
+        <div class="bg-white rounded-xl border p-4 shadow-sm space-y-4">
+
+            <div>
+                <label class="block text-sm font-bold mb-1">রিপোর্ট পাঠানোর ধরন</label>
+                <select id="tr-recipient-mode"
+                    onchange="updateTeacherReportRecipientUI()"
+                    class="w-full border rounded-lg p-2.5 text-sm">
+                    <option value="all">সকল বিভাগের সকল শিক্ষক</option>
+                    <option value="dept">নির্দিষ্ট বিভাগের সকল শিক্ষক</option>
+                    <option value="multiple">একাধিক শিক্ষক</option>
+                    <option value="single">নির্দিষ্ট একজন শিক্ষক</option>
+                </select>
+            </div>
+
+            <div id="tr-dept-wrap" class="hidden">
+                <label class="block text-sm font-bold mb-1">বিভাগ</label>
+                <select id="tr-dept"
+                    onchange="updateTeacherReportTeacherOptions()"
+                    class="w-full border rounded-lg p-2.5 text-sm">
+                    <option value="">বিভাগ নির্বাচন করুন</option>
+                    ${depts.map(d => `<option value="${d}">${d}</option>`).join('')}
+                </select>
+            </div>
+
+            <div id="tr-teacher-wrap" class="hidden">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="block text-sm font-bold">শিক্ষক নির্বাচন</label>
+                    <span id="tr-selected-count" class="text-xs font-bold text-sky-600">০ জন নির্বাচিত</span>
+                </div>
+
+                <!-- সার্চ -->
+                <input type="search" id="tr-teacher-search" oninput="filterTeacherCheckList(this.value)"
+                    placeholder="নাম বা বিভাগ দিয়ে খুঁজুন..."
+                    class="w-full border rounded-lg p-2 text-sm mb-2">
+
+                <!-- সব সিলেক্ট / বাদ -->
+                <div class="flex gap-2 mb-2">
+                    <button type="button" onclick="toggleAllTeacherChecks(true)"
+                        class="flex-1 text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 rounded-lg py-1.5 hover:bg-sky-100">
+                        <i class="fa-solid fa-check-double"></i> সব সিলেক্ট
+                    </button>
+                    <button type="button" onclick="toggleAllTeacherChecks(false)"
+                        class="flex-1 text-xs font-bold bg-slate-50 text-slate-600 border border-slate-200 rounded-lg py-1.5 hover:bg-slate-100">
+                        <i class="fa-solid fa-xmark"></i> সব বাদ
+                    </button>
+                </div>
+
+                <!-- চেকবক্স লিস্ট -->
+                <div id="tr-teacher-checklist"
+                    class="border rounded-lg p-2 max-h-56 overflow-y-auto space-y-1 bg-slate-50">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold mb-1">তারিখ</label>
+                <input type="date" id="tr-date"
+                    value="${reportToday()}"
+                    class="w-full border rounded-lg p-2.5 text-sm">
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold mb-1">রিপোর্টের শিরোনাম</label>
+                <select id="tr-title-select"
+                    onchange="handleTeacherReportTitle()"
+                    class="w-full border rounded-lg p-2.5 text-sm">
+                    ${REPORT_TITLES.map(t =>
+                        `<option value="${t}">${t}</option>`
+                    ).join('')}
+                </select>
+
+                <input id="tr-custom-title"
+                    class="hidden w-full border rounded-lg p-2.5 mt-2 text-sm"
+                    placeholder="নিজস্ব শিরোনাম লিখুন">
+
+                <div id="tr-deadline-wrap" class="hidden mt-3">
+                    <label class="block text-sm font-bold mb-1">
+                        কত দিনের মধ্যে কারণ দর্শাতে হবে?
+                    </label>
+                    <input type="number" id="tr-deadline"
+                        min="1" value="3"
+                        class="w-full border rounded-lg p-2.5 text-sm">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold mb-1">বিস্তারিত রিপোর্ট</label>
+                <textarea id="tr-message" rows="5"
+                    placeholder="রিপোর্টের বিস্তারিত লিখুন..."
+                    class="w-full border rounded-lg p-3 text-sm"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold mb-1">প্রেরক</label>
+                <select id="tr-sender"
+                    onchange="previewTeacherReportSignature()"
+                    class="w-full border rounded-lg p-2.5 text-sm">
+                    ${roleOptions.map(([k, label]) =>
+                        `<option value="${k}" ${k === 'principal' ? 'selected' : ''}>${label}</option>`
+                    ).join('')}
+                </select>
+
+                <div id="tr-signature-preview"
+                    class="mt-2 min-h-14 flex items-center justify-center bg-slate-50 border rounded-lg p-2">
+                </div>
+            </div>
+
+            <button onclick="sendTeacherReport()"
+                id="tr-send-btn"
+                class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg p-3">
+                <i class="fa-solid fa-paper-plane"></i> রিপোর্ট পাঠান
+            </button>
+        </div>
+    `;
+
+    updateTeacherReportRecipientUI();
+    handleTeacherReportTitle();
+    previewTeacherReportSignature();
+};
+
+window.reloadTeacherReportData = async function() {
+    if (typeof loadConfigFromFirestore === 'function') {
+        await loadConfigFromFirestore();
+    }
+    renderTeacherReportSendForm();
+};
+
+window.updateTeacherReportRecipientUI = function() {
+    const mode = document.getElementById('tr-recipient-mode')?.value;
+
+    document.getElementById('tr-dept-wrap')
+        ?.classList.toggle('hidden', !['dept'].includes(mode));
+
+    document.getElementById('tr-teacher-wrap')
+        ?.classList.toggle('hidden', !['single', 'multiple'].includes(mode));
+
+    if (mode === 'single' || mode === 'multiple') {
+        updateTeacherReportTeacherOptions();
+    }
+};
+
+window.updateTeacherReportTeacherOptions = function() {
+    const mode = document.getElementById('tr-recipient-mode')?.value;
+    const dept = document.getElementById('tr-dept')?.value;
+    const box = document.getElementById('tr-teacher-checklist');
+    if (!box) return;
+
+    let teachers = getReportTeachers();
+    if (dept && (mode === 'dept' || mode === 'multiple' || mode === 'single')) {
+        teachers = teachers.filter(t => t.dept === dept);
+    }
+
+    if (!teachers.length) {
+        box.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">এই বিভাগে কোনো শিক্ষক নেই</p>';
+        updateTeacherSelectedCount();
+        return;
+    }
+
+    box.innerHTML = teachers.map(t => `
+        <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-white cursor-pointer border border-transparent hover:border-sky-200 transition teacher-check-item"
+               data-name="${(t.name || '').toLowerCase()}" data-dept="${(t.dept || '').toLowerCase()}">
+            <input type="checkbox" value="${t.name}" onchange="updateTeacherSelectedCount()"
+                   class="w-4 h-4 accent-sky-600 tr-teacher-check">
+            <span class="text-sm flex-1">${t.name}</span>
+            <span class="text-[10px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">${t.dept || 'বিভাগ নেই'}</span>
+        </label>
+    `).join('');
+
+    updateTeacherSelectedCount();
+};
+
+window.updateTeacherSelectedCount = function() {
+    const mode = document.getElementById('tr-recipient-mode')?.value;
+    const checked = document.querySelectorAll('.tr-teacher-check:checked');
+
+    // single মোডে একটার বেশি চেক হলে শেষটার বাদে সব আনচেক
+    if (mode === 'single' && checked.length > 1) {
+        checked.forEach((c, i) => { if (i < checked.length - 1) c.checked = false; });
+    }
+
+    const count = document.querySelectorAll('.tr-teacher-check:checked').length;
+    const el = document.getElementById('tr-selected-count');
+    if (el) el.textContent = `${count} জন নির্বাচিত`;
+};
+
+window.filterTeacherCheckList = function(q) {
+    q = q.toLowerCase().trim();
+    document.querySelectorAll('#tr-teacher-checklist .teacher-check-item').forEach(el => {
+        const match = !q || el.dataset.name.includes(q) || el.dataset.dept.includes(q);
+        el.style.display = match ? '' : 'none';
+    });
+};
+
+window.toggleAllTeacherChecks = function(checked) {
+    document.querySelectorAll('#tr-teacher-checklist .teacher-check-item').forEach(el => {
+        if (el.style.display === 'none') return;
+        const cb = el.querySelector('input');
+        if (cb) cb.checked = checked;
+    });
+    updateTeacherSelectedCount();
+};
+
+window.handleTeacherReportTitle = function() {
+    const title = document.getElementById('tr-title-select')?.value;
+
+    document.getElementById('tr-custom-title')
+        ?.classList.toggle('hidden', title !== 'অন্যান্য');
+
+    document.getElementById('tr-deadline-wrap')
+        ?.classList.toggle('hidden', title !== 'কারণ দর্শানোর নোটিশ');
+};
+
+window.previewTeacherReportSignature = function() {
+    const role = document.getElementById('tr-sender')?.value;
+    const signature = getReportSignature(role);
+    const name = getReportSenderName(role);
+
+    const box = document.getElementById('tr-signature-preview');
+    if (!box) return;
+
+    box.innerHTML = signature
+        ? `<div class="text-center">
+             <img src="${signature}" class="max-h-12 max-w-40 mx-auto object-contain">
+             <p class="text-xs font-bold mt-1">${name}</p>
+           </div>`
+        : `<p class="text-xs text-red-500">এই পদে স্বাক্ষর সংরক্ষিত নেই</p>`;
+};
+
+window.sendTeacherReport = async function() {
+    const btn = document.getElementById('tr-send-btn');
+
+    const mode = document.getElementById('tr-recipient-mode').value;
+    const teachers = getReportTeachers();
+
+    let recipients = [];
+
+    if (mode === 'all') {
+        recipients = teachers;
+    } else if (mode === 'dept') {
+        const dept = document.getElementById('tr-dept').value;
+        recipients = teachers.filter(t => t.dept === dept);
+    } else {
+        const selected = [...document.querySelectorAll('.tr-teacher-check:checked')].map(c => c.value);
+
+        recipients = teachers.filter(t => selected.includes(t.name));
+
+        if (mode === 'single' && recipients.length !== 1) {
+            return showToast('একজন শিক্ষক নির্বাচন করুন', 'warn');
+        }
+    }
+
+    if (!recipients.length) {
+        return showToast('কোনো শিক্ষক নির্বাচন করা হয়নি', 'warn');
+    }
+
+    const date = document.getElementById('tr-date').value;
+    const selectedTitle = document.getElementById('tr-title-select').value;
+    const title = selectedTitle === 'অন্যান্য'
+        ? document.getElementById('tr-custom-title').value.trim()
+        : selectedTitle;
+
+    const message = document.getElementById('tr-message').value.trim();
+    const senderRole = document.getElementById('tr-sender').value;
+    const senderName = getReportSenderName(senderRole);
+    const signature = getReportSignature(senderRole);
+
+    if (!date || !title || !message) {
+        return showToast('তারিখ, শিরোনাম ও বিস্তারিত পূরণ করুন', 'warn');
+    }
+
+    if (!senderName) {
+        return showToast('নির্বাচিত প্রেরকের নাম সেটিংসে নেই', 'warn');
+    }
+
+    let deadlineDays = null;
+
+    if (title === 'কারণ দর্শানোর নোটিশ') {
+        deadlineDays = Number(document.getElementById('tr-deadline').value);
+
+        if (!deadlineDays || deadlineDays < 1) {
+            return showToast('কারণ দর্শানোর সময়সীমা দিন', 'warn');
+        }
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'পাঠানো হচ্ছে...';
+
+    try {
+        const { collection, addDoc, serverTimestamp } = window.fbFuncs;
+
+        const batchTime = serverTimestamp();
+
+        for (const teacher of recipients) {
+            await addDoc(collection(window.fbDB, 'teacherReports'), {
+                direction: 'toTeacher',
+                recipientName: teacher.name,
+                recipientDept: teacher.dept || '',
+                title,
+                message,
+                date,
+                deadlineDays,
+                senderRole,
+                senderName,
+                signature,
+                status: 'unread',
+                createdAt: batchTime,
+                createdBy: currentUserData?.name || 'Admin'
+            });
+        }
+
+        showToast(`সফলভাবে ${recipients.length} জন শিক্ষককে রিপোর্ট পাঠানো হয়েছে`, 'success');
+
+        renderTeacherReportSendForm();
+
+    } catch (err) {
+        console.error(err);
+        showToast('রিপোর্ট পাঠানো যায়নি: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> রিপোর্ট পাঠান';
+    }
+};
+
+// রিপোর্ট তালিকা: history = প্রশাসনের পাঠানো, incoming = শিক্ষক প্রেরিত
+window.renderTeacherReportList = async function(view, searchText = '') {
+    const root = document.getElementById('teacher-report-admin-body');
+
+    root.innerHTML = '<div class="text-center p-8">লোড হচ্ছে...</div>';
+
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+        const snap = await getDocs(collection(window.fbDB, 'teacherReports'));
+
+        let reports = [];
+
+        snap.forEach(d => {
+            const x = { id: d.id, ...d.data() };
+
+            if (view === 'history' && x.direction === 'toTeacher') reports.push(x);
+            if (view === 'incoming' && x.direction === 'fromTeacher') reports.push(x);
+        });
+
+        reports.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+        if (searchText) {
+            const q = searchText.toLowerCase();
+
+            reports = reports.filter(x =>
+                [x.title, x.message, x.recipientName, x.senderName, x.teacherName, x.date]
+                    .some(v => String(v || '').toLowerCase().includes(q))
+            );
+        }
+
+        root.innerHTML = `
+            <div class="bg-white border rounded-xl p-3 space-y-3">
+
+                ${view === 'history' ? `
+                    <div class="border border-red-200 bg-red-50 rounded-lg p-3 space-y-2">
+
+                        <p class="text-sm font-bold text-red-700">
+                            হিস্ট্রি মুছে ফেলার ব্যবস্থা
+                        </p>
+
+                        <div class="flex flex-wrap gap-2">
+                            <input type="date"
+                                id="teacher-report-delete-date"
+                                class="flex-1 min-w-[140px] border rounded-lg p-2 text-sm">
+
+                            <button type="button"
+                                onclick="deleteTeacherReportsByDate()"
+                                class="bg-amber-600 hover:bg-amber-700 text-white rounded-lg px-3 py-2 text-xs font-bold">
+                                নির্বাচিত তারিখ মুছুন
+                            </button>
+                        </div>
+
+                        <button type="button"
+                            onclick="deleteAllTeacherReportHistory()"
+                            class="w-full bg-red-600 hover:bg-red-700 text-white rounded-lg p-2.5 text-sm font-bold">
+                            <i class="fa-solid fa-trash"></i>
+                            সব হিস্ট্রি মুছুন
+                        </button>
+
+                    </div>
+                ` : ''}
+
+                <input type="search"
+                    oninput="filterTeacherReportList('${view}',this.value)"
+                    placeholder="তারিখ, শিরোনাম বা নাম দিয়ে খুঁজুন..."
+                    class="w-full border rounded-lg p-2 text-sm">
+
+                <div class="text-xs text-slate-500">
+                    মোট রিপোর্ট: ${reports.length}
+                </div>
+
+                <div class="space-y-3">
+                    ${reports.length ? reports.map(x => `
+                        <div class="border rounded-lg p-3">
+                            <div class="flex justify-between gap-2">
+                                <strong class="text-sm text-slate-800">${x.title || 'রিপোর্ট'}</strong>
+                                <span class="text-xs text-slate-500">${x.date || ''}</span>
+                            </div>
+
+                            <p class="text-xs text-sky-700 mt-1">
+                                ${view === 'history'
+                                    ? 'প্রাপক: ' + (x.recipientName || '')
+                                    : 'প্রেরক: ' + (x.teacherName || '')}
+                            </p>
+
+                            <p class="text-sm text-slate-700 whitespace-pre-wrap mt-2">${x.message || ''}</p>
+
+                            ${view === 'history' ? `
+                                <div class="flex gap-2 mt-3">
+                                    <button onclick="editTeacherReport('${x.id}')"
+                                        class="bg-amber-100 text-amber-800 rounded px-3 py-1.5 text-xs font-bold">
+                                        এডিট
+                                    </button>
+                                    <button onclick="deleteTeacherReport('${x.id}','${view}')"
+                                        class="bg-red-100 text-red-700 rounded px-3 py-1.5 text-xs font-bold">
+                                        ডিলিট
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="flex justify-end mt-3">
+                                    <button onclick="deleteTeacherReport('${x.id}','${view}')"
+                                        class="bg-red-100 text-red-700 rounded px-3 py-1.5 text-xs font-bold">
+                                        ডিলিট
+                                    </button>
+                                </div>
+                            `}
+                        </div>
+                    `).join('') :
+                    '<p class="text-center text-slate-400 py-8 text-sm">কোনো রিপোর্ট পাওয়া যায়নি</p>'}
+                </div>
+            </div>
+        `;
+
+    } catch (err) {
+        root.innerHTML = `<p class="text-red-500 p-4">${err.message}</p>`;
+    }
+};
+
+window.filterTeacherReportList = function(view, value) {
+    const root = document.getElementById('teacher-report-admin-body');
+    if (!root) return;
+
+    root.querySelectorAll('.space-y-3 > div').forEach(card => {
+        card.style.display = card.innerText
+            .toLowerCase()
+            .includes(value.toLowerCase()) ? '' : 'none';
+    });
+};
+
+window.editTeacherReport = async function(id) {
+    try {
+        const { doc, getDoc, updateDoc } = window.fbFuncs;
+        const ref = doc(window.fbDB, 'teacherReports', id);
+        const snap = await getDoc(ref);
+
+        if (!snap.exists()) return showToast('রিপোর্ট পাওয়া যায়নি', 'error');
+
+        const data = snap.data();
+
+        const title = prompt('রিপোর্টের শিরোনাম:', data.title || '');
+        if (title === null) return;
+
+        const message = prompt('রিপোর্টের বিস্তারিত:', data.message || '');
+        if (message === null) return;
+
+        await updateDoc(ref, {
+            title: title.trim(),
+            message: message.trim(),
+            updatedAt: new Date()
+        });
+
+        showToast('রিপোর্ট আপডেট হয়েছে', 'success');
+        renderTeacherReportList('history');
+
+    } catch (err) {
+        showToast('এডিট ব্যর্থ: ' + err.message, 'error');
+    }
+};
+
+// ★★★ নির্দিষ্ট তারিখের সব শিক্ষক রিপোর্ট মুছুন ★★★
+window.deleteTeacherReportsByDate = async function() {
+
+    const date = document.getElementById('teacher-report-delete-date')?.value;
+
+    if (!date) {
+        return showToast('আগে একটি তারিখ নির্বাচন করুন', 'warn');
+    }
+
+    if (!confirm(`আপনি কি ${date} তারিখের সব শিক্ষক রিপোর্ট স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+        return;
+    }
+
+    try {
+        const { collection, getDocs, doc, deleteDoc } = window.fbFuncs;
+
+        const snap = await getDocs(
+            collection(window.fbDB, 'teacherReports')
+        );
+
+        const targets = snap.docs.filter(d => {
+            const data = d.data();
+
+            return data.direction === 'toTeacher' &&
+                   data.date === date;
+        });
+
+        if (!targets.length) {
+            return showToast('এই তারিখে কোনো হিস্ট্রি পাওয়া যায়নি', 'warn');
+        }
+
+        // একসঙ্গে অতিরিক্ত রিকোয়েস্ট না পাঠিয়ে ২০টি করে মুছি
+        for (let i = 0; i < targets.length; i += 20) {
+            const chunk = targets.slice(i, i + 20);
+
+            await Promise.all(
+                chunk.map(d =>
+                    deleteDoc(doc(window.fbDB, 'teacherReports', d.id))
+                )
+            );
+        }
+
+        showToast(`${targets.length}টি রিপোর্ট মুছে ফেলা হয়েছে`, 'success');
+
+        await renderTeacherReportList('history');
+
+    } catch (err) {
+        console.error('Date history delete error:', err);
+        showToast('হিস্ট্রি মুছতে সমস্যা হয়েছে: ' + err.message, 'error');
+    }
+};
+
+
+// ★★★ প্রশাসনের পাঠানো সব শিক্ষক রিপোর্ট মুছুন ★★★
+window.deleteAllTeacherReportHistory = async function() {
+
+    if (!confirm('সতর্কতা! প্রশাসনের পাঠানো সব শিক্ষক রিপোর্ট স্থায়ীভাবে মুছে যাবে। আপনি কি নিশ্চিত?')) {
+        return;
+    }
+
+    if (!confirm('শেষবার নিশ্চিত করুন: সব শিক্ষক রিপোর্টের হিস্ট্রি মুছে ফেলবেন?')) {
+        return;
+    }
+
+    try {
+        const { collection, getDocs, doc, deleteDoc } = window.fbFuncs;
+
+        const snap = await getDocs(
+            collection(window.fbDB, 'teacherReports')
+        );
+
+        const targets = snap.docs.filter(d =>
+            d.data().direction === 'toTeacher'
+        );
+
+        if (!targets.length) {
+            return showToast('মুছে ফেলার মতো কোনো হিস্ট্রি নেই', 'warn');
+        }
+
+        for (let i = 0; i < targets.length; i += 20) {
+            const chunk = targets.slice(i, i + 20);
+
+            await Promise.all(
+                chunk.map(d =>
+                    deleteDoc(doc(window.fbDB, 'teacherReports', d.id))
+                )
+            );
+        }
+
+        showToast(`${targets.length}টি হিস্ট্রি মুছে ফেলা হয়েছে`, 'success');
+
+        await renderTeacherReportList('history');
+
+    } catch (err) {
+        console.error('All history delete error:', err);
+        showToast('হিস্ট্রি মুছতে সমস্যা হয়েছে: ' + err.message, 'error');
+    }
+};
+
+window.deleteTeacherReport = async function(id, view) {
+    if (!confirm('আপনি কি এই রিপোর্টটি স্থায়ীভাবে মুছে ফেলতে চান?')) return;
+
+    try {
+        const { doc, deleteDoc } = window.fbFuncs;
+
+        await deleteDoc(doc(window.fbDB, 'teacherReports', id));
+
+        showToast('রিপোর্ট মুছে ফেলা হয়েছে', 'success');
+        renderTeacherReportList(view);
+
+    } catch (err) {
+        showToast('ডিলিট ব্যর্থ: ' + err.message, 'error');
+    }
+};
+
+/* =========================================================
+   TEACHER PORTAL REPORT
+========================================================= */
+
+window.switchTeacherPortalReportView = async function(view) {
+    const root = document.getElementById('tp-report-content');
+    if (!root) return;
+
+    if (view === 'send') {
+        renderTeacherPortalSendForm(root);
+    } else {
+        await renderTeacherPortalReceived(root);
+    }
+};
+
+function renderTeacherPortalSendForm(root) {
+    root.innerHTML = `
+        <div class="bg-white border rounded-xl p-4 space-y-3">
+            <h3 class="font-bold text-sm text-emerald-800">
+                প্রশাসনের কাছে রিপোর্ট পাঠান
+            </h3>
+
+            <div>
+                <label class="text-xs font-bold">তারিখ</label>
+                <input type="date" id="tps-date" value="${reportToday()}"
+                    class="w-full border rounded-lg p-2 text-sm mt-1">
+            </div>
+
+            <div>
+                <label class="text-xs font-bold">শিরোনাম</label>
+                <select id="tps-title"
+                    class="w-full border rounded-lg p-2 text-sm mt-1">
+                    <option>পরামর্শ</option>
+                    <option>অভিযোগ</option>
+                    <option>প্রশাসনিক আবেদন</option>
+                    <option>অন্যান্য</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs font-bold">বিস্তারিত</label>
+                <textarea id="tps-message" rows="5"
+                    class="w-full border rounded-lg p-3 text-sm mt-1"
+                    placeholder="আপনার রিপোর্ট লিখুন..."></textarea>
+            </div>
+
+            <button onclick="submitTeacherPortalReport()"
+                id="tps-submit"
+                class="w-full bg-emerald-600 text-white rounded-lg p-3 font-bold text-sm">
+                <i class="fa-solid fa-paper-plane"></i> রিপোর্ট পাঠান
+            </button>
+        </div>
+    `;
+}
+
+window.submitTeacherPortalReport = async function() {
+    const date = document.getElementById('tps-date').value;
+    const title = document.getElementById('tps-title').value;
+    const message = document.getElementById('tps-message').value.trim();
+
+    const teacherName =
+        window.currentUserData?.teacherName ||
+        window.currentUserData?.name || '';
+
+    if (!date || !message) {
+        return showToast('তারিখ ও রিপোর্টের বিস্তারিত লিখুন', 'warn');
+    }
+
+    const btn = document.getElementById('tps-submit');
+    btn.disabled = true;
+
+    try {
+        const { collection, addDoc, serverTimestamp } = window.fbFuncs;
+
+        await addDoc(collection(window.fbDB, 'teacherReports'), {
+            direction: 'fromTeacher',
+            teacherName,
+            title,
+            message,
+            date,
+            status: 'pending',
+            createdAt: serverTimestamp()
+        });
+
+        showToast('রিপোর্ট প্রশাসনের কাছে পাঠানো হয়েছে', 'success');
+
+        renderTeacherPortalSendForm(document.getElementById('tp-report-content'));
+
+    } catch (err) {
+        showToast('রিপোর্ট পাঠানো ব্যর্থ: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+    }
+};
+
+window.renderTeacherPortalReceived = async function(root) {
+    root.innerHTML = '<div class="text-center p-6">রিপোর্ট লোড হচ্ছে...</div>';
+
+    try {
+        const teacherName =
+            window.currentUserData?.teacherName ||
+            window.currentUserData?.name || '';
+
+        const { collection, getDocs } = window.fbFuncs;
+
+        const snap = await getDocs(
+            collection(window.fbDB, 'teacherReports')
+        );
+
+        const reports = [];
+
+        snap.forEach(d => {
+            const x = { id: d.id, ...d.data() };
+
+            if (
+                x.direction === 'toTeacher' &&
+                x.recipientName === teacherName
+            ) {
+                reports.push(x);
+            }
+        });
+
+        reports.sort((a, b) =>
+            String(b.date || '').localeCompare(String(a.date || ''))
+        );
+
+        root.innerHTML = reports.length ? `
+            <div class="space-y-3">
+                ${reports.map(x => `
+                    <div class="bg-white border rounded-xl p-4">
+                        <div class="flex justify-between gap-2">
+                            <strong class="text-sm text-slate-800">${x.title}</strong>
+                            <span class="text-[11px] text-slate-500">${x.date}</span>
+                        </div>
+
+                        ${x.deadlineDays ? `
+                            <p class="text-xs text-red-600 font-bold mt-2">
+                                কারণ দর্শানোর সময়সীমা: ${x.deadlineDays} দিন
+                            </p>
+                        ` : ''}
+
+                        <p class="text-sm text-slate-700 whitespace-pre-wrap mt-3">${x.message}</p>
+
+                        <div class="border-t mt-4 pt-3 text-right">
+                            ${x.signature ? `
+                                <img src="${x.signature}"
+                                    class="max-h-12 max-w-32 object-contain ml-auto">
+                            ` : ''}
+
+                            <p class="text-xs font-bold text-slate-700">
+                                ${x.senderName || ''}
+                            </p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        ` : `
+            <div class="bg-white border rounded-xl p-8 text-center text-slate-400">
+                <i class="fa-solid fa-envelope-open text-3xl mb-2"></i>
+                <p class="text-sm">আপনার জন্য কোনো রিপোর্ট নেই</p>
+            </div>
+        `;
+
+    } catch (err) {
+        root.innerHTML = `<p class="text-red-500">${err.message}</p>`;
+    }
+};
+
+/* =========================================================
+   STUDENT REPORT MANAGEMENT
+   Collections:
+   studentReports
+   guardianReports
+========================================================= */
+
+window._studentReportView = 'send';
+
+function getReportStudents() {
+    return (window.studentsCache || [])
+        .filter(s => s.name && !s.remark?.type)  // নাম আছে ও ডিলিট হয়নি
+        .map(s => ({
+            id: s.id,
+            name: (s.name || '').trim(),
+            studentId: (s.studentId || '').trim() || s.id,
+            className: (s.className || '').trim() || 'ক্লাস নেই',
+            dept: (s.dept || '').trim() || 'বিভাগ নেই',
+            guardian: s.guardian || s.fatherName || '',
+            mobile1: s.mobile1 || '',
+            photo: s.photo || '',
+            source: s.source || 'manual'
+        }));
+}
+
+window.renderStudentReportManager = function() {
+    const root = document.getElementById('report-management-content');
+
+    root.innerHTML = `
+        <div class="bg-white rounded-xl border p-3 shadow-sm">
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="switchStudentReportAdminView('send')"
+                    id="sra-send-btn"
+                    class="bg-fuchsia-600 text-white rounded-lg p-3 text-xs font-bold">
+                    শিক্ষার্থীর প্রতি
+                </button>
+
+                <button onclick="switchStudentReportAdminView('guardian')"
+                    id="sra-guardian-btn"
+                    class="bg-slate-100 rounded-lg p-3 text-xs font-bold">
+                    গার্ডিয়ানের রিপোর্ট
+                </button>
+
+                <button onclick="switchStudentReportAdminView('history')"
+                    id="sra-history-btn"
+                    class="bg-slate-100 rounded-lg p-3 text-xs font-bold">
+                    হিস্টরি
+                </button>
+            </div>
+        </div>
+
+        <div id="student-report-admin-body" class="mt-4"></div>
+    `;
+
+    switchStudentReportAdminView(window._studentReportView);
+};
+
+window.switchStudentReportAdminView = async function(view) {
+    window._studentReportView = view;
+
+    ['send', 'guardian', 'history'].forEach(v => {
+        const b = document.getElementById('sra-' + v + '-btn');
+        if (!b) return;
+
+        b.className = v === view
+            ? 'bg-fuchsia-600 text-white rounded-lg p-3 text-xs font-bold'
+            : 'bg-slate-100 text-slate-700 rounded-lg p-3 text-xs font-bold';
+    });
+
+    if (view === 'send') {
+        renderStudentReportSendForm();
+    } else {
+        await renderStudentReportList(view);
+    }
+};
+
+window.renderStudentReportSendForm = function() {
+    const root = document.getElementById('student-report-admin-body');
+    const students = getReportStudents();
+
+    // ★ ডাটা না থাকলে
+    if (!students.length) {
+        root.innerHTML = `
+            <div class="bg-white border rounded-xl p-8 text-center">
+                <i class="fa-solid fa-user-slash text-3xl text-slate-300 mb-3"></i>
+                <p class="text-sm font-bold text-slate-700">কোনো শিক্ষার্থী পাওয়া যায়নি</p>
+                <p class="text-xs text-slate-500 mt-1">শিক্ষার্থী তালিকা লোড হয়নি বা খালি।</p>
+                <button onclick="reloadStudentReportData()"
+                    class="mt-4 px-4 py-2 bg-fuchsia-600 text-white rounded-lg text-sm font-bold">
+                    <i class="fa-solid fa-rotate-right"></i> রিফ্রেশ করুন
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    const depts = [...new Set(students.map(s => s.dept).filter(Boolean))];
+    const classes = [...new Set(students.map(s => s.className).filter(Boolean))];
+
+    root.innerHTML = `
+        <div class="bg-white border rounded-xl p-4 space-y-4">
+
+            <div>
+                <label class="text-sm font-bold block mb-1">রিপোর্ট পাঠানোর ধরন</label>
+                <select id="sr-mode"
+                    onchange="updateStudentReportRecipientUI()"
+                    class="w-full border rounded-lg p-2.5 text-sm">
+                    <option value="all">সকল শিক্ষার্থী</option>
+                    <option value="dept">নির্দিষ্ট বিভাগের শিক্ষার্থী</option>
+                    <option value="multiple">একাধিক শিক্ষার্থী</option>
+                    <option value="single">নির্দিষ্ট একজন শিক্ষার্থী</option>
+                </select>
+            </div>
+
+            <div id="sr-dept-wrap" class="hidden">
+                <label class="text-sm font-bold block mb-1">বিভাগ</label>
+                <select id="sr-dept"
+                    onchange="updateStudentReportStudentOptions()"
+                    class="w-full border rounded-lg p-2.5 text-sm">
+                    <option value="">বিভাগ নির্বাচন করুন</option>
+                    ${depts.map(d => `<option value="${d}">${d}</option>`).join('')}
+                </select>
+            </div>
+
+            <div id="sr-student-wrap" class="hidden">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="text-sm font-bold">শিক্ষার্থী নির্বাচন</label>
+                    <span id="sr-selected-count" class="text-xs font-bold text-fuchsia-600">০ জন নির্বাচিত</span>
+                </div>
+
+                <input type="search" id="sr-student-search" oninput="filterStudentCheckList(this.value)"
+                    placeholder="নাম, আইডি বা ক্লাস দিয়ে খুঁজুন..."
+                    class="w-full border rounded-lg p-2 text-sm mb-2">
+
+                <div class="flex gap-2 mb-2">
+                    <button type="button" onclick="toggleAllStudentChecks(true)"
+                        class="flex-1 text-xs font-bold bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200 rounded-lg py-1.5 hover:bg-fuchsia-100">
+                        <i class="fa-solid fa-check-double"></i> সব সিলেক্ট
+                    </button>
+                    <button type="button" onclick="toggleAllStudentChecks(false)"
+                        class="flex-1 text-xs font-bold bg-slate-50 text-slate-600 border border-slate-200 rounded-lg py-1.5 hover:bg-slate-100">
+                        <i class="fa-solid fa-xmark"></i> সব বাদ
+                    </button>
+                </div>
+
+                <div id="sr-student-checklist"
+                    class="border rounded-lg p-2 max-h-64 overflow-y-auto space-y-1 bg-slate-50">
+                </div>
+            </div>
+
+            <div>
+                <label class="text-sm font-bold block mb-1">তারিখ</label>
+                <input type="date" id="sr-date"
+                    value="${reportToday()}"
+                    class="w-full border rounded-lg p-2.5 text-sm">
+            </div>
+
+            <div>
+                <label class="text-sm font-bold block mb-1">শিরোনাম</label>
+                <select id="sr-title"
+                    onchange="handleStudentReportTitle()"
+                    class="w-full border rounded-lg p-2.5 text-sm">
+                    ${REPORT_TITLES.map(t =>
+                        `<option value="${t}">${t}</option>`
+                    ).join('')}
+                </select>
+
+                <input id="sr-custom-title"
+                    class="hidden w-full border rounded-lg p-2.5 mt-2 text-sm"
+                    placeholder="নিজস্ব শিরোনাম">
+
+                <div id="sr-deadline-wrap" class="hidden mt-3">
+                    <label class="text-sm font-bold">কারণ দর্শানোর সময়সীমা (দিন)</label>
+                    <input type="number" id="sr-deadline"
+                        value="3" min="1"
+                        class="w-full border rounded-lg p-2.5 mt-1">
+                </div>
+            </div>
+
+            <div>
+                <label class="text-sm font-bold block mb-1">বিস্তারিত</label>
+                <textarea id="sr-message" rows="5"
+                    class="w-full border rounded-lg p-3 text-sm"
+                    placeholder="শিক্ষার্থীর জন্য রিপোর্ট লিখুন..."></textarea>
+            </div>
+
+            <div>
+                <label class="text-sm font-bold block mb-1">প্রেরক</label>
+                <select id="sr-sender"
+                    onchange="previewStudentReportSignature()"
+                    class="w-full border rounded-lg p-2.5 text-sm">
+                    <option value="principal">প্রিন্সিপাল</option>
+                    <option value="vice_principal">ভাইস প্রিন্সিপাল</option>
+                    <option value="edu_sec">শিক্ষাসচিব</option>
+                    <option value="nazem">নাযেমে দারুল ইকামা</option>
+                    <option value="accountant">হিসাব রক্ষক</option>
+                </select>
+                <div id="sr-signature-preview"
+                    class="mt-2 border rounded-lg p-2 bg-slate-50 min-h-14 flex justify-center">
+                </div>
+            </div>
+
+            <button onclick="sendStudentReport()"
+                id="sr-send-btn"
+                class="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold rounded-lg p-3">
+                <i class="fa-solid fa-paper-plane"></i> রিপোর্ট পাঠান
+            </button>
+        </div>
+    `;
+
+    updateStudentReportRecipientUI();
+    handleStudentReportTitle();
+    previewStudentReportSignature();
+};
+
+window.reloadStudentReportData = async function() {
+    if (typeof loadStudentsFromFirestore === 'function') {
+        await loadStudentsFromFirestore();
+    }
+    renderStudentReportSendForm();
+};
+
+window.updateStudentReportRecipientUI = function() {
+    const mode = document.getElementById('sr-mode').value;
+
+    document.getElementById('sr-dept-wrap')
+        .classList.toggle('hidden', mode !== 'dept');
+
+    document.getElementById('sr-student-wrap')
+        .classList.toggle('hidden', !['single', 'multiple'].includes(mode));
+
+    if (['single', 'multiple'].includes(mode)) {
+        updateStudentReportStudentOptions();
+    }
+};
+
+window.updateStudentReportStudentOptions = function() {
+    const mode = document.getElementById('sr-mode').value;
+    const dept = document.getElementById('sr-dept')?.value;
+    const box = document.getElementById('sr-student-checklist');
+    if (!box) return;
+
+    let students = getReportStudents();
+    if (dept && ['dept', 'multiple', 'single'].includes(mode)) {
+        students = students.filter(s => s.dept === dept);
+    }
+
+    if (!students.length) {
+        box.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">কোনো শিক্ষার্থী নেই</p>';
+        updateStudentSelectedCount();
+        return;
+    }
+
+    box.innerHTML = students.map(s => `
+        <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-white cursor-pointer border border-transparent hover:border-fuchsia-200 transition student-check-item"
+               data-name="${(s.name || '').toLowerCase()}"
+               data-id="${(s.studentId || s.id || '').toLowerCase()}"
+               data-class="${(s.className || '').toLowerCase()}"
+               data-dept="${(s.dept || '').toLowerCase()}">
+            <input type="checkbox" value="${s.id}" onchange="updateStudentSelectedCount()"
+                   class="w-4 h-4 accent-fuchsia-600 sr-student-check">
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold truncate">${s.name || 'নাম নেই'}</p>
+                <p class="text-[11px] text-slate-500">${s.studentId || s.id} • ${s.className || ''} • ${s.dept || ''}</p>
+            </div>
+        </label>
+    `).join('');
+
+    updateStudentSelectedCount();
+};
+
+window.updateStudentSelectedCount = function() {
+    const mode = document.getElementById('sr-mode')?.value;
+    const checked = document.querySelectorAll('.sr-student-check:checked');
+
+    if (mode === 'single' && checked.length > 1) {
+        checked.forEach((c, i) => {
+            if (i < checked.length - 1) c.checked = false;
+        });
+    }
+
+    const count = document.querySelectorAll('.sr-student-check:checked').length;
+    const el = document.getElementById('sr-selected-count');
+    if (el) el.textContent = `${count} জন নির্বাচিত`;
+};
+
+window.filterStudentCheckList = function(q) {
+    q = q.toLowerCase().trim();
+    document.querySelectorAll('#sr-student-checklist .student-check-item').forEach(el => {
+        const match = !q ||
+            el.dataset.name.includes(q) ||
+            el.dataset.id.includes(q) ||
+            el.dataset.class.includes(q) ||
+            el.dataset.dept.includes(q);
+        el.style.display = match ? '' : 'none';
+    });
+};
+
+window.toggleAllStudentChecks = function(checked) {
+    document.querySelectorAll('#sr-student-checklist .student-check-item').forEach(el => {
+        if (el.style.display === 'none') return;
+        const cb = el.querySelector('input');
+        if (cb) cb.checked = checked;
+    });
+    updateStudentSelectedCount();
+};
+
+window.handleStudentReportTitle = function() {
+    const title = document.getElementById('sr-title').value;
+
+    document.getElementById('sr-custom-title')
+        .classList.toggle('hidden', title !== 'অন্যান্য');
+
+    document.getElementById('sr-deadline-wrap')
+        .classList.toggle('hidden', title !== 'কারণ দর্শানোর নোটিশ');
+};
+
+window.previewStudentReportSignature = function() {
+    const role = document.getElementById('sr-sender').value;
+    const signature = getReportSignature(role);
+    const name = getReportSenderName(role);
+
+    document.getElementById('sr-signature-preview').innerHTML =
+        signature
+        ? `<div class="text-center">
+            <img src="${signature}" class="max-h-12 max-w-40 mx-auto">
+            <p class="text-xs font-bold mt-1">${name}</p>
+           </div>`
+        : '<p class="text-xs text-red-500">স্বাক্ষর পাওয়া যায়নি</p>';
+};
+
+window.sendStudentReport = async function() {
+    const mode = document.getElementById('sr-mode').value;
+    const allStudents = getReportStudents();
+
+    let recipients = [];
+
+    if (mode === 'all') {
+        recipients = allStudents;
+    } else if (mode === 'dept') {
+        const dept = document.getElementById('sr-dept').value;
+        recipients = allStudents.filter(s => s.dept === dept);
+    } else {
+        const ids = [...document.querySelectorAll('.sr-student-check:checked')].map(c => c.value);
+
+        recipients = allStudents.filter(s => ids.includes(s.id));
+
+        if (mode === 'single' && recipients.length !== 1) {
+            return showToast('একজন শিক্ষার্থী নির্বাচন করুন', 'warn');
+        }
+    }
+
+    if (!recipients.length) {
+        return showToast('কোনো শিক্ষার্থী নির্বাচন করা হয়নি', 'warn');
+    }
+
+    const date = document.getElementById('sr-date').value;
+    const selectedTitle = document.getElementById('sr-title').value;
+
+    const title = selectedTitle === 'অন্যান্য'
+        ? document.getElementById('sr-custom-title').value.trim()
+        : selectedTitle;
+
+    const message = document.getElementById('sr-message').value.trim();
+    const senderRole = document.getElementById('sr-sender').value;
+    const senderName = getReportSenderName(senderRole);
+    const signature = getReportSignature(senderRole);
+
+    if (!date || !title || !message) {
+        return showToast('তারিখ, শিরোনাম ও বিস্তারিত পূরণ করুন', 'warn');
+    }
+
+    if (!senderName) {
+        return showToast('প্রেরকের নাম সেটিংসে পাওয়া যায়নি', 'warn');
+    }
+
+    let deadlineDays = null;
+
+    if (title === 'কারণ দর্শানোর নোটিশ') {
+        deadlineDays = Number(document.getElementById('sr-deadline').value);
+
+        if (!deadlineDays || deadlineDays < 1) {
+            return showToast('সময় সীমা নির্ধারণ করুন', 'warn');
+        }
+    }
+
+    const btn = document.getElementById('sr-send-btn');
+    btn.disabled = true;
+
+    try {
+        const { collection, addDoc, serverTimestamp } = window.fbFuncs;
+
+        for (const student of recipients) {
+            await addDoc(collection(window.fbDB, 'studentReports'), {
+                studentDbId: student.id,
+                studentName: student.name || '',
+                studentId: student.studentId || '',
+                className: student.className || '',
+                dept: student.dept || '',
+                guardianName: student.guardian || student.fatherName || '',
+                title,
+                message,
+                date,
+                deadlineDays,
+                senderRole,
+                senderName,
+                signature,
+                status: 'unread',
+                createdAt: serverTimestamp()
+            });
+        }
+
+        showToast(`${recipients.length} জন শিক্ষার্থীকে রিপোর্ট পাঠানো হয়েছে`, 'success');
+        renderStudentReportSendForm();
+
+    } catch (err) {
+        showToast('রিপোর্ট পাঠানো ব্যর্থ: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+    }
+};
+
+/* =========================================================
+   GUARDIAN MORAL REPORT
+========================================================= */
+
+window.renderGpMoralReport = async function(root) {
+    root.innerHTML = `
+        <div class="bg-white border rounded-xl p-3 mb-3">
+            <h3 class="font-bold text-base text-indigo-800 mb-3">
+                <i class="fa-solid fa-heart"></i> আখলাকি রিপোর্ট
+            </h3>
+
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="switchGpMoralReportView('received')"
+                    class="bg-indigo-600 text-white rounded-lg p-3 text-xs font-bold">
+                    প্রতিষ্ঠানের রিপোর্ট
+                </button>
+
+                <button onclick="switchGpMoralReportView('send')"
+                    class="bg-sky-600 text-white rounded-lg p-3 text-xs font-bold">
+                    গার্ডিয়ান রিপোর্ট
+                </button>
+            </div>
+        </div>
+
+        <div id="gp-moral-report-content"></div>
+    `;
+
+    switchGpMoralReportView('received');
+};
+
+window.switchGpMoralReportView = async function(view) {
+    const root = document.getElementById('gp-moral-report-content');
+    if (!root) return;
+
+    if (view === 'send') {
+        renderGuardianReportForm(root);
+    } else {
+        await renderGuardianReceivedStudentReports(root);
+    }
+};
+
+// প্রশাসন থেকে শিক্ষার্থীর প্রতি পাঠানো রিপোর্ট
+window.renderGuardianReceivedStudentReports = async function(root) {
+    root.innerHTML = '<div class="text-center p-6">লোড হচ্ছে...</div>';
+
+    try {
+        const student = window._guardianSession;
+
+        if (!student?.id) {
+            root.innerHTML = '<p class="text-red-500">শিক্ষার্থীর তথ্য পাওয়া যায়নি</p>';
+            return;
+        }
+
+        const { collection, getDocs } = window.fbFuncs;
+
+        const snap = await getDocs(
+            collection(window.fbDB, 'studentReports')
+        );
+
+        const reports = [];
+
+        snap.forEach(d => {
+            const x = { id: d.id, ...d.data() };
+
+            if (x.studentDbId === student.id) {
+                reports.push(x);
+            }
+        });
+
+        reports.sort((a, b) =>
+            String(b.date || '').localeCompare(String(a.date || ''))
+        );
+
+        root.innerHTML = reports.length
+            ? reports.map(x => `
+                <div class="bg-white border rounded-xl p-4 mb-3">
+                    <div class="flex justify-between gap-2">
+                        <strong class="text-sm text-indigo-800">${x.title}</strong>
+                        <span class="text-[11px] text-slate-500">${x.date}</span>
+                    </div>
+
+                    ${x.deadlineDays ? `
+                        <p class="text-xs text-red-600 font-bold mt-2">
+                            কারণ দর্শানোর সময়সীমা: ${x.deadlineDays} দিন
+                        </p>
+                    ` : ''}
+
+                    <p class="text-sm whitespace-pre-wrap text-slate-700 mt-3">${x.message}</p>
+
+                    <div class="border-t mt-4 pt-3 text-right">
+                        ${x.signature ? `
+                            <img src="${x.signature}"
+                                class="max-h-12 max-w-32 ml-auto object-contain">
+                        ` : ''}
+
+                        <p class="text-xs font-bold">${x.senderName || ''}</p>
+                    </div>
+                </div>
+            `).join('')
+            : `
+                <div class="bg-white border rounded-xl p-8 text-center text-slate-400">
+                    <i class="fa-regular fa-envelope-open text-3xl mb-2"></i>
+                    <p class="text-sm">কোনো আখলাকি রিপোর্ট পাওয়া যায়নি</p>
+                </div>
+            `;
+
+    } catch (err) {
+        root.innerHTML = `<p class="text-red-500">${err.message}</p>`;
+    }
+};
+
+// গার্ডিয়ান কর্তৃক প্রশাসনের কাছে রিপোর্ট
+function renderGuardianReportForm(root) {
+    const student = window._guardianSession || {};
+
+    root.innerHTML = `
+        <div class="bg-white border rounded-xl p-4 space-y-3">
+            <h3 class="font-bold text-sm text-sky-800">
+                প্রশাসনের কাছে রিপোর্ট পাঠান
+            </h3>
+
+            <div class="bg-sky-50 rounded-lg p-3 text-xs">
+                <p><strong>শিক্ষার্থী:</strong> ${student.name || ''}</p>
+                <p><strong>আইডি:</strong> ${student.studentId || ''}</p>
+                <p><strong>বিভাগ:</strong> ${student.dept || ''}</p>
+            </div>
+
+            <div>
+                <label class="text-xs font-bold">তারিখ</label>
+                <input type="date" id="gmr-date"
+                    value="${reportToday()}"
+                    class="w-full border rounded-lg p-2 text-sm mt-1">
+            </div>
+
+            <div>
+                <label class="text-xs font-bold">রিপোর্টের শিরোনাম</label>
+                <select id="gmr-title"
+                    class="w-full border rounded-lg p-2 text-sm mt-1">
+                    <option>শিক্ষার্থীর বিষয়ে অভিযোগ</option>
+                    <option>প্রশাসনিক পরামর্শ</option>
+                    <option>শিক্ষার্থীর আচরণ সংক্রান্ত</option>
+                    <option>অন্যান্য</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs font-bold">বিস্তারিত লিখুন</label>
+                <textarea id="gmr-message" rows="5"
+                    class="w-full border rounded-lg p-3 text-sm mt-1"
+                    placeholder="আপনার রিপোর্ট লিখুন..."></textarea>
+            </div>
+
+            <button onclick="submitGuardianReport()"
+                id="gmr-submit"
+                class="w-full bg-sky-600 hover:bg-sky-700 text-white rounded-lg p-3 font-bold text-sm">
+                <i class="fa-solid fa-paper-plane"></i> রিপোর্ট পাঠান
+            </button>
+        </div>
+    `;
+}
+
+window.submitGuardianReport = async function() {
+    const student = window._guardianSession;
+
+    if (!student?.id) {
+        return showToast('শিক্ষার্থীর তথ্য পাওয়া যায়নি', 'error');
+    }
+
+    const date = document.getElementById('gmr-date').value;
+    const title = document.getElementById('gmr-title').value;
+    const message = document.getElementById('gmr-message').value.trim();
+
+    if (!date || !message || message.length < 5) {
+        return showToast('তারিখ ও বিস্তারিত রিপোর্ট লিখুন', 'warn');
+    }
+
+    const btn = document.getElementById('gmr-submit');
+    btn.disabled = true;
+
+    try {
+        const { collection, addDoc, serverTimestamp } = window.fbFuncs;
+
+        await addDoc(collection(window.fbDB, 'guardianReports'), {
+            studentDbId: student.id,
+            studentName: student.name || '',
+            studentId: student.studentId || '',
+            className: student.className || '',
+            dept: student.dept || '',
+            guardianName: student.guardian || student.fatherName || '',
+            guardianMobile: student.mobile1 || '',
+            title,
+            message,
+            date,
+            status: 'pending',
+            createdBy: 'guardian',
+            createdAt: serverTimestamp()
+        });
+
+        showToast('রিপোর্ট প্রশাসনের কাছে পাঠানো হয়েছে', 'success');
+
+        renderGuardianReportForm(
+            document.getElementById('gp-moral-report-content')
+        );
+
+    } catch (err) {
+        showToast('রিপোর্ট পাঠানো ব্যর্থ: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+    }
+};
+
+/* =========================================================
+   ADMIN: STUDENT REPORT HISTORY + GUARDIAN REPORTS
+========================================================= */
+
+window.renderStudentReportList = async function(view, searchText = '') {
+    const root = document.getElementById('student-report-admin-body');
+
+    root.innerHTML = '<div class="text-center p-8">লোড হচ্ছে...</div>';
+
+    try {
+        const { collection, getDocs } = window.fbFuncs;
+
+        let reports = [];
+
+        if (view === 'guardian' || view === 'history') {
+            const snap = await getDocs(
+                collection(window.fbDB, 'guardianReports')
+            );
+
+            snap.forEach(d => {
+                reports.push({
+                    id: d.id,
+                    collectionName: 'guardianReports',
+                    ...d.data()
+                });
+            });
+        }
+
+        if (view === 'history') {
+            const snap = await getDocs(
+                collection(window.fbDB, 'studentReports')
+            );
+
+            snap.forEach(d => {
+                reports.push({
+                    id: d.id,
+                    collectionName: 'studentReports',
+                    ...d.data()
+                });
+            });
+        }
+
+        reports.sort((a, b) =>
+            String(b.date || '').localeCompare(String(a.date || ''))
+        );
+
+        if (searchText) {
+            const q = searchText.toLowerCase();
+
+            reports = reports.filter(x =>
+                [
+                    x.title,
+                    x.message,
+                    x.studentName,
+                    x.studentId,
+                    x.guardianName,
+                    x.date,
+                    x.dept
+                ].some(v =>
+                    String(v || '').toLowerCase().includes(q)
+                )
+            );
+        }
+
+        root.innerHTML = `
+        <div class="bg-white border rounded-xl p-3 space-y-3">
+
+            ${view === 'history' ? `
+                <div class="border border-red-200 bg-red-50 rounded-lg p-3 space-y-2">
+
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <input type="date"
+                            id="student-report-delete-date"
+                            class="flex-1 min-w-[140px] border rounded-lg p-2 text-sm">
+
+                        <button onclick="deleteStudentReportsByDate()"
+                            class="bg-orange-600 hover:bg-orange-700 text-white rounded-lg px-3 py-2 text-xs font-bold">
+                            <i class="fa-solid fa-calendar-xmark"></i>
+                            তারিখের হিস্ট্রি মুছুন
+                        </button>
+                    </div>
+
+                    <button onclick="deleteAllStudentReportHistory()"
+                        class="w-full bg-red-600 hover:bg-red-700 text-white rounded-lg p-2.5 text-sm font-bold">
+                        <i class="fa-solid fa-trash-can"></i>
+                        সব শিক্ষার্থী হিস্ট্রি মুছুন
+                    </button>
+
+                </div>
+            ` : ''}
+
+            <input type="search"
+                    placeholder="তারিখ, শিক্ষার্থী, গার্ডিয়ান বা শিরোনাম দিয়ে খুঁজুন..."
+                    oninput="filterStudentReportList('${view}',this.value)"
+                    class="w-full border rounded-lg p-2.5 text-sm">
+
+                <p class="text-xs text-slate-500">
+                    মোট রিপোর্ট: ${reports.length}
+                </p>
+
+                <div class="space-y-3">
+                    ${reports.length ? reports.map(x => `
+                        <div class="border rounded-lg p-3">
+
+                            <div class="flex justify-between gap-2">
+                                <strong class="text-sm text-slate-800">
+                                    ${x.title || 'রিপোর্ট'}
+                                </strong>
+                                <span class="text-xs text-slate-500">
+                                    ${x.date || ''}
+                                </span>
+                            </div>
+
+                            <p class="text-xs text-fuchsia-700 mt-2">
+                                শিক্ষার্থী: ${x.studentName || ''}
+                                (${x.studentId || ''})
+                            </p>
+
+                            <p class="text-xs text-slate-500">
+                                বিভাগ: ${x.dept || ''}
+                                | গার্ডিয়ান: ${x.guardianName || ''}
+                            </p>
+
+                            <p class="text-sm text-slate-700 whitespace-pre-wrap mt-3">
+                                ${x.message || ''}
+                            </p>
+
+                            <div class="flex justify-between items-center mt-3">
+                                <span class="text-[10px] text-slate-400">
+                                    ${x.collectionName === 'guardianReports'
+                                        ? 'গার্ডিয়ান কর্তৃক প্রেরিত'
+                                        : 'প্রশাসন কর্তৃক প্রেরিত'}
+                                </span>
+
+                                <button onclick="deleteStudentReport('${x.id}','${x.collectionName}','${view}')"
+                                    class="bg-red-100 text-red-700 rounded px-3 py-1.5 text-xs font-bold">
+                                    <i class="fa-solid fa-trash"></i> ডিলিট
+                                </button>
+                            </div>
+                        </div>
+                    `).join('') : `
+                        <div class="text-center py-8 text-slate-400 text-sm">
+                            কোনো রিপোর্ট পাওয়া যায়নি
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+
+    } catch (err) {
+        root.innerHTML = `
+            <div class="text-red-500 p-4">
+                রিপোর্ট লোড ব্যর্থ: ${err.message}
+            </div>
+        `;
+    }
+};
+
+window.filterStudentReportList = function(view, value) {
+    const root = document.getElementById('student-report-admin-body');
+    if (!root) return;
+
+    root.querySelectorAll('.space-y-3 > div').forEach(card => {
+        card.style.display = card.innerText
+            .toLowerCase()
+            .includes(value.toLowerCase()) ? '' : 'none';
+    });
+};
+
+// ★★★ নির্দিষ্ট তারিখের শিক্ষার্থী রিপোর্ট হিস্ট্রি মুছুন ★★★
+window.deleteStudentReportsByDate = async function() {
+
+    const date = document.getElementById('student-report-delete-date')?.value;
+
+    if (!date) {
+        return showToast('আগে একটি তারিখ নির্বাচন করুন', 'warn');
+    }
+
+    if (!confirm(`আপনি কি ${date} তারিখের সব শিক্ষার্থী রিপোর্ট হিস্ট্রি মুছে ফেলতে চান?`)) {
+        return;
+    }
+
+    try {
+        const { collection, getDocs, doc, deleteDoc } = window.fbFuncs;
+
+        const collectionNames = ['studentReports', 'guardianReports'];
+
+        let targets = [];
+
+        for (const collectionName of collectionNames) {
+            const snap = await getDocs(
+                collection(window.fbDB, collectionName)
+            );
+
+            snap.forEach(d => {
+                const data = d.data();
+
+                if (data.date === date) {
+                    targets.push({
+                        id: d.id,
+                        collectionName
+                    });
+                }
+            });
+        }
+
+        if (!targets.length) {
+            return showToast('এই তারিখে কোনো হিস্ট্রি পাওয়া যায়নি', 'warn');
+        }
+
+        for (let i = 0; i < targets.length; i += 20) {
+            const chunk = targets.slice(i, i + 20);
+
+            await Promise.all(
+                chunk.map(item =>
+                    deleteDoc(
+                        doc(window.fbDB, item.collectionName, item.id)
+                    )
+                )
+            );
+        }
+
+        showToast(`${targets.length}টি রিপোর্ট হিস্ট্রি মুছে ফেলা হয়েছে`, 'success');
+
+        await renderStudentReportList('history');
+
+    } catch (err) {
+        console.error('Student report date delete error:', err);
+        showToast('হিস্ট্রি মুছতে সমস্যা হয়েছে: ' + err.message, 'error');
+    }
+};
+
+
+// ★★★ সব শিক্ষার্থী রিপোর্ট হিস্ট্রি মুছুন ★★★
+window.deleteAllStudentReportHistory = async function() {
+
+    if (!confirm('সতর্কতা! প্রশাসনের পাঠানো এবং গার্ডিয়ান কর্তৃক পাঠানো সব শিক্ষার্থী রিপোর্ট হিস্ট্রি স্থায়ীভাবে মুছে যাবে। আপনি কি নিশ্চিত?')) {
+        return;
+    }
+
+    try {
+        const { collection, getDocs, doc, deleteDoc } = window.fbFuncs;
+
+        const collectionNames = ['studentReports', 'guardianReports'];
+
+        let targets = [];
+
+        for (const collectionName of collectionNames) {
+            const snap = await getDocs(
+                collection(window.fbDB, collectionName)
+            );
+
+            snap.forEach(d => {
+                targets.push({
+                    id: d.id,
+                    collectionName
+                });
+            });
+        }
+
+        if (!targets.length) {
+            return showToast('মুছে ফেলার মতো কোনো হিস্ট্রি নেই', 'warn');
+        }
+
+        for (let i = 0; i < targets.length; i += 20) {
+            const chunk = targets.slice(i, i + 20);
+
+            await Promise.all(
+                chunk.map(item =>
+                    deleteDoc(
+                        doc(window.fbDB, item.collectionName, item.id)
+                    )
+                )
+            );
+        }
+
+        showToast(`${targets.length}টি শিক্ষার্থী রিপোর্ট হিস্ট্রি মুছে ফেলা হয়েছে`, 'success');
+
+        await renderStudentReportList('history');
+
+    } catch (err) {
+        console.error('Student report all delete error:', err);
+        showToast('হিস্ট্রি মুছতে সমস্যা হয়েছে: ' + err.message, 'error');
+    }
+};
+
+window.deleteStudentReport = async function(id, collectionName, view) {
+    if (!confirm('এই রিপোর্টটি স্থায়ীভাবে মুছে ফেলতে চান?')) return;
+
+    if (!['studentReports', 'guardianReports'].includes(collectionName)) {
+        return showToast('অবৈধ রিপোর্ট সংগ্রহ', 'error');
+    }
+
+    try {
+        const { doc, deleteDoc } = window.fbFuncs;
+
+        await deleteDoc(
+            doc(window.fbDB, collectionName, id)
+        );
+
+        showToast('রিপোর্ট সফলভাবে মুছে ফেলা হয়েছে', 'success');
+
+        renderStudentReportList(view);
+
+    } catch (err) {
+        showToast('ডিলিট ব্যর্থ: ' + err.message, 'error');
+    }
 };
 
 </script>
