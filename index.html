@@ -58918,7 +58918,7 @@ window.showGuardianPortal = function() {
 
                     <!-- ★ মূল পরিচিতি: অপরিবর্তিত -->
                     <div class="z-10 flex-1 min-w-0">
-                        <h2 class="text-xl font-bold text-slate-800">${student.name}</h2>
+                        <h2 class="text-sm sm:text-base font-bold text-slate-800">${student.name}</h2>
                         <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-slate-600 font-semibold">
                             <span><i class="fa-solid fa-id-card"></i> ${student.studentId || '—'}</span>
                             <span class="font-arabic"><i class="fa-solid fa-school"></i> ${student.className || '—'}</span>
@@ -58933,7 +58933,7 @@ window.showGuardianPortal = function() {
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-calendar-check text-emerald-600"></i>
                             <div>
-                                <span class="text-slate-500">আজকের হাজিরা:</span>
+                                <span class="text-slate-500">হাজিরা:</span>
                                 <strong id="gp-profile-attendance" class="text-emerald-700">লোড হচ্ছে...</strong>
                             </div>
                         </div>
@@ -58941,7 +58941,7 @@ window.showGuardianPortal = function() {
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-award text-amber-600"></i>
                             <div>
-                                <span class="text-slate-500">সর্বশেষ ফলাফল:</span>
+                                <span class="text-slate-500">ফলাফল:</span>
                                 <strong id="gp-profile-result" class="text-slate-700">লোড হচ্ছে...</strong>
                             </div>
                         </div>
@@ -62660,6 +62660,8 @@ async function renderGpResults(container) {
 
     if (window._gpResultContextStudentId !== guardianId) {
         window._gpResultContextStudentId = guardianId;
+        window._gpResultContextManuallyChanged = false;
+
         window._marksContext = {
             ...(window._marksContext || {}),
             academicYear: latestGpYear,
@@ -62765,6 +62767,62 @@ async function renderGpResults(container) {
                     source: 'admission'
                 };
             });
+        }
+
+        // ★★★ নতুন ফিক্স: সর্বশেষ যে পরীক্ষায় নম্বর আছে সেটি নির্বাচন ★★★
+        const examSource = freshStudent || student;
+
+        if (!window._gpResultContextManuallyChanged) {
+
+            const examPriority = [
+                'annual',
+                'term2',
+                'qurbani',
+                'model',
+                'term1'
+            ];
+
+            const hasMarksForExam = (examType) => {
+                const data = getStudentTermMarks(
+                    examSource,
+                    ctxYear,
+                    examType
+                );
+
+                const allMarks = [
+                    ...Object.values(data.resultMarksObj || {}),
+                    ...Object.values(data.customMarks || {})
+                ];
+
+                return allMarks.some(v =>
+                    v !== null &&
+                    v !== undefined &&
+                    String(v).trim() !== '' &&
+                    Number.isFinite(Number(v))
+                );
+            };
+
+            const latestAvailableExam = examPriority.find(hasMarksForExam);
+
+            if (latestAvailableExam) {
+                ctxExam = latestAvailableExam;
+                window._marksContext.examType = latestAvailableExam;
+            }
+        }
+
+        // ★★★ পাবলিশ স্ট্যাটাস পুনরায় যাচাই ★★★
+        if (!_examPublishStatus && ctxExam === 'term2') {
+            container.innerHTML = `
+                <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-8 text-center my-10">
+                    <i class="fa-solid fa-lock text-5xl text-amber-500 mb-3"></i>
+                    <h3 class="text-lg font-bold text-amber-900">
+                        চলমান পরীক্ষার রেজাল্ট এখনো পাবলিশ হয়নি
+                    </h3>
+                    <p class="text-sm text-amber-700 mt-2">
+                        অনুগ্রহ করে অপেক্ষা করুন অথবা উপরে থেকে আগের কোনো পরীক্ষা সিলেক্ট করুন।
+                    </p>
+                </div>`;
+            return;
         }
 
         // ৪. মার্জ করা ছাত্র অবজেক্ট (গার্ডিয়ানের সেশন সহ)
@@ -62986,9 +63044,12 @@ window.onGpResultContextChange = function() {
     const examSel = document.getElementById('gp-result-exam');
     
     if (!window._marksContext) window._marksContext = {};
+
     window._marksContext.academicYear = yearSel?.value || '';
     window._marksContext.examType = examSel?.value || '';
-    
+
+    window._gpResultContextManuallyChanged = true;
+
     switchGpTab('result'); // পেজ রি-রেন্ডার
 };
 
