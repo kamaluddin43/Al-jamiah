@@ -43912,7 +43912,7 @@ window.addEventListener('load', async () => {
             
             const sSnap = await getDocs(collection(window.fbDB, 'students'));
             sSnap.forEach(d => {
-                const s = { id: d.id, ...d.data() };
+                const s = { ...d.data(), id: d.id };
                 if (String(s.studentId) === savedStudentId || s.id === savedStudentId) {
                     foundStudent = s;
                 }
@@ -43926,16 +43926,47 @@ window.addEventListener('load', async () => {
                     const formIdRaw = form.studentId || form.data?.primary?.studentId || '';
                     if (String(formIdRaw) === savedStudentId) {
                         const fd = (typeof flattenAdmFormData === 'function') ? flattenAdmFormData(form) : {};
-                        foundStudent = {
-                            id: 'admission_' + form.id,
-                            name: fd.name || form.data?.personal?.name,
-                            guardian: fd.guardianName || form.data?.guardian?.guardianName,
-                            studentId: fd.studentId || formIdRaw,
-                            dept: fd.dept || form.dept,
-                            className: fd.nextClass || form.data?.personal?.nextClass,
-                            mobile1: fd.mobile1 || form.data?.guardian?.mobile1,
-                            photo: fd.studentPhoto || form.data?.primary?.studentPhoto
-                        };
+
+                    foundStudent = {
+                        id: 'admission_' + form.id,
+
+                        // শিক্ষার্থীর সাধারণ তথ্য
+                        name: fd.name || form.data?.personal?.name || '',
+                        guardian: fd.guardianName || form.data?.guardian?.guardianName || '',
+                        studentId: fd.studentId || form.studentId || form.data?.primary?.studentId || '',
+                        dob: fd.dob || '',
+                        mobile1: fd.mobile1 || form.data?.guardian?.mobile1 || '',
+                        mobile2: fd.mobile2 || form.data?.guardian?.mobile2 || '',
+                        address: fd.currentAddress || '',
+                        dept: fd.dept || form.dept || '',
+                        className: fd.nextClass || form.data?.personal?.nextClass || '',
+
+                        // ★ প্রদেয় সংক্রান্ত তথ্য — অত্যন্ত গুরুত্বপূর্ণ
+                        admissionFormFee: Number(
+                            form.data?.admissionFees?.admissionFormFee ||
+                            form.admissionFormFee || 0
+                        ),
+
+                        admissionFee: Number(fd.admissionFee || 0),
+                        firstMonthFood: Number(fd.firstMonthFood || 0),
+                        sessionFee: Number(form.data?.admissionFees?.sessionFee || 0),
+
+                        monthlyFood: Number(fd.monthlyFood || 0),
+                        monthlySalary: Number(fd.monthlySalary || 0),
+                        hostelFee: Number(fd.monthlyHostel || 0),
+
+                        remark: null,
+                        photo: fd.studentPhoto || form.data?.primary?.studentPhoto || '',
+                        source: 'admission',
+                        admissionFormId: form.id,
+
+                        resultMarksObj: form.data?.examMarks ||
+                                        form.examMarks ||
+                                        form.data?.resultMarksObj || {},
+
+                        customMarks: form.data?.customMarks ||
+                                    form.customMarks || {}
+                    };
                     }
                 });
             }
@@ -50158,7 +50189,7 @@ window.loadOldStudentById = async function() {
         const sQ = query(collection(window.fbDB, 'students'), where('studentId', '==', studentId));
         const sSnap = await getDocs(sQ);
         if (!sSnap.empty) {
-            foundStudent = { id: sSnap.docs[0].id, ...sSnap.docs[0].data() };
+            foundStudent = { ...sSnap.docs[0].data(), id: sSnap.docs[0].id };
         }
 
         // admissionForms কালেকশন (approved)
@@ -71071,27 +71102,53 @@ window._studentDuesState = {
     configLoaded: false
 };
 
-// ─── কনফিগ লোড (একবার) ───
+
+// ─── কনফিগ লোড (সফলভাবে লোড না হওয়া পর্যন্ত পুনরায় চেষ্টা করবে) ───
 async function loadStudentDuesConfig() {
-    if (window._studentDuesState.configLoaded) return window._studentDuesConfig;
-    
+
+    if (window._studentDuesState.configLoaded) {
+        return window._studentDuesConfig;
+    }
+
     try {
+        // Firebase প্রস্তুত আছে কি না যাচাই
+        if (!window.fbDB || !window.fbFuncs) {
+            throw new Error('Firebase এখনো প্রস্তুত হয়নি');
+        }
+
         const { doc, getDoc } = window.fbFuncs;
-        const snap = await getDoc(doc(window.fbDB, STUDENT_DUES_FS.CONFIG, 'main'));
+
+        const snap = await getDoc(
+            doc(window.fbDB, STUDENT_DUES_FS.CONFIG, 'main')
+        );
+
         if (snap.exists()) {
             const data = snap.data();
-            if (data.onetime?.items?.length) {
-                window._studentDuesConfig.onetime.items = data.onetime.items;
+
+            if (data.onetime?.items) {
+                window._studentDuesConfig.onetime.items =
+                    data.onetime.items;
             }
-            if (data.monthly?.items?.length) {
-                window._studentDuesConfig.monthly.items = data.monthly.items;
+
+            if (data.monthly?.items) {
+                window._studentDuesConfig.monthly.items =
+                    data.monthly.items;
             }
         }
+
+        // ★ সফলভাবে Firestore থেকে পড়ার পরই Loaded হবে
+        window._studentDuesState.configLoaded = true;
+
+        console.log('✅ ছাত্রপ্রদেয় কনফিগ সফলভাবে লোড হয়েছে');
+
     } catch (err) {
-        console.warn('⚠️ loadStudentDuesConfig:', err);
+
+        // ★ ব্যর্থ হলে পরবর্তীবার আবার লোডের চেষ্টা করবে
+        window._studentDuesState.configLoaded = false;
+
+        console.warn('⚠️ ছাত্রপ্রদেয় কনফিগ লোড ব্যর্থ:', err);
     }
-    
-    window._studentDuesState.configLoaded = true;
+
     return window._studentDuesConfig;
 }
 
