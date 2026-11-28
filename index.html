@@ -19,6 +19,12 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp, onSnapshot, deleteField, orderBy, limit, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import {
+      getMessaging,
+      isSupported,
+      getToken,
+      onMessage
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCGZM2C4J5L7g1soLweHFvAH9erGVdOodY",
@@ -33,6 +39,131 @@ const firebaseConfig = {
   const fbAuth = getAuth(fbApp);
   const fbDB = getFirestore(fbApp);
 
+    // ==========================================
+    // FIREBASE CLOUD MESSAGING (FCM) INITIALIZE
+    // ==========================================
+
+    let messaging = null;
+
+    const VAPID_KEY = "BFWW6tL9_qPFQh5_sZ4eo6Wp9OObWWoIxcYt0pBIHgQ0QupQ9UdNlOwcY89fyFx4gkT-FcSiUj_lcyCrSvsTe8Q";
+
+    async function initializeFCM() {
+        try {
+            const supported = await isSupported();
+
+            if (!supported) {
+                console.warn("এই ব্রাউজারে FCM সমর্থিত নয়।");
+                return null;
+            }
+
+            messaging = getMessaging(fbApp);
+
+            onMessage(messaging, (payload) => {
+                console.log("FCM Foreground Message:", payload);
+
+                const title = payload.notification?.title || "আল-জামিয়াহ";
+                const body = payload.notification?.body || "নতুন নোটিফিকেশন এসেছে।";
+
+                if (Notification.permission === "granted") {
+                    new Notification(title, {
+                        body: body,
+                        icon: "./logo.png"
+                    });
+                }
+            });
+
+            console.log("FCM Initialize সফল হয়েছে।");
+            return messaging;
+
+        } catch (error) {
+            console.error("FCM Initialize Error:", error);
+            return null;
+        }
+    }
+
+
+    // ব্যবহারকারীর ক্লিকের মাধ্যমে নোটিফিকেশন চালু
+    async function enableFCMNotifications() {
+        try {
+            const currentMessaging = await initializeFCM();
+
+            if (!currentMessaging) {
+                alert("এই ব্রাউজারে নোটিফিকেশন চালু করা যাচ্ছে না।");
+                return;
+            }
+
+            const permission = await Notification.requestPermission();
+
+            if (permission !== "granted") {
+                alert("নোটিফিকেশনের অনুমতি দেওয়া হয়নি।");
+                return;
+            }
+
+            const registration = await navigator.serviceWorker.register(
+                "./service-worker.js"
+            );
+
+            const token = await getToken(currentMessaging, {
+                vapidKey: VAPID_KEY,
+                serviceWorkerRegistration: registration
+            });
+
+            if (token) {
+                const authUser = window.fbAuth?.currentUser;
+
+                // Firebase Auth দিয়ে লগইন না থাকলে
+                if (!authUser) {
+                    alert("এই পোর্টালের Token সংরক্ষণের ব্যবস্থা এখনো যুক্ত হয়নি।");
+                    return;
+                }
+
+                const { doc, setDoc, serverTimestamp } = window.fbFuncs;
+
+                // প্রতিটি ডিভাইসের জন্য আলাদা ID
+                let deviceId = localStorage.getItem("fcm_device_id");
+
+                if (!deviceId) {
+                    deviceId = crypto.randomUUID();
+                    localStorage.setItem("fcm_device_id", deviceId);
+                }
+
+                // Firestore-এ Token সংরক্ষণ
+                await setDoc(
+                    doc(
+                        window.fbDB,
+                        "users",
+                        authUser.uid,
+                        "fcmTokens",
+                        deviceId
+                    ),
+                    {
+                        uid: authUser.uid,
+                        token: token,
+                        role: window.currentUserData?.role || "unknown",
+                        deviceInfo: navigator.userAgent || "",
+                        enabled: true,
+                        updatedAt: serverTimestamp()
+                    },
+                    { merge: true }
+                );
+
+                console.log("FCM Token Firestore-এ সংরক্ষিত হয়েছে।");
+                alert("নোটিফিকেশন চালু ও ডিভাইস নিবন্ধন সফল হয়েছে।");
+
+            } else {
+                alert("FCM Token পাওয়া যায়নি।");
+            }
+
+        } catch (error) {
+            console.error("FCM Token Error:", error);
+            alert("নোটিফিকেশন চালু করতে সমস্যা হয়েছে।");
+        }
+    }
+
+    window.enableFCMNotifications = enableFCMNotifications;
+
+    initializeFCM();
+
   // Global expose (script নিচে ব্যবহার করবে)
   window.fbAuth = fbAuth;
   window.fbDB = fbDB;
@@ -41,7 +172,11 @@ const firebaseConfig = {
     signOut, onAuthStateChanged, doc, getDoc, setDoc,
     collection, addDoc, updateDoc, deleteDoc, getDocs,
     query, where, serverTimestamp, onSnapshot,
-    deleteField, orderBy, limit, increment
+    deleteField, orderBy, limit, increment,
+    getMessaging,
+    isSupported,
+    getToken,
+    onMessage
   };
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -4515,6 +4650,24 @@ header button {
         <button onclick="switchTab('home')" class="flex items-center gap-2 px-4 py-2 bg-white hover:bg-emerald-50 border-2 border-emerald-600 text-emerald-800 hover:text-emerald-900 rounded-lg shadow-md hover:shadow-lg transition-all font-bold text-sm">
             <i class="fa-solid fa-house"></i>
             <span>হোম</span>
+        </button>
+    </div>
+    <!-- FCM Notification Settings -->
+    <div class="bg-white rounded-xl shadow-md border border-sky-200 p-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center">
+                <i class="fa-solid fa-bell text-lg"></i>
+            </div>
+            <div>
+                <h3 class="text-sm font-bold text-slate-800">নোটিফিকেশন সেটিংস</h3>
+                <p class="text-xs text-slate-500">মোবাইল ও ব্রাউজারে নোটিফিকেশন চালু করুন</p>
+            </div>
+        </div>
+
+        <button type="button"
+            onclick="window.enableFCMNotifications()"
+            class="px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-bold whitespace-nowrap shadow-sm">
+            <i class="fa-solid fa-bell mr-1"></i> চালু করুন
         </button>
     </div>
     <div class="bg-white rounded-xl shadow-md border border-slate-200 p-6">
@@ -55067,11 +55220,22 @@ window.showTeacherPortal = function() {
                             <button onclick="document.getElementById('teacher-dropdown').classList.toggle('hidden')" class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full transition focus:outline-none">
                                 <i class="fa-solid fa-ellipsis-vertical"></i>
                             </button>
-                            <div id="teacher-dropdown" class="hidden absolute right-0 mt-2 w-[85px] bg-white rounded-lg shadow-lg py-1 z-[100] border border-slate-200">
-                                <button onclick="logoutTeacher()" class="w-full text-center px-2 py-1.5 text-[10px] font-bold text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5">
-                                    <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
+                            <div id="teacher-dropdown" class="hidden absolute right-0 mt-2 w-[150px] bg-white rounded-lg shadow-lg py-1 z-[100] border border-slate-200">
+
+                                <!-- Logout -->
+                                <button onclick="logoutTeacher()"
+                                    class="w-full text-left px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2">
+                                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
                                     <span>লগআউট</span>
                                 </button>
+
+                                <!-- Notification -->
+                                <button onclick="window.enableFCMNotifications(); document.getElementById('teacher-dropdown').classList.add('hidden')"
+                                    class="w-full text-left px-3 py-2 text-xs font-bold text-sky-700 hover:bg-sky-50 transition-colors flex items-center gap-2 border-t border-slate-100">
+                                    <i class="fa-solid fa-bell"></i>
+                                    <span>নোটিফিকেশন চালু</span>
+                                </button>
+
                             </div>
                         </div>
                     </div>
@@ -55224,6 +55388,7 @@ window.showTeacherPortal = function() {
     `;
 
     document.body.insertAdjacentHTML('beforeend', portalHTML);
+    window.startNoticeLiveListener('teacher');
     
     // ইনিশিয়ালি ডাটা লোড করার জন্য
     setTimeout(async () => {
@@ -59063,11 +59228,22 @@ window.showGuardianPortal = function() {
                                 <i class="fa-solid fa-ellipsis-vertical"></i>
                             </button>
                             <!-- ★★★ অতি ছোট ও কমপ্যাক্ট ড্রপডাউন ★★★ -->
-                            <div id="guardian-dropdown" class="hidden absolute right-0 mt-2 w-[85px] bg-white rounded-lg shadow-lg py-1 z-[100] border border-slate-200">
-                                <button onclick="logoutGuardian()" class="w-full text-center px-2 py-1.5 text-[10px] font-bold text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5">
-                                    <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
+                            <div id="guardian-dropdown" class="hidden absolute right-0 mt-2 w-[150px] bg-white rounded-lg shadow-lg py-1 z-[100] border border-slate-200">
+
+                                <!-- Logout -->
+                                <button onclick="logoutGuardian()"
+                                    class="w-full text-left px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2">
+                                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
                                     <span>লগআউট</span>
                                 </button>
+
+                                <!-- Notification -->
+                                <button onclick="window.enableFCMNotifications(); document.getElementById('guardian-dropdown').classList.add('hidden')"
+                                    class="w-full text-left px-3 py-2 text-xs font-bold text-sky-700 hover:bg-sky-50 transition-colors flex items-center gap-2 border-t border-slate-100">
+                                    <i class="fa-solid fa-bell"></i>
+                                    <span>নোটিফিকেশন চালু</span>
+                                </button>
+
                             </div>
                         </div>
                     </div>
@@ -59147,12 +59323,12 @@ window.showGuardianPortal = function() {
     `;
 
     document.body.insertAdjacentHTML('beforeend', portalHTML);
+    window.startNoticeLiveListener('guardian');
     switchGpTab('dashboard'); // ★ ডিফল্টভাবে মেইন ড্যাশবোর্ড খুলবে
     loadGpProfileAttendance();
     loadGpProfileResult();
     loadGpProfileDue();
 };
-
 
 // ═══════════════════════════════════════════════
 // গার্ডিয়ান প্রোফাইল: আজকের হাজিরা
@@ -64513,7 +64689,15 @@ function renderAdminNotice() {
                         </select>
                         <input type="text" id="adm-notice-title-manual" class="w-full rounded border border-blue-300 p-2 text-sm bg-blue-50" placeholder="অথবা এখানে লিখে এডিট করুন..." oninput="updateNoticePreview()">
                     </div>
-
+                    <!-- নোটিশের প্রাপক -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">নোটিশ পাঠাবেন কাদের?</label>
+                        <select id="adm-notice-audience" class="w-full rounded border border-slate-300 p-2 text-sm">
+                            <option value="both">শিক্ষক ও অভিভাবক উভয়</option>
+                            <option value="teachers">শুধু শিক্ষক</option>
+                            <option value="guardians">শুধু অভিভাবক</option>
+                        </select>
+                    </div>
                     <!-- ২. তারিখ (Date Picker + Edit) -->
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -64716,6 +64900,7 @@ window.publishAdminNotice = async function() {
     const purpose = document.getElementById('adm-notice-purpose-manual').value;
     const request = document.getElementById('adm-notice-request-manual').value;
     const principalName = document.getElementById('adm-notice-principal').value;
+    const audience = document.getElementById('adm-notice-audience').value;
 
     if (!title) return showToast('⚠️ নোটিশের শিরোনাম দিন', 'warn');
     if (!startManual) return showToast('⚠️ শুরু তারিখ দিন', 'warn');
@@ -64743,6 +64928,7 @@ ${principalName}
             title: title,
             body: fullBody,
             principalName: principalName,
+            audience: audience,
             createdAt: serverTimestamp(),
             createdBy: currentUser?.uid || 'admin'
         });
@@ -64763,6 +64949,94 @@ ${principalName}
         showToast('❌ প্রকাশ ব্যর্থ: ' + err.message, 'error');
     }
 };
+// ========================================
+// লাইভ নোটিশ ও পপআপ ব্যবস্থা
+// ========================================
+let _noticeLiveUnsubscribe = null;
+
+window.showLiveNoticePopup = function(title, body) {
+    document.getElementById('live-notice-popup')?.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'live-notice-popup';
+    popup.style.cssText = `
+        position:fixed; inset:0; z-index:999999;
+        background:rgba(0,0,0,.55);
+        display:flex; align-items:center; justify-content:center;
+        padding:18px;
+    `;
+
+    const card = document.createElement('div');
+    card.style.cssText = `
+        background:white; width:100%; max-width:420px;
+        border-radius:16px; padding:22px;
+        box-shadow:0 15px 50px rgba(0,0,0,.25);
+        max-height:80vh; overflow:auto;
+    `;
+
+    const heading = document.createElement('h3');
+    heading.textContent = '🔔 নতুন নোটিশ';
+    heading.style.cssText = 'font-size:18px;font-weight:bold;color:#0369a1;margin-bottom:12px';
+
+    const noticeTitle = document.createElement('h4');
+    noticeTitle.textContent = title || 'নোটিশ';
+    noticeTitle.style.cssText = 'font-weight:bold;font-size:16px;margin-bottom:10px;color:#1e293b';
+
+    const noticeBody = document.createElement('p');
+    noticeBody.textContent = body || '';
+    noticeBody.style.cssText = 'white-space:pre-wrap;font-size:14px;line-height:1.8;color:#334155';
+
+    const close = document.createElement('button');
+    close.textContent = 'বন্ধ করুন';
+    close.style.cssText = `
+        width:100%;margin-top:18px;padding:11px;
+        background:#0284c7;color:white;border-radius:9px;
+        font-weight:bold;
+    `;
+    close.onclick = () => popup.remove();
+
+    card.append(heading, noticeTitle, noticeBody, close);
+    popup.appendChild(card);
+    document.body.appendChild(popup);
+};
+
+window.startNoticeLiveListener = function(portalType) {
+    if (_noticeLiveUnsubscribe) {
+        _noticeLiveUnsubscribe();
+        _noticeLiveUnsubscribe = null;
+    }
+
+    const { collection, onSnapshot } = window.fbFuncs;
+    let firstSnapshot = true;
+
+    _noticeLiveUnsubscribe = onSnapshot(
+        collection(window.fbDB, 'notices'),
+        (snapshot) => {
+            if (firstSnapshot) {
+                firstSnapshot = false;
+                return;
+            }
+
+            snapshot.docChanges().forEach(change => {
+                if (change.type !== 'added') return;
+
+                const data = change.doc.data();
+                const audience = data.audience || 'both';
+
+                const shouldShow =
+                    audience === 'both' ||
+                    (portalType === 'teacher' && audience === 'teachers') ||
+                    (portalType === 'guardian' && audience === 'guardians');
+
+                if (shouldShow) {
+                    window.showLiveNoticePopup(data.title, data.body);
+                }
+            });
+        },
+        (error) => console.error('নোটিশ লিসেনার সমস্যা:', error)
+    );
+};
+
 // ═══════════════════════════════════════════════════════════════
 // ★★★ হোমওয়ার্ক মডিউল (সম্পূর্ণ নতুন) ★★★
 // ═══════════════════════════════════════════════════════════════
