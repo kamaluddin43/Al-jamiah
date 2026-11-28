@@ -44,7 +44,7 @@ messaging.onBackgroundMessage((payload) => {
 // ==========================================
 
 // ক্যাশ ভার্সন আপডেট
-const CACHE_NAME = 'al-jamiah-v6.9.0.9';
+const CACHE_NAME = 'al-jamiah-v7';
 
 const ASSETS_TO_CACHE = [
     './',
